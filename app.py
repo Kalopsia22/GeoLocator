@@ -645,73 +645,640 @@ def _sev_colors():
         "MED":      [255,170,0,170], "LOW":  [0,220,110,150], "INFO": [0,190,255,120],
     }
 
-def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf, show_supply, show_heat):
+
+# ═══════════════════════════════════════════════════════════════
+# STATIC GEODATA FOR MAP LAYERS
+# ═══════════════════════════════════════════════════════════════
+
+INTEL_HOTSPOTS = [
+    {"name":"Strait of Hormuz","lat":26.56,"lon":56.26,"type":"Naval Chokepoint","risk":88,"tip":"🎯 INTEL HOTSPOT | Strait of Hormuz | Iran blockade risk | Risk: 88"},
+    {"name":"Bab el-Mandeb","lat":12.58,"lon":43.38,"type":"Naval Chokepoint","risk":82,"tip":"🎯 INTEL HOTSPOT | Bab el-Mandeb | Houthi threat | Risk: 82"},
+    {"name":"South China Sea","lat":14.5,"lon":113.5,"type":"Territorial Dispute","risk":75,"tip":"🎯 INTEL HOTSPOT | South China Sea | PLA expansion | Risk: 75"},
+    {"name":"Taiwan Strait","lat":24.5,"lon":119.5,"type":"Flashpoint","risk":78,"tip":"🎯 INTEL HOTSPOT | Taiwan Strait | PLA pressure | Risk: 78"},
+    {"name":"Kashmir LoC","lat":34.5,"lon":74.5,"type":"Border Dispute","risk":65,"tip":"🎯 INTEL HOTSPOT | Kashmir LoC | India-Pakistan tension | Risk: 65"},
+    {"name":"Korean DMZ","lat":38.3,"lon":127.0,"type":"Border","risk":60,"tip":"🎯 INTEL HOTSPOT | Korean DMZ | DPRK provocation | Risk: 60"},
+    {"name":"Zaporizhzhia NPP","lat":47.5,"lon":34.6,"type":"Nuclear Risk","risk":90,"tip":"🎯 INTEL HOTSPOT | Zaporizhzhia NPP | Active frontline | Risk: 90"},
+    {"name":"Kerch Strait","lat":45.35,"lon":36.62,"type":"Naval Chokepoint","risk":72,"tip":"🎯 INTEL HOTSPOT | Kerch Strait | Russia-Ukraine conflict | Risk: 72"},
+    {"name":"Niger Delta","lat":5.0,"lon":6.2,"type":"Resource Conflict","risk":62,"tip":"🎯 INTEL HOTSPOT | Niger Delta | Pipeline sabotage risk | Risk: 62"},
+    {"name":"Sahel Belt","lat":13.5,"lon":2.0,"type":"Insurgency Zone","risk":74,"tip":"🎯 INTEL HOTSPOT | Sahel | JNIM/ISGS insurgency | Risk: 74"},
+]
+
+CONFLICT_ZONES = [
+    {"name":"Donetsk Front","lat":48.0,"lon":37.8,"status":"Active","intensity":"Critical","tip":"⚔ CONFLICT ZONE | Donetsk Front | Active frontline combat | Critical"},
+    {"name":"Gaza Strip","lat":31.4,"lon":34.4,"status":"Active","intensity":"Critical","tip":"⚔ CONFLICT ZONE | Gaza Strip | IDF operations | Critical"},
+    {"name":"Southern Lebanon","lat":33.3,"lon":35.5,"status":"Active","intensity":"High","tip":"⚔ CONFLICT ZONE | S. Lebanon | Hezbollah-Israel exchanges | High"},
+    {"name":"Western Iran","lat":33.5,"lon":48.0,"status":"Active","intensity":"Critical","tip":"⚔ CONFLICT ZONE | W. Iran | Israeli strike operations | Critical"},
+    {"name":"North Darfur","lat":14.0,"lon":25.3,"status":"Active","intensity":"Critical","tip":"⚔ CONFLICT ZONE | North Darfur | RSF-SAF combat | Critical"},
+    {"name":"Sagaing Myanmar","lat":22.0,"lon":95.9,"status":"Active","intensity":"High","tip":"⚔ CONFLICT ZONE | Sagaing | Junta vs PDF | High"},
+    {"name":"Tigray Ethiopia","lat":13.5,"lon":38.5,"status":"Frozen","intensity":"Med","tip":"⚔ CONFLICT ZONE | Tigray | Post-ceasefire tension | Med"},
+    {"name":"Cabo Delgado","lat":-12.3,"lon":39.5,"status":"Active","intensity":"High","tip":"⚔ CONFLICT ZONE | Cabo Delgado | ISIL-Mozambique | High"},
+    {"name":"NE Nigeria","lat":12.0,"lon":13.5,"status":"Active","intensity":"High","tip":"⚔ CONFLICT ZONE | NE Nigeria | Boko Haram / ISWAP | High"},
+    {"name":"Rakhine Myanmar","lat":20.1,"lon":93.0,"status":"Active","intensity":"High","tip":"⚔ CONFLICT ZONE | Rakhine | AA-Tatmadaw | High"},
+    {"name":"Khartoum","lat":15.5,"lon":32.5,"status":"Active","intensity":"Critical","tip":"⚔ CONFLICT ZONE | Khartoum | RSF urban warfare | Critical"},
+    {"name":"Kharkiv Oblast","lat":50.0,"lon":36.3,"status":"Active","intensity":"High","tip":"⚔ CONFLICT ZONE | Kharkiv | Russian shelling | High"},
+]
+
+MILITARY_BASES = [
+    {"name":"Diego Garcia (BIOT)","country":"US/UK","lat":-7.3,"lon":72.4,"type":"Naval/Air","tip":"🏛 MILITARY BASE | Diego Garcia | US/UK | Naval-Air | Indian Ocean hub"},
+    {"name":"Ramstein AFB","country":"USA","lat":49.44,"lon":7.6,"type":"Air","tip":"🏛 MILITARY BASE | Ramstein AFB | USA | Air Command | NATO Europe HQ"},
+    {"name":"Al Udeid AFB","country":"USA","lat":25.11,"lon":51.31,"type":"Air","tip":"🏛 MILITARY BASE | Al Udeid | USA | Air | CENTCOM forward HQ Qatar"},
+    {"name":"Kadena AFB","country":"USA","lat":26.36,"lon":127.77,"type":"Air","tip":"🏛 MILITARY BASE | Kadena | USA | Air | Largest USAF base in Asia"},
+    {"name":"Camp Lemonnier","country":"USA","lat":11.55,"lon":43.15,"type":"Naval/Air","tip":"🏛 MILITARY BASE | Camp Lemonnier | USA | Djibouti | Horn of Africa hub"},
+    {"name":"Guantanamo Bay","country":"USA","lat":19.9,"lon":-75.1,"type":"Naval","tip":"🏛 MILITARY BASE | Guantanamo Bay | USA | Caribbean naval station"},
+    {"name":"Okinawa MCAS","country":"USA","lat":26.18,"lon":127.65,"type":"Air","tip":"🏛 MILITARY BASE | MCAS Okinawa | USMC | Japan"},
+    {"name":"Portsmouth Naval","country":"UK","lat":50.8,"lon":-1.1,"type":"Naval","tip":"🏛 MILITARY BASE | Portsmouth | UK | Main RN surface fleet base"},
+    {"name":"Tartus Naval","country":"Russia","lat":34.9,"lon":35.9,"type":"Naval","tip":"🏛 MILITARY BASE | Tartus | Russia | Only Mediterranean naval base"},
+    {"name":"Hmeimim AFB","country":"Russia","lat":35.4,"lon":35.95,"type":"Air","tip":"🏛 MILITARY BASE | Hmeimim | Russia | Syria air operations"},
+    {"name":"Djibouti PLA Base","country":"China","lat":11.6,"lon":43.2,"type":"Naval","tip":"🏛 MILITARY BASE | PLA Base Djibouti | China | First overseas base"},
+    {"name":"Changi Naval Base","country":"Singapore","lat":1.4,"lon":104.0,"type":"Naval","tip":"🏛 MILITARY BASE | Changi | Singapore/US | Strait of Malacca access"},
+    {"name":"Incirlik AFB","country":"NATO/USA","lat":37.0,"lon":35.4,"type":"Air","tip":"🏛 MILITARY BASE | Incirlik | NATO/USA | Turkey | Nuclear hosting"},
+    {"name":"Suda Bay","country":"USA/NATO","lat":35.49,"lon":24.14,"type":"Naval","tip":"🏛 MILITARY BASE | Suda Bay | US/NATO | Crete | Med operations"},
+    {"name":"Bagram (inactive)","country":"USA/Afghan","lat":34.94,"lon":69.27,"type":"Air","tip":"🏛 MILITARY BASE | Bagram | Abandoned 2021 | Afghanistan"},
+    {"name":"Sevastopol Fleet","country":"Russia","lat":44.6,"lon":33.5,"type":"Naval","tip":"🏛 MILITARY BASE | Sevastopol | Russia | Black Sea Fleet HQ"},
+]
+
+NUCLEAR_SITES = [
+    {"name":"Natanz","country":"Iran","lat":33.72,"lon":51.73,"type":"Enrichment","status":"Struck","tip":"☢ NUCLEAR | Natanz | Iran | Enrichment facility | Struck by IDF 2026"},
+    {"name":"Fordow","country":"Iran","lat":34.88,"lon":49.93,"type":"Enrichment","status":"Destroyed","tip":"☢ NUCLEAR | Fordow | Iran | Underground enrichment | Destroyed IDF 2026"},
+    {"name":"Bushehr NPP","country":"Iran","lat":28.98,"lon":50.84,"type":"Power Plant","status":"Operational","tip":"☢ NUCLEAR | Bushehr NPP | Iran | 1000MW reactor | IAEA monitored"},
+    {"name":"Zaporizhzhia NPP","country":"Ukraine","lat":47.5,"lon":34.6,"type":"Power Plant","status":"Occupied","tip":"☢ NUCLEAR | Zaporizhzhia | Ukraine (occupied) | 6 reactors | Frontline risk"},
+    {"name":"Dimona","country":"Israel","lat":31.0,"lon":35.15,"type":"Weapons Research","status":"Active","tip":"☢ NUCLEAR | Dimona | Israel | Undeclared arsenal ~90 warheads"},
+    {"name":"Khandaq Site","country":"N.Korea","lat":40.86,"lon":129.68,"type":"Weapons","status":"Active","tip":"☢ NUCLEAR | Yongbyon | DPRK | Plutonium production complex"},
+    {"name":"Cheyenne Mountain","country":"USA","lat":38.74,"lon":-104.85,"type":"Command","status":"Active","tip":"☢ NUCLEAR | Cheyenne Mountain | USA | NORAD command bunker"},
+    {"name":"Seversk","country":"Russia","lat":56.6,"lon":84.86,"type":"Weapons Production","status":"Active","tip":"☢ NUCLEAR | Seversk | Russia | Plutonium-239 production"},
+    {"name":"Khushab","country":"Pakistan","lat":32.05,"lon":71.9,"type":"Weapons","status":"Active","tip":"☢ NUCLEAR | Khushab | Pakistan | Plutonium reactor"},
+    {"name":"Tarapur","country":"India","lat":19.83,"lon":72.66,"type":"Power Plant","status":"Active","tip":"☢ NUCLEAR | Tarapur | India | BWR reactors"},
+]
+
+GAMMA_IRRADIATORS = [
+    {"name":"Cairo Medical Irradiator","country":"Egypt","lat":30.06,"lon":31.24,"type":"Medical","tip":"⚠ GAMMA IRRADIATOR | Cairo | Egypt | Medical sterilisation | IAEA reg."},
+    {"name":"Lagos Industrial","country":"Nigeria","lat":6.45,"lon":3.4,"type":"Industrial","tip":"⚠ GAMMA IRRADIATOR | Lagos | Nigeria | Food irradiation facility"},
+    {"name":"Tehran Isotope Centre","country":"Iran","lat":35.72,"lon":51.39,"type":"Research","tip":"⚠ GAMMA IRRADIATOR | Tehran | Iran | Research reactor isotopes"},
+    {"name":"Dhaka Radiation Centre","country":"Bangladesh","lat":23.81,"lon":90.41,"type":"Medical","tip":"⚠ GAMMA IRRADIATOR | Dhaka | Bangladesh | Cancer treatment"},
+    {"name":"Abuja Med Physics","country":"Nigeria","lat":9.07,"lon":7.4,"type":"Medical","tip":"⚠ GAMMA IRRADIATOR | Abuja | Nigeria | Medical use | IAEA monitored"},
+    {"name":"Tbilisi Research","country":"Georgia","lat":41.69,"lon":44.83,"type":"Research","tip":"⚠ GAMMA IRRADIATOR | Tbilisi | Georgia | Legacy Soviet source"},
+    {"name":"Caracas Industrial","country":"Venezuela","lat":10.48,"lon":-66.87,"type":"Industrial","tip":"⚠ GAMMA IRRADIATOR | Caracas | Venezuela | Sterilisation plant"},
+    {"name":"Nairobi Med Centre","country":"Kenya","lat":-1.29,"lon":36.82,"type":"Medical","tip":"⚠ GAMMA IRRADIATOR | Nairobi | Kenya | Radiotherapy unit"},
+]
+
+SPACEPORTS = [
+    {"name":"Kennedy Space Center","country":"USA","lat":28.52,"lon":-80.65,"type":"Launch","active":True,"tip":"🚀 SPACEPORT | KSC | USA | SpaceX/NASA | LEO & deep space"},
+    {"name":"Baikonur Cosmodrome","country":"Russia/Kazakhstan","lat":45.92,"lon":63.34,"type":"Launch","active":True,"tip":"🚀 SPACEPORT | Baikonur | Russia | Historic Soviet facility | Soyuz"},
+    {"name":"Jiuquan (JSLC)","country":"China","lat":40.96,"lon":100.29,"type":"Launch","active":True,"tip":"🚀 SPACEPORT | Jiuquan | China | PLA & CNSA | LEO launches"},
+    {"name":"Wenchang Space Centre","country":"China","lat":19.61,"lon":110.95,"type":"Launch","active":True,"tip":"🚀 SPACEPORT | Wenchang | China | Long March 5 | Lunar missions"},
+    {"name":"Kourou (ESA)","country":"France/ESA","lat":5.24,"lon":-52.77,"type":"Launch","active":True,"tip":"🚀 SPACEPORT | Kourou | ESA/France | Ariane 6 | GTO launches"},
+    {"name":"Tanegashima","country":"Japan","lat":30.4,"lon":131.02,"type":"Launch","active":True,"tip":"🚀 SPACEPORT | Tanegashima | JAXA | H-IIA/H3 launch site"},
+    {"name":"Sriharikota (ISRO)","country":"India","lat":13.73,"lon":80.23,"type":"Launch","active":True,"tip":"🚀 SPACEPORT | SDSC-SHAR | India | ISRO | PSLV/GSLV launches"},
+    {"name":"Vandenberg SFB","country":"USA","lat":34.74,"lon":-120.57,"type":"Launch","active":True,"tip":"🚀 SPACEPORT | Vandenberg | USA | SpaceX Falcon 9 | Polar orbits"},
+    {"name":"Plesetsk Cosmodrome","country":"Russia","lat":62.93,"lon":40.46,"type":"Military","active":True,"tip":"🚀 SPACEPORT | Plesetsk | Russia | Military launches | Angara"},
+    {"name":"Naro Space Centre","country":"South Korea","lat":34.43,"lon":127.54,"type":"Launch","active":True,"tip":"🚀 SPACEPORT | Naro | South Korea | KSLV-II Nuri"},
+    {"name":"Palmachim AFB","country":"Israel","lat":31.9,"lon":34.69,"type":"Military","active":True,"tip":"🚀 SPACEPORT | Palmachim | Israel | Shavit launcher | Retrograde orbit"},
+    {"name":"SpaceX Starbase","country":"USA","lat":25.99,"lon":-97.16,"type":"Launch","active":True,"tip":"🚀 SPACEPORT | Starbase Texas | USA | SpaceX Starship | Superheavy"},
+]
+
+UNDERSEA_CABLES = [
+    {"name":"SEA-ME-WE 4","from_lat":1.35,"from_lon":103.8,"to_lat":50.85,"to_lon":4.35,"status":"Degraded","risk":72,"tip":"🔌 CABLE | SEA-ME-WE 4 | Singapore→Europe | Degraded | Risk: 72"},
+    {"name":"Africa Coast to Europe","from_lat":6.45,"from_lon":3.4,"to_lat":43.35,"to_lon":-8.4,"status":"Cut","risk":88,"tip":"🔌 CABLE | ACE | W.Africa→Europe | CUT | Risk: 88"},
+    {"name":"PEACE Cable","from_lat":25.07,"from_lon":55.15,"to_lat":14.0,"to_lon":42.0,"status":"Degraded","risk":65,"tip":"🔌 CABLE | PEACE | ME→Africa | Degraded | Risk: 65"},
+    {"name":"Trans-Pacific Express","from_lat":37.77,"from_lon":-122.4,"to_lat":35.68,"to_lon":139.69,"status":"Active","risk":18,"tip":"🔌 CABLE | TPE | USA→Japan | Active | Risk: 18"},
+    {"name":"FLAG Atlantic-1","from_lat":51.5,"from_lon":-0.1,"to_lat":40.71,"to_lon":-74.0,"status":"Active","risk":22,"tip":"🔌 CABLE | FLAG Atlantic-1 | UK→USA | Active | Risk: 22"},
+    {"name":"AAE-1","from_lat":22.57,"from_lon":88.36,"to_lat":48.86,"to_lon":2.35,"status":"Active","risk":40,"tip":"🔌 CABLE | AAE-1 | Asia→Europe | Active | Risk: 40"},
+    {"name":"MAREA","from_lat":51.5,"from_lon":-0.1,"to_lat":40.71,"to_lon":-74.0,"status":"Active","risk":15,"tip":"🔌 CABLE | MAREA | Microsoft/Facebook | UK→USA | Risk: 15"},
+    {"name":"SJC2","from_lat":35.68,"from_lon":139.69,"to_lat":1.35,"to_lon":103.8,"status":"Active","risk":25,"tip":"🔌 CABLE | SJC2 | Japan→Singapore | Active | Risk: 25"},
+]
+
+PIPELINES = [
+    {"name":"Nord Stream (sabotaged)","from_lat":59.9,"from_lon":24.9,"to_lat":54.15,"to_lon":12.1,"status":"Sabotaged","risk":95},
+    {"name":"Druzhba Pipeline","from_lat":55.75,"from_lon":37.6,"to_lat":52.22,"to_lon":21.0,"status":"Reduced","risk":62},
+    {"name":"Trans-Arabian Pipeline","from_lat":26.3,"from_lon":50.2,"to_lat":33.5,"to_lon":35.5,"status":"Suspended","risk":78},
+    {"name":"TANAP","from_lat":40.0,"from_lon":49.8,"to_lat":41.7,"to_lon":26.6,"status":"Active","risk":30},
+    {"name":"East African Crude","from_lat":-0.3,"from_lon":32.6,"to_lat":-4.9,"to_lon":39.6,"status":"Under Construction","risk":45},
+    {"name":"Kazakhstan-China","from_lat":45.0,"from_lon":51.0,"to_lat":43.8,"to_lon":87.6,"status":"Active","risk":22},
+    {"name":"Sumed Pipeline","from_lat":30.06,"from_lon":31.24,"to_lat":30.9,"to_lon":32.55,"status":"Active","risk":38},
+    {"name":"Iran-Iraq-Syria","from_lat":35.69,"from_lon":51.39,"to_lat":33.3,"to_lon":44.4,"status":"Disrupted","risk":81},
+]
+
+AI_DATA_CENTERS = [
+    {"name":"Microsoft Azure — Dublin","lat":53.33,"lon":-6.25,"operator":"Microsoft","tip":"🖥 AI DATA CENTER | Azure Dublin | Microsoft | EU West Hub | 200+ MW"},
+    {"name":"Google DeepMind — London","lat":51.52,"lon":-0.08,"operator":"Google","tip":"🖥 AI DATA CENTER | GCP London | Google | AI training workloads"},
+    {"name":"AWS — Northern Virginia","lat":38.9,"lon":-77.4,"operator":"Amazon","tip":"🖥 AI DATA CENTER | AWS US-East | Amazon | Largest cloud region globally"},
+    {"name":"Microsoft — Des Moines","lat":41.58,"lon":-93.62,"operator":"Microsoft","tip":"🖥 AI DATA CENTER | Azure Iowa | Microsoft | OpenAI training cluster"},
+    {"name":"Meta — Fort Worth","lat":32.74,"lon":-97.33,"operator":"Meta","tip":"🖥 AI DATA CENTER | Meta Texas | Meta AI | LLaMA training | 1GW+"},
+    {"name":"Anthropic — San Francisco","lat":37.79,"lon":-122.4,"operator":"Anthropic","tip":"🖥 AI DATA CENTER | Anthropic SF | AWS-backed | Claude training"},
+    {"name":"Baidu AI Cloud — Beijing","lat":39.9,"lon":116.4,"operator":"Baidu","tip":"🖥 AI DATA CENTER | Baidu Beijing | Ernie Bot | State-backed AI"},
+    {"name":"Alibaba Cloud — Hangzhou","lat":30.27,"lon":120.15,"operator":"Alibaba","tip":"🖥 AI DATA CENTER | Alibaba Hangzhou | Qwen AI | China Tier-1"},
+    {"name":"xAI — Memphis","lat":35.14,"lon":-90.05,"operator":"xAI/Tesla","tip":"🖥 AI DATA CENTER | xAI Memphis | Elon Musk | Colossus supercluster 200k H100"},
+    {"name":"AWS — Singapore","lat":1.35,"lon":103.82,"operator":"Amazon","tip":"🖥 AI DATA CENTER | AWS Singapore | Amazon | APAC hub | Strict data laws"},
+    {"name":"UAE AI Campus","lat":24.45,"lon":54.38,"operator":"G42/Microsoft","tip":"🖥 AI DATA CENTER | UAE AI | G42+Microsoft | $1.5B investment | MENA hub"},
+]
+
+MILITARY_ACTIVITY = [
+    {"name":"USS Eisenhower CSG","type":"Carrier Strike Group","lat":35.5,"lon":32.0,"country":"USA","tip":"✈ MIL ACTIVITY | USS Eisenhower CSG | USA | E. Mediterranean | Surge posture"},
+    {"name":"USS Gerald Ford","type":"Carrier Strike Group","lat":37.0,"lon":15.0,"country":"USA","tip":"✈ MIL ACTIVITY | USS Gerald Ford CSG | USA | Med | Redeployed Feb 2026"},
+    {"name":"PLA PLAN Exercise","type":"Naval Exercise","lat":24.0,"lon":122.0,"country":"China","tip":"✈ MIL ACTIVITY | PLA PLAN | China | Taiwan Strait exercise | Elevated"},
+    {"name":"NATO Air Policing","type":"Air Patrol","lat":56.0,"lon":24.0,"country":"NATO","tip":"✈ MIL ACTIVITY | NATO Air Policing | Baltic States | F-35/Typhoon CAP"},
+    {"name":"Israeli Air Operations","type":"Strike Package","lat":33.0,"lon":44.0,"country":"Israel","tip":"✈ MIL ACTIVITY | IDF Air Ops | Israel | Iran strikes ongoing"},
+    {"name":"IRGC Missile Posture","type":"Missile Alert","lat":32.0,"lon":50.0,"country":"Iran","tip":"✈ MIL ACTIVITY | IRGC | Iran | Elevated launch posture | Ballistic"},
+    {"name":"Russian VKS Ukraine","type":"Air Strike Ops","lat":51.5,"lon":31.0,"country":"Russia","tip":"✈ MIL ACTIVITY | Russian VKS | Kalibr/Iskander ops | Ukraine"},
+    {"name":"Houthi Naval/Drone","type":"Anti-Ship Ops","lat":14.5,"lon":43.5,"country":"Yemen/Houthi","tip":"✈ MIL ACTIVITY | Houthi | Red Sea | Anti-ship drone/missile ops"},
+    {"name":"DPRK KN-25 Posture","type":"Artillery Alert","lat":39.0,"lon":125.5,"country":"DPRK","tip":"✈ MIL ACTIVITY | DPRK | KN-25 MLRS posture | Near DMZ"},
+    {"name":"PLAAF Taiwan ADIZ","type":"Air Incursion","lat":22.0,"lon":120.5,"country":"China","tip":"✈ MIL ACTIVITY | PLA Air | Taiwan ADIZ | J-16/H-6K sorties"},
+]
+
+SHIP_TRAFFIC_ZONES = [
+    {"name":"Strait of Malacca","lat":3.0,"lon":101.0,"traffic":"Extreme","vessels_day":300,"tip":"🚢 SHIP TRAFFIC | Strait of Malacca | 300+ vessels/day | 25% global trade"},
+    {"name":"Strait of Hormuz","lat":26.56,"lon":56.26,"traffic":"Critical/Reduced","vessels_day":21,"tip":"🚢 SHIP TRAFFIC | Hormuz | ~21 tankers/day | 20% global oil | DISRUPTED"},
+    {"name":"Suez Canal","lat":30.42,"lon":32.35,"traffic":"Reduced","vessels_day":44,"tip":"🚢 SHIP TRAFFIC | Suez Canal | ~44 ships/day | Down 35% vs baseline"},
+    {"name":"Bab el-Mandeb","lat":12.58,"lon":43.38,"traffic":"Critical/Disrupted","vessels_day":32,"tip":"🚢 SHIP TRAFFIC | Bab el-Mandeb | Houthi attacks | 32 vessels/day"},
+    {"name":"English Channel","lat":51.0,"lon":1.5,"traffic":"Heavy","vessels_day":500,"tip":"🚢 SHIP TRAFFIC | English Channel | World's busiest sea lane | 500+/day"},
+    {"name":"Dover Strait","lat":51.1,"lon":1.4,"traffic":"Extreme","vessels_day":400,"tip":"🚢 SHIP TRAFFIC | Dover Strait | 400+ vessels/day"},
+    {"name":"Cape of Good Hope","lat":-34.36,"lon":18.48,"traffic":"Increasing","vessels_day":85,"tip":"🚢 SHIP TRAFFIC | Cape of Good Hope | +65% vs 2023 | Suez rerouting"},
+    {"name":"Taiwan Strait","lat":24.5,"lon":119.5,"traffic":"Monitored","vessels_day":180,"tip":"🚢 SHIP TRAFFIC | Taiwan Strait | 180/day | PLA exercise risk"},
+    {"name":"Kerch Strait","lat":45.35,"lon":36.62,"traffic":"Blocked","vessels_day":3,"tip":"🚢 SHIP TRAFFIC | Kerch | Near-blocked | War zone"},
+    {"name":"Singapore Anchorage","lat":1.25,"lon":103.7,"traffic":"Extreme","vessels_day":1000,"tip":"🚢 SHIP TRAFFIC | Singapore | World's 2nd busiest port | 1000+ vessels"},
+]
+
+TRADE_ROUTE_ARCS = [
+    {"name":"Asia-Europe (pre-Houthi)","from_lat":1.35,"from_lon":103.8,"to_lat":51.5,"to_lon":-0.1,"type":"Container","status":"Rerouted"},
+    {"name":"Trans-Pacific","from_lat":31.23,"from_lon":121.47,"to_lat":33.74,"to_lon":-118.2,"type":"Container","status":"Active"},
+    {"name":"N.America-Europe","from_lat":40.71,"from_lon":-74.0,"to_lat":51.5,"to_lon":-0.1,"type":"Container","status":"Active"},
+    {"name":"ME Oil to Asia","from_lat":26.56,"from_lon":56.26,"to_lat":35.68,"to_lon":139.69,"type":"Oil Tanker","status":"Disrupted"},
+    {"name":"West Africa Oil","from_lat":6.45,"from_lon":3.4,"to_lat":40.71,"to_lon":-74.0,"type":"Oil Tanker","status":"Active"},
+    {"name":"Australia-China Iron","from_lat":-31.95,"from_lon":115.86,"to_lat":31.23,"to_lon":121.47,"type":"Bulk","status":"Active"},
+    {"name":"Cape Reroute","from_lat":1.35,"from_lon":103.8,"to_lat":-34.36,"to_lon":18.48,"type":"Container","status":"Active"},
+]
+
+GPS_JAMMING_ZONES = [
+    {"name":"Eastern Baltic","lat":57.0,"lon":24.0,"radius_km":400,"source":"Russia","severity":"High","tip":"📡 GPS JAMMING | Eastern Baltic | Russia | GNSS spoofing confirmed | Aviation alerts"},
+    {"name":"Eastern Mediterranean","lat":35.0,"lon":34.0,"radius_km":350,"source":"Multiple","severity":"High","tip":"📡 GPS JAMMING | E. Mediterranean | Israel/Turkey ops | FAA NOTAM active"},
+    {"name":"Black Sea","lat":44.5,"lon":33.0,"radius_km":300,"source":"Russia","severity":"High","tip":"📡 GPS JAMMING | Black Sea | Russia | Persistent spoofing since 2022"},
+    {"name":"Finnish-Russian Border","lat":61.5,"lon":28.5,"radius_km":200,"source":"Russia","severity":"Med","tip":"📡 GPS JAMMING | Finland border | Russia | Intermittent jamming"},
+    {"name":"Syrian Airspace","lat":35.0,"lon":38.0,"radius_km":250,"source":"Russia/Syria","severity":"High","tip":"📡 GPS JAMMING | Syria | Russia | Persistent | Affects Lebanon/Cyprus"},
+    {"name":"Iran Airspace","lat":32.5,"lon":51.0,"radius_km":500,"source":"Iran","severity":"High","tip":"📡 GPS JAMMING | Iran | IRGC | Widespread spoofing | Conflict-driven"},
+    {"name":"South China Sea","lat":12.0,"lon":114.0,"radius_km":600,"source":"China","severity":"Med","tip":"📡 GPS JAMMING | SCS | China | Intermittent near artificial islands"},
+    {"name":"Korean Peninsula","lat":38.0,"lon":127.0,"radius_km":300,"source":"DPRK","severity":"High","tip":"📡 GPS JAMMING | Korean Peninsula | DPRK | Chronic interference"},
+]
+
+ORBITAL_SURVEILLANCE = [
+    {"name":"Keyhole KH-13 (NRO)","lat":0.0,"lon":-60.0,"operator":"USA/NRO","type":"Optical IMINT","tip":"🛰 ORBITAL | KH-13 | USA NRO | Sub-20cm resolution optical IMINT"},
+    {"name":"Lacrosse SAR Cluster","lat":0.0,"lon":30.0,"operator":"USA/NRO","type":"SAR","tip":"🛰 ORBITAL | Lacrosse SAR | USA | All-weather radar imaging"},
+    {"name":"Yaogan-41","lat":0.0,"lon":80.0,"operator":"China PLA","type":"ELINT/IMINT","tip":"🛰 ORBITAL | Yaogan-41 | China PLA | ELINT + optical cluster"},
+    {"name":"Cosmos-2558","lat":0.0,"lon":160.0,"operator":"Russia GRU","type":"Inspector","tip":"🛰 ORBITAL | Cosmos-2558 | Russia | Shadowing US satellites"},
+    {"name":"Planet Labs Constellation","lat":0.0,"lon":-120.0,"operator":"Commercial","type":"Commercial IMINT","tip":"🛰 ORBITAL | Planet Labs | 200+ Doves | Daily global coverage"},
+    {"name":"Maxar WorldView-4","lat":0.0,"lon":-30.0,"operator":"Commercial","type":"Commercial IMINT","tip":"🛰 ORBITAL | Maxar WV-4 | 31cm resolution | Commercial"},
+    {"name":"Starlink ISR","lat":0.0,"lon":100.0,"operator":"SpaceX/USA","type":"Comms/ISR","tip":"🛰 ORBITAL | Starlink ISR | SpaceX/DoD | Ukraine battlefield comms"},
+    {"name":"Israeli Ofek-16","lat":0.0,"lon":50.0,"operator":"Israel/IAI","type":"SAR","tip":"🛰 ORBITAL | Ofek-16 | Israel | SAR satellite | Iran coverage"},
+]
+
+CII_INSTABILITY = [
+    {"name":"Ukraine Power Grid","country":"Ukraine","lat":49.0,"lon":32.0,"sector":"Energy","risk":95,"tip":"🌎 CII | Ukraine Power Grid | Under attack | 95/100 instability"},
+    {"name":"Sudan Internet/Telecom","country":"Sudan","lat":15.5,"lon":32.5,"sector":"Telecom","risk":88,"tip":"🌎 CII | Sudan Telecom | Conflict disruption | 88/100"},
+    {"name":"Myanmar Banking","country":"Myanmar","lat":16.87,"lon":96.19,"sector":"Finance","risk":82,"tip":"🌎 CII | Myanmar Banking | Junta sanctions + conflict | 82/100"},
+    {"name":"Iran Financial CII","country":"Iran","lat":35.69,"lon":51.39,"sector":"Finance","risk":80,"tip":"🌎 CII | Iran Financial | SWIFT exclusion + cyber attacks | 80/100"},
+    {"name":"Gaza Telecom","country":"Palestine","lat":31.4,"lon":34.4,"sector":"Telecom","risk":98,"tip":"🌎 CII | Gaza Telecom | Nearly destroyed | 98/100"},
+    {"name":"Haiti Institutions","country":"Haiti","lat":18.54,"lon":-72.34,"sector":"Government","risk":91,"tip":"🌎 CII | Haiti Gov | Gang control of infrastructure | 91/100"},
+    {"name":"Venezuelan Grid","country":"Venezuela","lat":10.48,"lon":-66.87,"sector":"Energy","risk":78,"tip":"🌎 CII | Venezuela Grid | Chronic blackouts | 78/100"},
+    {"name":"Pakistan Power Sector","country":"Pakistan","lat":33.73,"lon":73.09,"sector":"Energy","risk":68,"tip":"🌎 CII | Pakistan Energy | IMF crisis + grid failures | 68/100"},
+]
+
+DISPLACEMENT_FLOWS = [
+    {"from_lat":31.4,"from_lon":34.4,"to_lat":30.06,"to_lon":31.24,"pop":1900000,"cause":"Gaza War","tip":"👥 DISPLACEMENT | Gaza → Egypt border | 1.9M displaced | Ongoing"},
+    {"from_lat":50.45,"from_lon":30.52,"to_lat":52.23,"to_lon":21.01,"pop":6000000,"cause":"Ukraine War","tip":"👥 DISPLACEMENT | Ukraine → Poland/EU | 6M refugees | Ongoing"},
+    {"from_lat":15.5,"from_lon":32.5,"to_lat":15.55,"to_lon":32.53,"pop":8100000,"cause":"Sudan Civil War","tip":"👥 DISPLACEMENT | Sudan internal | 8.1M IDP | World's largest"},
+    {"from_lat":16.87,"from_lon":96.19,"to_lat":20.17,"to_lon":92.9,"pop":2600000,"cause":"Myanmar Coup","tip":"👥 DISPLACEMENT | Myanmar → Bangladesh/China | 2.6M IDP"},
+    {"from_lat":12.0,"from_lon":43.0,"to_lat":11.55,"to_lon":43.15,"pop":1200000,"cause":"Yemen War","tip":"👥 DISPLACEMENT | Yemen → Djibouti/Horn | 1.2M fled"},
+    {"from_lat":13.5,"from_lon":25.3,"to_lat":12.36,"to_lon":23.32,"pop":900000,"cause":"Darfur RSF","tip":"👥 DISPLACEMENT | Darfur → Chad | 900K fled since 2023"},
+    {"from_lat":33.52,"from_lon":36.29,"to_lat":37.06,"to_lon":37.38,"pop":3000000,"cause":"Syria War (cumulative)","tip":"👥 DISPLACEMENT | Syria → Turkey | 3M in Turkey | Ongoing"},
+]
+
+CLIMATE_ANOMALIES = [
+    {"name":"Extreme Arctic Warming","lat":80.0,"lon":0.0,"anomaly":"+4.2°C","type":"Temperature","tip":"🌫 CLIMATE | Arctic | +4.2°C anomaly | Record sea ice minimum 2026"},
+    {"name":"Australian Coral Bleaching","lat":-18.0,"lon":147.0,"anomaly":"Mass bleaching","type":"Ocean","tip":"🌫 CLIMATE | Great Barrier Reef | 4th mass bleaching event | Critical"},
+    {"name":"N.Africa Drought Belt","lat":15.0,"lon":10.0,"anomaly":"-45% rainfall","type":"Drought","tip":"🌫 CLIMATE | Sahel drought | -45% rainfall | 21M food insecure"},
+    {"name":"S.Asia Heat Dome","lat":28.0,"lon":78.0,"anomaly":"+51°C max","type":"Heatwave","tip":"🌫 CLIMATE | South Asia | 51°C peak 2026 | Heat mortality elevated"},
+    {"name":"Siberian Permafrost","lat":65.0,"lon":100.0,"anomaly":"Record thaw","type":"Permafrost","tip":"🌫 CLIMATE | Siberia | Permafrost thaw accelerating | Methane release"},
+    {"name":"Amazon Dieback","lat":-5.0,"lon":-58.0,"anomaly":"Tipping point","type":"Ecosystem","tip":"🌫 CLIMATE | Amazon | Dieback threshold approached | CO2 source now"},
+    {"name":"N.Atlantic SST Anomaly","lat":50.0,"lon":-30.0,"anomaly":"+2.1°C","type":"SST","tip":"🌫 CLIMATE | N.Atlantic | AMOC weakening signal | SST +2.1°C"},
+]
+
+WEATHER_ALERTS = [
+    {"name":"Cyclone Hidaya","lat":-12.0,"lon":42.0,"type":"Cyclone","severity":"CAT 3","tip":"⛈ WEATHER ALERT | Cyclone Hidaya | CAT 3 | Mozambique Channel"},
+    {"name":"Texas Drought","lat":31.0,"lon":-98.0,"type":"Drought","severity":"Exceptional","tip":"⛈ WEATHER ALERT | Texas | Exceptional drought | D4 classification"},
+    {"name":"Pakistan Flood Watch","lat":29.0,"lon":70.0,"type":"Flood","severity":"High","tip":"⛈ WEATHER ALERT | Pakistan | Pre-monsoon flood risk | High"},
+    {"name":"Arctic Storm Epsilon","lat":72.0,"lon":15.0,"type":"Storm","severity":"Severe","tip":"⛈ WEATHER ALERT | Arctic | Storm Epsilon | Barents Sea | Force 11"},
+    {"name":"W.Africa Harmattan","lat":12.0,"lon":-2.0,"type":"Dust Storm","severity":"Moderate","tip":"⛈ WEATHER ALERT | W.Africa | Harmattan dust | Aviation impact"},
+    {"name":"Bangladesh Flood","lat":24.0,"lon":90.0,"type":"Flood","severity":"High","tip":"⛈ WEATHER ALERT | Bangladesh | Flash flooding | 800k affected"},
+]
+
+INTERNET_OUTAGES = [
+    {"name":"Gaza — Total Blackout","lat":31.4,"lon":34.4,"severity":"Total","cause":"Infrastructure destruction","tip":"📡 INTERNET OUTAGE | Gaza | TOTAL | Infrastructure destroyed | Conflict"},
+    {"name":"Sudan — Partial","lat":15.5,"lon":32.5,"severity":"Partial","cause":"Conflict/Power","tip":"📡 INTERNET OUTAGE | Sudan | Partial | 40% connectivity loss | Conflict"},
+    {"name":"Myanmar — Targeted Shutdown","lat":16.87,"lon":96.19,"severity":"Targeted","cause":"Junta censorship","tip":"📡 INTERNET OUTAGE | Myanmar | Junta-ordered shutdowns | Targeted"},
+    {"name":"Iran — Throttled","lat":35.69,"lon":51.39,"severity":"Throttled","cause":"Government restriction","tip":"📡 INTERNET OUTAGE | Iran | Throttled 60% | Post-strike security"},
+    {"name":"Russia — Selective Block","lat":55.75,"lon":37.61,"severity":"Selective","cause":"Censorship","tip":"📡 INTERNET OUTAGE | Russia | VPN blocks | Social media restricted"},
+    {"name":"Ukraine — Disrupted","lat":50.45,"lon":30.52,"severity":"Disrupted","cause":"Missile strikes","tip":"📡 INTERNET OUTAGE | Ukraine | Post-strike disruptions | Recovering"},
+]
+
+CYBER_THREATS_GEO = [
+    {"name":"APT29 — Russia","lat":55.75,"lon":37.61,"actor":"Russia/SVR","targets":"NATO/Ukraine Gov","tip":"🛡 CYBER THREAT | APT29 | Russia SVR | Active campaigns | NATO/Ukraine"},
+    {"name":"APT41 — China","lat":39.9,"lon":116.4,"actor":"China MSS","targets":"SE Asia Defence/Tech","tip":"🛡 CYBER THREAT | APT41 | China MSS | SE Asia defence contractors"},
+    {"name":"Lazarus Group — DPRK","lat":39.0,"lon":125.75,"actor":"DPRK RGB","targets":"Crypto/Finance Global","tip":"🛡 CYBER THREAT | Lazarus | DPRK | Crypto theft $1.7B 2025"},
+    {"name":"IRGC Cyber — Iran","lat":35.69,"lon":51.39,"actor":"Iran IRGC","targets":"Israel/US Critical Infra","tip":"🛡 CYBER THREAT | IRGC Cyber | Iran | CII attacks | Wiper malware"},
+    {"name":"Sandworm — GRU","lat":55.75,"lon":37.61,"actor":"Russia GRU","targets":"Ukraine Power/Telecom","tip":"🛡 CYBER THREAT | Sandworm | GRU | Ukraine grid attacks | Industroyer"},
+    {"name":"Volt Typhoon — China","lat":39.9,"lon":116.39,"actor":"China PLA","targets":"US Military/Logistics","tip":"🛡 CYBER THREAT | Volt Typhoon | China | US mil logistics pre-positioning"},
+]
+
+ECONOMIC_CENTERS = [
+    {"name":"New York","lat":40.71,"lon":-74.0,"gdp_t":2.0,"role":"Global Finance","tip":"💰 ECONOMIC | New York | NYSE/NASDAQ | $2T metro GDP | Global finance hub"},
+    {"name":"London","lat":51.5,"lon":-0.1,"gdp_t":1.1,"role":"Finance/FX","tip":"💰 ECONOMIC | London | LME/LSE | FX market leader | $1.1T metro"},
+    {"name":"Tokyo","lat":35.68,"lon":139.69,"gdp_t":1.5,"role":"Finance/Industry","tip":"💰 ECONOMIC | Tokyo | TSE | $1.5T | BOJ policy hub"},
+    {"name":"Shanghai","lat":31.23,"lon":121.47,"gdp_t":0.7,"role":"Trade/Finance","tip":"💰 ECONOMIC | Shanghai | SSE | China's financial capital | Port #1"},
+    {"name":"Hong Kong","lat":22.32,"lon":114.17,"gdp_t":0.36,"role":"Gateway","tip":"💰 ECONOMIC | Hong Kong | HKEx | China gateway | Autonomy eroded"},
+    {"name":"Singapore","lat":1.35,"lon":103.82,"gdp_t":0.5,"role":"Trade/Finance","tip":"💰 ECONOMIC | Singapore | MAS | SE Asia hub | Oil trading centre"},
+    {"name":"Dubai","lat":25.2,"lon":55.27,"gdp_t":0.38,"role":"Trade/Logistics","tip":"💰 ECONOMIC | Dubai | DIFC | ME financial hub | Logistics centre"},
+    {"name":"Frankfurt","lat":50.11,"lon":8.68,"gdp_t":0.4,"role":"EU Finance","tip":"💰 ECONOMIC | Frankfurt | ECB/Deutsche Börse | EU financial capital"},
+]
+
+CRITICAL_MINERALS = [
+    {"name":"DRC Cobalt Belt","lat":-10.5,"lon":25.5,"mineral":"Cobalt","share_pct":70,"tip":"💎 CRITICAL MINERAL | DRC Cobalt | 70% global supply | EV battery essential"},
+    {"name":"Chile Lithium","lat":-23.6,"lon":-68.2,"mineral":"Lithium","share_pct":28,"tip":"💎 CRITICAL MINERAL | Atacama Chile | 28% global lithium | SQM/Codelco"},
+    {"name":"China REE","lat":36.0,"lon":104.0,"mineral":"Rare Earth Elements","share_pct":60,"tip":"💎 CRITICAL MINERAL | China REE | 60% mining + 85% processing | Export controls"},
+    {"name":"South Africa PGMs","lat":-25.7,"lon":27.1,"mineral":"Platinum Group","share_pct":75,"tip":"💎 CRITICAL MINERAL | S.Africa PGM | 75% global platinum | Autocatalysts"},
+    {"name":"Indonesia Nickel","lat":-3.5,"lon":120.0,"mineral":"Nickel","share_pct":37,"tip":"💎 CRITICAL MINERAL | Indonesia | 37% global nickel | EV battery cathodes"},
+    {"name":"Kazakhstan Uranium","lat":47.0,"lon":67.0,"mineral":"Uranium","share_pct":43,"tip":"💎 CRITICAL MINERAL | Kazakhstan | 43% global uranium | Nuclear fuel"},
+    {"name":"Guinea Bauxite","lat":11.0,"lon":-10.7,"mineral":"Bauxite","share_pct":25,"tip":"💎 CRITICAL MINERAL | Guinea | 25% bauxite | Aluminium feedstock"},
+    {"name":"Bolivia Lithium","lat":-20.1,"lon":-67.6,"mineral":"Lithium","share_pct":21,"tip":"💎 CRITICAL MINERAL | Bolivia Salar | 21% Li reserves | Underdeveloped"},
+    {"name":"Australia Lithium","lat":-28.0,"lon":122.0,"mineral":"Lithium","share_pct":46,"tip":"💎 CRITICAL MINERAL | Pilbara Australia | 46% mined lithium | Spodumene"},
+    {"name":"W.Africa Manganese","lat":5.5,"lon":-3.5,"mineral":"Manganese","share_pct":18,"tip":"💎 CRITICAL MINERAL | W.Africa Mn | Battery steel production"},
+]
+
+STRATEGIC_WATERWAYS = [
+    {"name":"Strait of Hormuz","lat":26.56,"lon":56.26,"tip":"⚓ STRATEGIC WATERWAY | Hormuz | 20% global oil | DISRUPTED"},
+    {"name":"Suez Canal","lat":30.42,"lon":32.35,"tip":"⚓ STRATEGIC WATERWAY | Suez | 12% global trade | Reduced traffic"},
+    {"name":"Bab el-Mandeb","lat":12.58,"lon":43.38,"tip":"⚓ STRATEGIC WATERWAY | Bab el-Mandeb | Houthi zone | 9% global trade"},
+    {"name":"Strait of Malacca","lat":3.0,"lon":101.0,"tip":"⚓ STRATEGIC WATERWAY | Malacca | 25% global trade | Normal"},
+    {"name":"Panama Canal","lat":8.97,"lon":-79.53,"tip":"⚓ STRATEGIC WATERWAY | Panama | Drought reducing capacity | 3-5% global trade"},
+    {"name":"Danish Straits","lat":57.44,"lon":10.0,"tip":"⚓ STRATEGIC WATERWAY | Danish Straits | Baltic access | NATO monitored"},
+    {"name":"Kerch Strait","lat":45.35,"lon":36.62,"tip":"⚓ STRATEGIC WATERWAY | Kerch | Russian control | Near-blocked"},
+    {"name":"Lombok Strait","lat":-8.5,"lon":115.87,"tip":"⚓ STRATEGIC WATERWAY | Lombok | Indonesia | Malacca alternate"},
+    {"name":"Formosa Strait","lat":24.5,"lon":119.5,"tip":"⚓ STRATEGIC WATERWAY | Formosa | PLA tensions | Semiconductor supply"},
+    {"name":"Mozambique Channel","lat":-18.0,"lon":41.0,"tip":"⚓ STRATEGIC WATERWAY | Mozambique Channel | LNG export route"},
+]
+
+def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf, show_supply, show_heat,
+                      show_intel=False, show_czones=False, show_mbases=False, show_nuclear=False,
+                      show_gamma=False, show_space=False, show_cables=False, show_pipes=False,
+                      show_aidc=False, show_milact=False, show_ships=False, show_trade=False,
+                      show_gps=False, show_orbital=False, show_cii=False, show_displaced=False,
+                      show_climate=False, show_weather=False, show_outages=False, show_cyber=False,
+                      show_econ=False, show_minerals=False, show_waterways=False, show_fires_layer=False,
+                      show_protests=False, show_aviation=False):
     layers = []
+
+    def _scatter(data_list, col, radius, id_field="name"):
+        if not data_list: return
+        df = pd.DataFrame(data_list)
+        if "lat" not in df.columns or "lon" not in df.columns: return
+        df["_color"]  = [col]*len(df)
+        df["_radius"] = radius
+        layers.append(pdk.Layer("ScatterplotLayer", data=df, get_position=["lon","lat"],
+                                 get_radius="_radius", get_fill_color="_color",
+                                 get_line_color=[255,255,255,20], line_width_min_pixels=1,
+                                 pickable=True, auto_highlight=True))
+
+    def _icon_scatter(data_list, col, radius):
+        if not data_list: return
+        df = pd.DataFrame(data_list)
+        if "lat" not in df.columns or "lon" not in df.columns: return
+        df["_color"]  = [col]*len(df)
+        df["_radius"] = radius
+        layers.append(pdk.Layer("ScatterplotLayer", data=df, get_position=["lon","lat"],
+                                 get_radius="_radius", get_fill_color="_color",
+                                 pickable=True, auto_highlight=True))
+
+    def _arc(data_list, color, width=2):
+        if not data_list: return
+        df = pd.DataFrame(data_list)
+        df["_color"] = [color]*len(df)
+        layers.append(pdk.Layer("ArcLayer", data=df,
+                                 get_source_position=["from_lon","from_lat"],
+                                 get_target_position=["to_lon","to_lat"],
+                                 get_source_color="_color", get_target_color="_color",
+                                 get_width=width, pickable=True, auto_highlight=True))
+
+    # ── Original layers ──────────────────────────────────────────
     if show_seis and not eq_df.empty:
         ep = eq_df.copy()
-        ep["color"] = ep["mag"].apply(lambda m:
-            [255,55,85,220] if m>=5.5 else [255,180,0,200] if m>=4.5 else [0,230,118,175] if m>=3.5 else [0,200,255,150])
-        ep["radius"] = (ep["mag"]**2.3 * 15000).clip(10000, 240000)
-        ep["tip"]    = ep.apply(lambda r: f"SEISMIC  M{r['mag']} | {r['place']} | {r['depth_km']}km depth", axis=1)
+        ep["_color"]  = ep["mag"].apply(lambda m: [255,55,85,220] if m>=5.5 else [255,180,0,200] if m>=4.5 else [0,230,118,175] if m>=3.5 else [0,200,255,150])
+        ep["_radius"] = (ep["mag"]**2.3 * 15000).clip(10000, 240000)
         layers.append(pdk.Layer("ScatterplotLayer", data=ep, get_position=["lon","lat"],
-                                 get_radius="radius", get_fill_color="color",
+                                 get_radius="_radius", get_fill_color="_color",
                                  get_line_color=[255,255,255,30], line_width_min_pixels=1,
                                  pickable=True, auto_highlight=True))
+
     if show_volc and not eonet_df.empty:
-        eo = eonet_df.copy()
-        eo["color"]  = [[255,110,40,200]]*len(eo)
-        eo["radius"] = 70000
-        eo["tip"]    = eo.apply(lambda r: f"EONET  {r['title']} | {r['cat']}", axis=1)
+        eo = eonet_df.copy(); eo["_color"] = [[255,110,40,200]]*len(eo); eo["_radius"] = 70000
         layers.append(pdk.Layer("ScatterplotLayer", data=eo, get_position=["lon","lat"],
-                                 get_radius="radius", get_fill_color="color",
-                                 pickable=True, auto_highlight=True))
+                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
+
     if show_conf:
         rows = []
         for cname, c in CONFLICTS.items():
-            for inc in c["incidents"]:
-                rows.append({**inc, "conflict": cname})
+            for inc in c["incidents"]: rows.append({**inc, "conflict": cname})
         if rows:
-            cdf = pd.DataFrame(rows)
-            sc  = _sev_colors()
-            cdf["color"]  = cdf["severity"].map(sc)
-            cdf["radius"] = cdf["severity"].map({"CRITICAL":100000,"HIGH":75000,"MED":55000,"LOW":40000,"INFO":30000})
-            cdf["tip"]    = cdf.apply(lambda r:
-                f"{r['conflict']} | {INCIDENT_ICONS.get(r['type'],'?')} {r['title']} | {r['loc']} | {r['severity']}", axis=1)
+            cdf = pd.DataFrame(rows); sc = _sev_colors()
+            cdf["_color"]  = cdf["severity"].map(sc)
+            cdf["_radius"] = cdf["severity"].map({"CRITICAL":100000,"HIGH":75000,"MED":55000,"LOW":40000,"INFO":30000})
             layers.append(pdk.Layer("ScatterplotLayer", data=cdf, get_position=["lon","lat"],
-                                     get_radius="radius", get_fill_color="color",
-                                     pickable=True, auto_highlight=True))
+                                     get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
+
     if show_mvmt:
         mdf = pd.DataFrame(MOVEMENTS)
-        mdf["color"]  = mdf["sentiment"].map({"CRIT":[200,60,255,200],"HIGH":[157,110,255,185],"MED":[120,80,220,165]})
-        mdf["radius"] = mdf["scale"] * 1800
-        mdf["tip"]    = mdf.apply(lambda r:
-            f"CIVIL  {r['title']} | {r['location']} | {r['size']} | {r['sentiment']}", axis=1)
+        mdf["_color"]  = mdf["sentiment"].map({"CRIT":[200,60,255,200],"HIGH":[157,110,255,185],"MED":[120,80,220,165]})
+        mdf["_radius"] = mdf["scale"] * 1800
         layers.append(pdk.Layer("ScatterplotLayer", data=mdf, get_position=["lon","lat"],
-                                 get_radius="radius", get_fill_color="color",
-                                 pickable=True, auto_highlight=True))
+                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
+
     if show_supply:
         arc_rows = []
-        for c in CONFLICTS.values():
-            arc_rows.extend(c["supply_lines"])
+        for c in CONFLICTS.values(): arc_rows.extend(c["supply_lines"])
         if arc_rows:
             adf = pd.DataFrame(arc_rows)
-            color_map = {
-                "Military Aid":[255,61,90,160], "Arms/Funding":[255,61,90,160],
-                "RSF Support":[255,140,66,140],  "SAF Support":[0,200,255,140],
-                "Junta Support":[255,61,90,140], "Arms Supply":[255,180,0,140],
-                "Humanitarian":[0,230,118,150],
-            }
-            adf["color"] = adf["type"].apply(lambda t: color_map.get(t, [74,107,133,120]))
+            cmap = {"Military Aid":[255,61,90,160],"Arms/Funding":[255,61,90,160],
+                    "RSF Support":[255,140,66,140],"SAF Support":[0,200,255,140],
+                    "Junta Support":[255,61,90,140],"Arms Supply":[255,180,0,140],"Humanitarian":[0,230,118,150]}
+            adf["_color"] = adf["type"].apply(lambda t: cmap.get(t,[74,107,133,120]))
             layers.append(pdk.Layer("ArcLayer", data=adf,
                                      get_source_position=["from_lon","from_lat"],
                                      get_target_position=["to_lon","to_lat"],
-                                     get_source_color="color", get_target_color="color",
+                                     get_source_color="_color", get_target_color="_color",
                                      get_width=2, pickable=True, auto_highlight=True))
+
     if show_heat and not eq_df.empty:
         layers.append(pdk.Layer("HeatmapLayer",
                                  data=eq_df[["lat","lon","mag"]].rename(columns={"mag":"weight"}),
-                                 get_position=["lon","lat"], get_weight="weight",
-                                 radiusPixels=50, opacity=0.45))
+                                 get_position=["lon","lat"], get_weight="weight", radiusPixels=50, opacity=0.45))
+
+    # ── New layers ───────────────────────────────────────────────
+    if show_intel:
+        _scatter(INTEL_HOTSPOTS, [255,200,0,210], 90000)
+
+    if show_czones:
+        _scatter(CONFLICT_ZONES, [255,30,60,200], 110000)
+
+    if show_mbases:
+        base_df = pd.DataFrame(MILITARY_BASES)
+        base_df["_color"] = base_df["country"].apply(lambda c:
+            [0,200,255,200] if "USA" in c or "US" in c
+            else [255,61,90,200] if "Russia" in c
+            else [255,200,0,200] if "China" in c
+            else [0,230,118,200] if any(x in c for x in ["UK","NATO","Israel","India","Japan","Singapore","S.Korea"])
+            else [157,110,255,180])
+        base_df["_radius"] = 55000
+        layers.append(pdk.Layer("ScatterplotLayer", data=base_df, get_position=["lon","lat"],
+                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
+
+    if show_nuclear:
+        ndf = pd.DataFrame(NUCLEAR_SITES)
+        ndf["_color"] = ndf["status"].apply(lambda s:
+            [255,30,60,230] if s in ("Struck","Destroyed","Occupied")
+            else [255,180,0,200] if s in ("Active","Operational")
+            else [157,110,255,180])
+        ndf["_radius"] = 70000
+        layers.append(pdk.Layer("ScatterplotLayer", data=ndf, get_position=["lon","lat"],
+                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
+
+    if show_gamma:
+        _scatter(GAMMA_IRRADIATORS, [255,165,0,180], 40000)
+
+    if show_space:
+        sdf = pd.DataFrame(SPACEPORTS)
+        sdf["_color"] = sdf["type"].apply(lambda t: [0,200,255,210] if t=="Launch" else [255,61,90,200])
+        sdf["_radius"] = 60000
+        layers.append(pdk.Layer("ScatterplotLayer", data=sdf, get_position=["lon","lat"],
+                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
+
+    if show_cables:
+        cab_data = []
+        status_colors = {"Cut":[255,30,60,200],"Degraded":[255,140,66,180],"Active":[0,200,255,140]}
+        for c in UNDERSEA_CABLES:
+            col = status_colors.get(c["status"],[74,107,133,120])
+            cab_data.append({**c,"_color":col,"from_lat":c["from_lat"],"from_lon":c["from_lon"],"to_lat":c["to_lat"],"to_lon":c["to_lon"]})
+        if cab_data:
+            cdf2 = pd.DataFrame(cab_data)
+            layers.append(pdk.Layer("ArcLayer", data=cdf2,
+                                     get_source_position=["from_lon","from_lat"],
+                                     get_target_position=["to_lon","to_lat"],
+                                     get_source_color="_color", get_target_color="_color",
+                                     get_width=2, pickable=True, auto_highlight=True))
+
+    if show_pipes:
+        pip_colors = {"Sabotaged":[255,30,60,200],"Disrupted":[255,61,90,180],"Suspended":[255,140,66,170],"Reduced":[255,180,0,160],"Active":[0,200,255,120],"Under Construction":[157,110,255,150]}
+        pip_data = []
+        for p in PIPELINES:
+            col = pip_colors.get(p["status"],[74,107,133,100])
+            pip_data.append({**p,"_color":col})
+        if pip_data:
+            pdf2 = pd.DataFrame(pip_data)
+            layers.append(pdk.Layer("ArcLayer", data=pdf2,
+                                     get_source_position=["from_lon","from_lat"],
+                                     get_target_position=["to_lon","to_lat"],
+                                     get_source_color="_color", get_target_color="_color",
+                                     get_width=3, pickable=True, auto_highlight=True))
+
+    if show_aidc:
+        aidf = pd.DataFrame(AI_DATA_CENTERS)
+        aidf["_color"] = aidf["operator"].apply(lambda o:
+            [0,200,255,210] if any(x in o for x in ["Microsoft","Azure"])
+            else [255,180,0,200] if any(x in o for x in ["Google","Meta","Anthropic","xAI"])
+            else [157,110,255,200] if any(x in o for x in ["Amazon","AWS"])
+            else [255,140,66,180])
+        aidf["_radius"] = 45000
+        layers.append(pdk.Layer("ScatterplotLayer", data=aidf, get_position=["lon","lat"],
+                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
+
+    if show_milact:
+        madf = pd.DataFrame(MILITARY_ACTIVITY)
+        madf["_color"] = madf["country"].apply(lambda c:
+            [0,200,255,210] if "USA" in c
+            else [255,30,60,210] if any(x in c for x in ["Russia","Iran","Houthi","DPRK","China"])
+            else [0,230,118,190] if any(x in c for x in ["Israel","NATO","Japan"])
+            else [255,180,0,190])
+        madf["_radius"] = 80000
+        layers.append(pdk.Layer("ScatterplotLayer", data=madf, get_position=["lon","lat"],
+                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
+
+    if show_ships:
+        stdf = pd.DataFrame(SHIP_TRAFFIC_ZONES)
+        stdf["_color"] = stdf["traffic"].apply(lambda t:
+            [255,30,60,200] if "Blocked" in t or "Disrupted" in t
+            else [255,140,66,180] if "Reduced" in t or "Critical" in t
+            else [0,200,255,160] if "Extreme" in t or "Heavy" in t
+            else [0,230,118,140])
+        stdf["_radius"] = stdf["vessels_day"].apply(lambda v: min(int(v * 400), 220000))
+        layers.append(pdk.Layer("ScatterplotLayer", data=stdf, get_position=["lon","lat"],
+                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
+
+    if show_trade:
+        t_colors = {"Container":[0,200,255,130],"Oil Tanker":[255,140,66,150],"Bulk":[157,110,255,130]}
+        t_data = []
+        for r in TRADE_ROUTE_ARCS:
+            col = t_colors.get(r["type"],[74,107,133,100])
+            if r["status"] in ("Rerouted","Disrupted"): col = [255,61,90,160]
+            t_data.append({**r,"_color":col})
+        if t_data:
+            tdf2 = pd.DataFrame(t_data)
+            layers.append(pdk.Layer("ArcLayer", data=tdf2,
+                                     get_source_position=["from_lon","from_lat"],
+                                     get_target_position=["to_lon","to_lat"],
+                                     get_source_color="_color", get_target_color="_color",
+                                     get_width=2, pickable=True, auto_highlight=True))
+
+    if show_gps:
+        gdf = pd.DataFrame(GPS_JAMMING_ZONES)
+        gdf["_color"] = gdf["severity"].apply(lambda s: [255,61,90,80] if s=="High" else [255,180,0,60])
+        gdf["_radius"] = gdf["radius_km"] * 1000
+        layers.append(pdk.Layer("ScatterplotLayer", data=gdf, get_position=["lon","lat"],
+                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True,
+                                 stroked=True, get_line_color=[255,61,90,120], line_width_min_pixels=1))
+
+    if show_orbital:
+        # Orbital surveillance shown as equatorial ring markers
+        odf = pd.DataFrame(ORBITAL_SURVEILLANCE)
+        odf["_color"] = odf["operator"].apply(lambda o:
+            [0,200,255,160] if "USA" in o or "Commercial" in o
+            else [255,61,90,160] if "Russia" in o
+            else [255,200,0,160] if "China" in o
+            else [0,230,118,160])
+        odf["_radius"] = 150000
+        layers.append(pdk.Layer("ScatterplotLayer", data=odf, get_position=["lon","lat"],
+                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
+
+    if show_cii:
+        cii_df = pd.DataFrame(CII_INSTABILITY)
+        cii_df["_color"] = cii_df["risk"].apply(lambda r: [255,30,60,200] if r>=85 else [255,140,66,180] if r>=65 else [255,180,0,160])
+        cii_df["_radius"] = cii_df["risk"] * 1200
+        layers.append(pdk.Layer("ScatterplotLayer", data=cii_df, get_position=["lon","lat"],
+                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
+
+    if show_displaced:
+        disp_data = []
+        for d in DISPLACEMENT_FLOWS:
+            disp_data.append({**d,"_color":[200,60,255,150]})
+        if disp_data:
+            ddf2 = pd.DataFrame(disp_data)
+            layers.append(pdk.Layer("ArcLayer", data=ddf2,
+                                     get_source_position=["from_lon","from_lat"],
+                                     get_target_position=["to_lon","to_lat"],
+                                     get_source_color=[200,60,255,150], get_target_color=[200,60,255,80],
+                                     get_width=2, pickable=True, auto_highlight=True))
+
+    if show_climate:
+        cldf = pd.DataFrame(CLIMATE_ANOMALIES)
+        cldf["_color"] = cldf["type"].apply(lambda t:
+            [0,200,80,160] if t in ("Temperature","Permafrost","Ecosystem","SST")
+            else [255,180,0,160] if t=="Drought"
+            else [0,180,255,160] if t=="Ocean"
+            else [255,100,30,160])
+        cldf["_radius"] = 450000
+        layers.append(pdk.Layer("ScatterplotLayer", data=cldf, get_position=["lon","lat"],
+                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
+
+    if show_weather:
+        wdf = pd.DataFrame(WEATHER_ALERTS)
+        wdf["_color"] = wdf["type"].apply(lambda t:
+            [0,100,255,180] if t in ("Flood","Storm")
+            else [255,140,66,180] if t=="Drought"
+            else [255,200,50,180] if t=="Dust Storm"
+            else [157,110,255,200])
+        wdf["_radius"] = 300000
+        layers.append(pdk.Layer("ScatterplotLayer", data=wdf, get_position=["lon","lat"],
+                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
+
+    if show_outages:
+        odf2 = pd.DataFrame(INTERNET_OUTAGES)
+        odf2["_color"] = odf2["severity"].apply(lambda s:
+            [255,30,60,220] if s=="Total"
+            else [255,140,66,190] if s in ("Partial","Disrupted")
+            else [255,180,0,170])
+        odf2["_radius"] = 80000
+        layers.append(pdk.Layer("ScatterplotLayer", data=odf2, get_position=["lon","lat"],
+                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
+
+    if show_cyber:
+        cydf = pd.DataFrame(CYBER_THREATS_GEO)
+        cydf["_color"] = cydf["actor"].apply(lambda a:
+            [255,30,60,200] if "Russia" in a
+            else [255,200,0,200] if "China" in a
+            else [157,110,255,200] if "DPRK" in a
+            else [255,140,66,200])
+        cydf["_radius"] = 120000
+        layers.append(pdk.Layer("ScatterplotLayer", data=cydf, get_position=["lon","lat"],
+                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
+
+    if show_econ:
+        edf = pd.DataFrame(ECONOMIC_CENTERS)
+        edf["_color"] = edf["role"].apply(lambda r: [255,180,0,200] if "Finance" in r else [0,200,255,180])
+        edf["_radius"] = edf["gdp_t"].apply(lambda g: max(int(g * 180000), 60000))
+        layers.append(pdk.Layer("ScatterplotLayer", data=edf, get_position=["lon","lat"],
+                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
+
+    if show_minerals:
+        mdf2 = pd.DataFrame(CRITICAL_MINERALS)
+        min_colors = {"Cobalt":[0,200,255,200],"Lithium":[0,230,118,200],"Rare Earth Elements":[255,200,0,200],
+                      "Platinum Group":[200,200,200,200],"Nickel":[157,110,255,200],"Uranium":[255,60,60,200],
+                      "Bauxite":[255,140,66,200],"Manganese":[255,180,0,200]}
+        mdf2["_color"] = mdf2["mineral"].apply(lambda m: min_colors.get(m,[74,107,133,180]))
+        mdf2["_radius"] = mdf2["share_pct"].apply(lambda s: int(s * 8000))
+        layers.append(pdk.Layer("ScatterplotLayer", data=mdf2, get_position=["lon","lat"],
+                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
+
+    if show_waterways:
+        wway_df = pd.DataFrame(STRATEGIC_WATERWAYS)
+        wway_df["_color"] = [[0,200,255,180]]*len(wway_df)
+        wway_df["_radius"] = 120000
+        layers.append(pdk.Layer("ScatterplotLayer", data=wway_df, get_position=["lon","lat"],
+                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
+
+    if show_fires_layer:
+        fire_pts = [{"lat":r["lat"],"lon":r["lon"],"fires":r["fires"]} for r in [
+            {"lat":49.0,"lon":32.0,"fires":2162},{"lat":32.0,"lon":51.0,"fires":485},
+            {"lat":15.5,"lon":32.5,"fires":1240},{"lat":-5.0,"lon":-52.0,"fires":3820},
+            {"lat":0.5,"lon":115.0,"fires":910},{"lat":-30.0,"lon":135.0,"fires":340},
+            {"lat":37.5,"lon":-119.0,"fires":180},
+        ]]
+        fdf = pd.DataFrame(fire_pts)
+        fdf["_color"] = [[255,80,20,200]]*len(fdf)
+        fdf["_radius"] = fdf["fires"].apply(lambda f: min(int(f*80), 300000))
+        layers.append(pdk.Layer("ScatterplotLayer", data=fdf, get_position=["lon","lat"],
+                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
+
+    if show_protests:
+        prot_df = pd.DataFrame(MOVEMENTS)
+        prot_df["_color"] = [[200,60,255,180]]*len(prot_df)
+        prot_df["_radius"] = prot_df["scale"] * 2000
+        layers.append(pdk.Layer("ScatterplotLayer", data=prot_df, get_position=["lon","lat"],
+                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
+
+    if show_aviation:
+        av_pts = [
+            {"lat":51.5,"lon":-0.1,"name":"Heathrow — congestion"},{"lat":40.63,"lon":-73.78,"name":"JFK — normal"},
+            {"lat":35.68,"lon":139.78,"name":"Narita — normal"},{"lat":1.35,"lon":103.99,"name":"Changi — normal"},
+            {"lat":25.25,"lon":55.36,"name":"Dubai Int — normal"},{"lat":48.36,"lon":11.79,"name":"Munich — normal"},
+            {"lat":33.94,"lon":-118.41,"name":"LAX — normal"},{"lat":22.31,"lon":113.92,"name":"HKG — reduced"},
+            {"lat":32.08,"lon":34.88,"name":"Ben Gurion — CLOSED"},{"lat":35.69,"lon":51.32,"name":"IKA Tehran — CLOSED"},
+            {"lat":33.52,"lon":36.52,"name":"Damascus — CLOSED"},{"lat":15.59,"lon":32.55,"name":"Khartoum — CLOSED"},
+            {"lat":31.51,"lon":34.41,"name":"Gaza — DESTROYED"},
+        ]
+        avdf = pd.DataFrame(av_pts)
+        avdf["_color"] = avdf["name"].apply(lambda n:
+            [255,30,60,230] if "CLOSED" in n or "DESTROYED" in n
+            else [255,180,0,190] if "congestion" in n or "reduced" in n
+            else [0,200,255,160])
+        avdf["_radius"] = avdf["name"].apply(lambda n: 70000 if "CLOSED" in n or "DESTROYED" in n else 45000)
+        layers.append(pdk.Layer("ScatterplotLayer", data=avdf, get_position=["lon","lat"],
+                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
+
     return pdk.Deck(
         layers=layers,
         initial_view_state=pdk.ViewState(latitude=22, longitude=18, zoom=1.4, pitch=0),
@@ -725,7 +1292,7 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
                 "padding": "10px 14px", "borderRadius": "8px",
             }
         },
-        height=440,
+        height=480,
     )
 
 def build_theatre_map(conflict_key, show_supply):
@@ -883,13 +1450,51 @@ with st.sidebar:
 
     st.markdown('<div class="sb-div"></div>', unsafe_allow_html=True)
     st.markdown("#### 🗺 Global Map Layers")
-    st.caption("Toggle layers on the command map.")
-    show_seis  = st.toggle("🟦 Seismic Events",     value=True)
-    show_volc  = st.toggle("🟠 Volcanic / EONET",   value=True)
-    show_conf  = st.toggle("🔴 Conflict Incidents",  value=True)
-    show_mvmt  = st.toggle("🟣 Civil Movements",    value=True)
-    show_supp  = st.toggle("⟶ Supply Arc Lines",    value=True)
-    show_heat  = st.toggle("🌡 Heatmap Mode",        value=False)
+    st.caption("Groups: toggle categories on/off.")
+
+    with st.expander("🌍 Core Layers", expanded=True):
+        show_seis  = st.toggle("🟦 Seismic Events",       value=True,  key="lyr_seis")
+        show_volc  = st.toggle("🟠 Volcanic / EONET",     value=True,  key="lyr_volc")
+        show_conf  = st.toggle("🔴 Conflict Incidents",    value=True,  key="lyr_conf")
+        show_mvmt  = st.toggle("🟣 Civil Movements",      value=True,  key="lyr_mvmt")
+        show_supp  = st.toggle("⟶ Supply Arc Lines",      value=True,  key="lyr_supp")
+        show_heat  = st.toggle("🌡 Heatmap (Seismic)",    value=False, key="lyr_heat")
+
+    with st.expander("🎯 Intelligence", expanded=False):
+        show_intel   = st.toggle("🎯 Intel Hotspots",       value=False, key="lyr_intel")
+        show_czones  = st.toggle("⚔ Conflict Zones",       value=False, key="lyr_czones")
+        show_mbases  = st.toggle("🏛 Military Bases",       value=False, key="lyr_mbases")
+        show_nuclear = st.toggle("☢ Nuclear Sites",         value=False, key="lyr_nuc")
+        show_gamma   = st.toggle("⚠ Gamma Irradiators",    value=False, key="lyr_gamma")
+        show_cyber   = st.toggle("🛡 Cyber Threat Actors",  value=False, key="lyr_cyber")
+        show_orbital = st.toggle("🛰 Orbital Surveillance", value=False, key="lyr_orbit")
+        show_gps     = st.toggle("📡 GPS Jamming Zones",    value=False, key="lyr_gps")
+        show_cii     = st.toggle("🌎 CII Instability",      value=False, key="lyr_cii")
+
+    with st.expander("🚀 Infrastructure", expanded=False):
+        show_space   = st.toggle("🚀 Spaceports",           value=False, key="lyr_space")
+        show_cables  = st.toggle("🔌 Undersea Cables",      value=False, key="lyr_cables")
+        show_pipes   = st.toggle("🛢 Pipelines",            value=False, key="lyr_pipes")
+        show_aidc    = st.toggle("🖥 AI Data Centers",      value=False, key="lyr_aidc")
+        show_outages = st.toggle("📡 Internet Outages",     value=False, key="lyr_outage")
+        show_econ    = st.toggle("💰 Economic Centers",     value=False, key="lyr_econ")
+
+    with st.expander("✈ Military & Traffic", expanded=False):
+        show_milact  = st.toggle("✈ Military Activity",    value=False, key="lyr_milact")
+        show_ships   = st.toggle("🚢 Ship Traffic Zones",  value=False, key="lyr_ships")
+        show_trade   = st.toggle("⚓ Trade Route Arcs",    value=False, key="lyr_trade")
+        show_aviation= st.toggle("✈ Aviation Status",      value=False, key="lyr_avia")
+        show_waterways=st.toggle("⚓ Strategic Waterways", value=False, key="lyr_water")
+
+    with st.expander("📢 Human & Social", expanded=False):
+        show_protests  = st.toggle("📢 Protests (all)",     value=False, key="lyr_prot")
+        show_displaced = st.toggle("👥 Displacement Flows", value=False, key="lyr_disp")
+        show_minerals  = st.toggle("💎 Critical Minerals",  value=False, key="lyr_min")
+
+    with st.expander("🌋 Natural & Climate", expanded=False):
+        show_fires_layer = st.toggle("🔥 Active Fire Zones", value=False, key="lyr_fire")
+        show_climate     = st.toggle("🌫 Climate Anomalies", value=False, key="lyr_clim")
+        show_weather     = st.toggle("⛈ Weather Alerts",    value=False, key="lyr_weath")
 
     st.markdown('<div class="sb-div"></div>', unsafe_allow_html=True)
     st.markdown("#### 📡 Live Data Status")
@@ -985,7 +1590,16 @@ st.markdown(f"""
 
 st.markdown('<div style="border:1px solid rgba(0,200,255,.12);border-top:none;border-radius:0 0 14px 14px;overflow:hidden;margin-bottom:20px">', unsafe_allow_html=True)
 st.pydeck_chart(
-    build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf, show_supp, show_heat),
+    build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf, show_supp, show_heat,
+        show_intel=show_intel, show_czones=show_czones, show_mbases=show_mbases,
+        show_nuclear=show_nuclear, show_gamma=show_gamma, show_space=show_space,
+        show_cables=show_cables, show_pipes=show_pipes, show_aidc=show_aidc,
+        show_milact=show_milact, show_ships=show_ships, show_trade=show_trade,
+        show_gps=show_gps, show_orbital=show_orbital, show_cii=show_cii,
+        show_displaced=show_displaced, show_climate=show_climate, show_weather=show_weather,
+        show_outages=show_outages, show_cyber=show_cyber, show_econ=show_econ,
+        show_minerals=show_minerals, show_waterways=show_waterways,
+        show_fires_layer=show_fires_layer, show_protests=show_protests, show_aviation=show_aviation),
     use_container_width=True,
 )
 st.markdown('</div>', unsafe_allow_html=True)
