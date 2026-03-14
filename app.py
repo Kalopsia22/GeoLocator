@@ -167,6 +167,79 @@ hr{border:none!important;border-top:1px solid var(--bord2)!important;margin:18px
 .tl-text{font-size:13px;color:var(--text);line-height:1.5;}
 .tl-tag{font-family:var(--fm);font-size:9px;margin-top:2px;}
 .live-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:rgba(255,61,90,.1);border:1px solid rgba(255,61,90,.3);border-radius:20px;font-family:var(--fm);font-size:9px;color:var(--red);}
+
+/* ═══════════════════════════════════════════
+   MOBILE RESPONSIVE — phones & small tablets
+   ═══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Stack header vertically */
+  .status-row { gap:10px!important; padding:6px 0 10px!important; font-size:10px!important; }
+  .wordmark   { font-size:22px!important; letter-spacing:.1em!important; }
+
+  /* Tighten map header */
+  .map-top-bar { flex-direction:column!important; align-items:flex-start!important; gap:6px!important; padding:10px 14px!important; }
+  .map-legend  { gap:8px!important; font-size:9px!important; flex-wrap:wrap!important; }
+  .map-title-text { font-size:14px!important; }
+
+  /* Compact metric cards */
+  div[data-testid="stMetric"] { padding:10px 12px!important; }
+  div[data-testid="stMetricValue"] { font-size:18px!important; }
+  div[data-testid="stMetricLabel"] { font-size:10px!important; }
+
+  /* Full-width tabs, smaller font */
+  .stTabs [data-baseweb="tab"] { padding:10px 10px!important; font-size:11px!important; letter-spacing:.02em!important; }
+
+  /* Cards */
+  .gcard { padding:12px 14px!important; }
+  .conflict-card .cc-body { padding:10px 12px!important; }
+  .incident-row { gap:8px!important; padding:10px 0!important; }
+  .inc-title { font-size:12px!important; }
+  .m-val { font-size:28px!important; }
+
+  /* Tracker header — stack vertically */
+  .tracker-header { flex-direction:column!important; gap:12px!important; }
+
+  /* News cards grid */
+  .grid { grid-template-columns:1fr!important; }
+
+  /* Sidebar toggles — more touch-friendly */
+  .stToggle label { font-size:13px!important; }
+
+  /* Scrollable news feed on mobile */
+  .news-feed-mobile { max-height:60vh!important; overflow-y:auto!important; }
+
+  /* Ticker */
+  .ticker-inner { font-size:10px!important; }
+
+  /* Buttons */
+  .stButton>button { padding:8px 14px!important; font-size:12px!important; }
+
+  /* Helper text */
+  .helper { font-size:11px!important; }
+
+  /* Reduce chart heights for mobile */
+  .js-plotly-plot { min-height:140px!important; }
+}
+
+@media (max-width: 480px) {
+  .wordmark { font-size:18px!important; }
+  .stTabs [data-baseweb="tab"] { padding:8px 7px!important; font-size:10px!important; }
+  .map-top-bar { padding:8px 10px!important; }
+  div[data-testid="stMetricValue"] { font-size:15px!important; }
+  .m-val { font-size:22px!important; }
+  .gcard { padding:10px 11px!important; margin-bottom:7px!important; }
+  .live-badge { font-size:8px!important; padding:2px 7px!important; }
+}
+
+/* Touch-friendly map tooltip — larger on mobile */
+@media (max-width: 768px) {
+  .deck-tooltip {
+    font-size:13px!important;
+    padding:12px 16px!important;
+    max-width:260px!important;
+    line-height:1.7!important;
+  }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1064,6 +1137,7 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
 
     if show_volc and not eonet_df.empty:
         eo = eonet_df.copy(); eo["_color"] = [[255,110,40,200]]*len(eo); eo["_radius"] = 70000
+        eo["tip"] = eo.apply(lambda r: f"🌋 EONET EVENT\n{r['title']}\nCategory: {r.get('cat','')}", axis=1)
         layers.append(pdk.Layer("ScatterplotLayer", data=eo, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
@@ -1075,6 +1149,7 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
             cdf = pd.DataFrame(rows); sc = _sev_colors()
             cdf["_color"]  = cdf["severity"].map(sc)
             cdf["_radius"] = cdf["severity"].map({"CRITICAL":100000,"HIGH":75000,"MED":55000,"LOW":40000,"INFO":30000})
+            cdf["tip"]     = cdf.apply(lambda r: f"{r['conflict']}\n{INCIDENT_ICONS.get(r['type'],'●')} {r['title']}\n{r['loc']} · {r['date']}\nSeverity: {r['severity']} · Casualties: {r['casualties']}", axis=1)
             layers.append(pdk.Layer("ScatterplotLayer", data=cdf, get_position=["lon","lat"],
                                      get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
@@ -1082,6 +1157,7 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
         mdf = pd.DataFrame(MOVEMENTS)
         mdf["_color"]  = mdf["sentiment"].map({"CRIT":[200,60,255,200],"HIGH":[157,110,255,185],"MED":[120,80,220,165]})
         mdf["_radius"] = mdf["scale"] * 1800
+        mdf["tip"]     = mdf.apply(lambda r: f"📢 CIVIL MOVEMENT\n{r['title']}\n{r['location']}\nSize: {r['size']} · Sentiment: {r['sentiment']}", axis=1)
         layers.append(pdk.Layer("ScatterplotLayer", data=mdf, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
@@ -1094,6 +1170,7 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
                     "RSF Support":[255,140,66,140],"SAF Support":[0,200,255,140],
                     "Junta Support":[255,61,90,140],"Arms Supply":[255,180,0,140],"Humanitarian":[0,230,118,150]}
             adf["_color"] = adf["type"].apply(lambda t: cmap.get(t,[74,107,133,120]))
+            adf["tip"]   = adf.apply(lambda r: f"⟶ SUPPLY LINE\n{r['type']}\nProvider: {r['provider']}", axis=1)
             layers.append(pdk.Layer("ArcLayer", data=adf,
                                      get_source_position=["from_lon","from_lat"],
                                      get_target_position=["to_lon","to_lat"],
@@ -1121,6 +1198,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
             else [0,230,118,200] if any(x in c for x in ["UK","NATO","Israel","India","Japan","Singapore","S.Korea"])
             else [157,110,255,180])
         base_df["_radius"] = 55000
+        if "tip" not in base_df.columns:
+            base_df["tip"] = base_df.apply(lambda r: f"🏛 MILITARY BASE\n{r['name']}\n{r.get('country','')} · {r.get('type','')}", axis=1)
         layers.append(pdk.Layer("ScatterplotLayer", data=base_df, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
@@ -1131,6 +1210,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
             else [255,180,0,200] if s in ("Active","Operational")
             else [157,110,255,180])
         ndf["_radius"] = 70000
+        if "tip" not in ndf.columns:
+            ndf["tip"] = ndf.apply(lambda r: f"☢ NUCLEAR SITE\n{r['name']}\n{r.get('country','')} · {r.get('type','')}\nStatus: {r.get('status','')}", axis=1)
         layers.append(pdk.Layer("ScatterplotLayer", data=ndf, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
@@ -1141,6 +1222,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
         sdf = pd.DataFrame(SPACEPORTS)
         sdf["_color"] = sdf["type"].apply(lambda t: [0,200,255,210] if t=="Launch" else [255,61,90,200])
         sdf["_radius"] = 60000
+        if "tip" not in sdf.columns:
+            sdf["tip"] = sdf.apply(lambda r: f"🚀 SPACEPORT\n{r['name']}\n{r.get('country','')} · {r.get('type','')}", axis=1)
         layers.append(pdk.Layer("ScatterplotLayer", data=sdf, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
@@ -1152,6 +1235,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
             cab_data.append({**c,"_color":col,"from_lat":c["from_lat"],"from_lon":c["from_lon"],"to_lat":c["to_lat"],"to_lon":c["to_lon"]})
         if cab_data:
             cdf2 = pd.DataFrame(cab_data)
+            if "tip" not in cdf2.columns:
+                cdf2["tip"] = cdf2.apply(lambda r: f"🔌 UNDERSEA CABLE\n{r.get('name','')}\nStatus: {r.get('status','')} · Risk: {r.get('risk','')}/100", axis=1)
             layers.append(pdk.Layer("ArcLayer", data=cdf2,
                                      get_source_position=["from_lon","from_lat"],
                                      get_target_position=["to_lon","to_lat"],
@@ -1166,6 +1251,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
             pip_data.append({**p,"_color":col})
         if pip_data:
             pdf2 = pd.DataFrame(pip_data)
+            if "tip" not in pdf2.columns:
+                pdf2["tip"] = pdf2.apply(lambda r: f"🛢 PIPELINE\n{r.get('name','')}\nStatus: {r.get('status','')} · Risk: {r.get('risk','')}/100", axis=1)
             layers.append(pdk.Layer("ArcLayer", data=pdf2,
                                      get_source_position=["from_lon","from_lat"],
                                      get_target_position=["to_lon","to_lat"],
@@ -1180,6 +1267,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
             else [157,110,255,200] if any(x in o for x in ["Amazon","AWS"])
             else [255,140,66,180])
         aidf["_radius"] = 45000
+        if "tip" not in aidf.columns:
+            aidf["tip"] = aidf.apply(lambda r: f"🖥 AI DATA CENTER\n{r['name']}\nOperator: {r.get('operator','')}", axis=1)
         layers.append(pdk.Layer("ScatterplotLayer", data=aidf, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
@@ -1191,6 +1280,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
             else [0,230,118,190] if any(x in c for x in ["Israel","NATO","Japan"])
             else [255,180,0,190])
         madf["_radius"] = 80000
+        if "tip" not in madf.columns:
+            madf["tip"] = madf.apply(lambda r: f"✈ MILITARY ACTIVITY\n{r.get('activity','')} — {r.get('country','')}\nType: {r.get('type','')}\nSignals: {r.get('signals','')}", axis=1)
         layers.append(pdk.Layer("ScatterplotLayer", data=madf, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
@@ -1202,6 +1293,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
             else [0,200,255,160] if "Extreme" in t or "Heavy" in t
             else [0,230,118,140])
         stdf["_radius"] = stdf["vessels_day"].apply(lambda v: min(int(v * 400), 220000))
+        if "tip" not in stdf.columns:
+            stdf["tip"] = stdf.apply(lambda r: f"🚢 SHIP TRAFFIC\n{r['name']}\n{r['vessels_day']} vessels/day\nStatus: {r['traffic']}", axis=1)
         layers.append(pdk.Layer("ScatterplotLayer", data=stdf, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
@@ -1214,6 +1307,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
             t_data.append({**r,"_color":col})
         if t_data:
             tdf2 = pd.DataFrame(t_data)
+            if "tip" not in tdf2.columns:
+                tdf2["tip"] = tdf2.apply(lambda r: f"⚓ TRADE ROUTE\n{r.get('name','')}\nType: {r.get('type','')} · Status: {r.get('status','')}", axis=1)
             layers.append(pdk.Layer("ArcLayer", data=tdf2,
                                      get_source_position=["from_lon","from_lat"],
                                      get_target_position=["to_lon","to_lat"],
@@ -1224,6 +1319,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
         gdf = pd.DataFrame(GPS_JAMMING_ZONES)
         gdf["_color"] = gdf["severity"].apply(lambda s: [255,61,90,80] if s=="High" else [255,180,0,60])
         gdf["_radius"] = gdf["radius_km"] * 1000
+        if "tip" not in gdf.columns:
+            gdf["tip"] = gdf.apply(lambda r: f"📡 GPS JAMMING\n{r['name']}\nSource: {r.get('source','')}\nSeverity: {r.get('severity','')}\nRadius: {r.get('radius_km','')} km", axis=1)
         layers.append(pdk.Layer("ScatterplotLayer", data=gdf, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True,
                                  stroked=True, get_line_color=[255,61,90,120], line_width_min_pixels=1))
@@ -1237,6 +1334,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
             else [255,200,0,160] if "China" in o
             else [0,230,118,160])
         odf["_radius"] = 150000
+        if "tip" not in odf.columns:
+            odf["tip"] = odf.apply(lambda r: f"🛰 ORBITAL SURVEILLANCE\n{r['name']}\nOperator: {r.get('operator','')}\nType: {r.get('type','')}", axis=1)
         layers.append(pdk.Layer("ScatterplotLayer", data=odf, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
@@ -1244,6 +1343,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
         cii_df = pd.DataFrame(CII_INSTABILITY)
         cii_df["_color"] = cii_df["risk"].apply(lambda r: [255,30,60,200] if r>=85 else [255,140,66,180] if r>=65 else [255,180,0,160])
         cii_df["_radius"] = cii_df["risk"] * 1200
+        if "tip" not in cii_df.columns:
+            cii_df["tip"] = cii_df.apply(lambda r: f"🌎 CII INSTABILITY\n{r['name']}\nCountry: {r.get('country','')}\nSector: {r.get('sector','')}\nRisk: {r.get('risk','')}/100", axis=1)
         layers.append(pdk.Layer("ScatterplotLayer", data=cii_df, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
@@ -1253,6 +1354,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
             disp_data.append({**d,"_color":[200,60,255,150]})
         if disp_data:
             ddf2 = pd.DataFrame(disp_data)
+            if "tip" not in ddf2.columns:
+                ddf2["tip"] = ddf2.apply(lambda r: f"👥 DISPLACEMENT\n{r.get('cause','')}\n{r.get('pop',0):,} displaced", axis=1)
             layers.append(pdk.Layer("ArcLayer", data=ddf2,
                                      get_source_position=["from_lon","from_lat"],
                                      get_target_position=["to_lon","to_lat"],
@@ -1267,6 +1370,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
             else [0,180,255,160] if t=="Ocean"
             else [255,100,30,160])
         cldf["_radius"] = 450000
+        if "tip" not in cldf.columns:
+            cldf["tip"] = cldf.apply(lambda r: f"🌫 CLIMATE ANOMALY\n{r['name']}\nAnomaly: {r.get('anomaly','')}\nType: {r.get('type','')}", axis=1)
         layers.append(pdk.Layer("ScatterplotLayer", data=cldf, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
@@ -1278,6 +1383,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
             else [255,200,50,180] if t=="Dust Storm"
             else [157,110,255,200])
         wdf["_radius"] = 300000
+        if "tip" not in wdf.columns:
+            wdf["tip"] = wdf.apply(lambda r: f"⛈ WEATHER ALERT\n{r['name']}\nType: {r.get('type','')} · Severity: {r.get('severity','')}", axis=1)
         layers.append(pdk.Layer("ScatterplotLayer", data=wdf, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
@@ -1288,6 +1395,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
             else [255,140,66,190] if s in ("Partial","Disrupted")
             else [255,180,0,170])
         odf2["_radius"] = 80000
+        if "tip" not in odf2.columns:
+            odf2["tip"] = odf2.apply(lambda r: f"📡 INTERNET OUTAGE\n{r['name']}\nSeverity: {r.get('severity','')}\nCause: {r.get('cause','')}", axis=1)
         layers.append(pdk.Layer("ScatterplotLayer", data=odf2, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
@@ -1299,6 +1408,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
             else [157,110,255,200] if "DPRK" in a
             else [255,140,66,200])
         cydf["_radius"] = 120000
+        if "tip" not in cydf.columns:
+            cydf["tip"] = cydf.apply(lambda r: f"🛡 CYBER THREAT\n{r['name']}\nActor: {r.get('actor','')}\nTargets: {r.get('targets','')}", axis=1)
         layers.append(pdk.Layer("ScatterplotLayer", data=cydf, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
@@ -1306,6 +1417,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
         edf = pd.DataFrame(ECONOMIC_CENTERS)
         edf["_color"] = edf["role"].apply(lambda r: [255,180,0,200] if "Finance" in r else [0,200,255,180])
         edf["_radius"] = edf["gdp_t"].apply(lambda g: max(int(g * 180000), 60000))
+        if "tip" not in edf.columns:
+            edf["tip"] = edf.apply(lambda r: f"💰 ECONOMIC CENTER\n{r['name']}\nRole: {r.get('role','')}\nGDP: ${r.get('gdp_t','')}T", axis=1)
         layers.append(pdk.Layer("ScatterplotLayer", data=edf, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
@@ -1316,6 +1429,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
                       "Bauxite":[255,140,66,200],"Manganese":[255,180,0,200]}
         mdf2["_color"] = mdf2["mineral"].apply(lambda m: min_colors.get(m,[74,107,133,180]))
         mdf2["_radius"] = mdf2["share_pct"].apply(lambda s: int(s * 8000))
+        if "tip" not in mdf2.columns:
+            mdf2["tip"] = mdf2.apply(lambda r: f"💎 CRITICAL MINERAL\n{r['name']}\nMineral: {r.get('mineral','')}\nGlobal share: {r.get('share_pct','')}%", axis=1)
         layers.append(pdk.Layer("ScatterplotLayer", data=mdf2, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
@@ -1323,6 +1438,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
         wway_df = pd.DataFrame(STRATEGIC_WATERWAYS)
         wway_df["_color"] = [[0,200,255,180]]*len(wway_df)
         wway_df["_radius"] = 120000
+        if "tip" not in wway_df.columns:
+            wway_df["tip"] = wway_df.get("tip", wway_df.apply(lambda r: f"⚓ STRATEGIC WATERWAY\n{r['name']}", axis=1))
         layers.append(pdk.Layer("ScatterplotLayer", data=wway_df, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
@@ -1336,6 +1453,7 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
         fdf = pd.DataFrame(fire_pts)
         fdf["_color"] = [[255,80,20,200]]*len(fdf)
         fdf["_radius"] = fdf["fires"].apply(lambda f: min(int(f*80), 300000))
+        fdf["tip"] = fdf.apply(lambda r: f"🔥 ACTIVE FIRES\nFires: {r['fires']:,}", axis=1)
         layers.append(pdk.Layer("ScatterplotLayer", data=fdf, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
@@ -1343,6 +1461,7 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
         prot_df = pd.DataFrame(MOVEMENTS)
         prot_df["_color"] = [[200,60,255,180]]*len(prot_df)
         prot_df["_radius"] = prot_df["scale"] * 2000
+        prot_df["tip"] = prot_df.apply(lambda r: f"📢 PROTEST\n{r['title']}\n{r['location']}\nSize: {r['size']}", axis=1)
         layers.append(pdk.Layer("ScatterplotLayer", data=prot_df, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
@@ -1362,6 +1481,7 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
             else [255,180,0,190] if "congestion" in n or "reduced" in n
             else [0,200,255,160])
         avdf["_radius"] = avdf["name"].apply(lambda n: 70000 if "CLOSED" in n or "DESTROYED" in n else 45000)
+        avdf["tip"] = avdf["name"].apply(lambda n: f"✈ AVIATION STATUS\n{n}")
         layers.append(pdk.Layer("ScatterplotLayer", data=avdf, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
@@ -1370,12 +1490,14 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
         initial_view_state=pdk.ViewState(latitude=22, longitude=18, zoom=1.4, pitch=0),
         map_style=CARTO_DARK,
         tooltip={
-            "text": "{tip}",
+            "html": "<div style='font-family:IBM Plex Mono,monospace;font-size:11px;color:#e2ecf8;line-height:1.6;white-space:pre-wrap;max-width:320px'>{tip}</div>",
             "style": {
-                "backgroundColor": "#080f1c", "color": "#e2ecf8",
-                "border": "1px solid rgba(0,200,255,.25)",
-                "fontFamily": "IBM Plex Mono", "fontSize": "12px",
-                "padding": "10px 14px", "borderRadius": "8px",
+                "backgroundColor": "#080f1c",
+                "border": "1px solid rgba(0,200,255,.3)",
+                "borderRadius": "8px",
+                "padding": "10px 14px",
+                "boxShadow": "0 4px 20px rgba(0,0,0,.5)",
+                "pointerEvents": "none",
             }
         },
         height=480,
@@ -1414,7 +1536,7 @@ def build_theatre_map(conflict_key, show_supply):
         layers=layers,
         initial_view_state=pdk.ViewState(latitude=cy, longitude=cx, zoom=4, pitch=20),
         map_style=CARTO_DARK,
-        tooltip={"text":"{tip}","style":{"backgroundColor":"#080f1c","color":"#e2ecf8","border":"1px solid rgba(255,61,90,.3)","fontFamily":"IBM Plex Mono","fontSize":"12px","padding":"10px","borderRadius":"8px"}},
+        tooltip={"html":"<div style='font-family:IBM Plex Mono,monospace;font-size:11px;color:#e2ecf8;line-height:1.6;white-space:pre-wrap;max-width:300px'>{tip}</div>","style":{"backgroundColor":"#080f1c","border":"1px solid rgba(255,61,90,.4)","borderRadius":"8px","padding":"10px","boxShadow":"0 4px 20px rgba(0,0,0,.5)"}},
         height=390,
     )
 
@@ -2189,7 +2311,7 @@ with tab_earth:
         st.pydeck_chart(pdk.Deck(layers=layers_e,
             initial_view_state=pdk.ViewState(latitude=20,longitude=10,zoom=1.3),
             map_style=CARTO_DARK,
-            tooltip={"text":"{tip}","style":{"backgroundColor":"#080f1c","color":"#e2ecf8","border":"1px solid rgba(0,200,255,.2)","fontFamily":"IBM Plex Mono","fontSize":"12px","padding":"10px","borderRadius":"8px"}},
+            tooltip={"html":"<div style='font-family:IBM Plex Mono,monospace;font-size:11px;color:#e2ecf8;line-height:1.6;white-space:pre-wrap;max-width:280px'>{tip}</div>","style":{"backgroundColor":"#080f1c","border":"1px solid rgba(0,200,255,.3)","borderRadius":"8px","padding":"10px","boxShadow":"0 4px 20px rgba(0,0,0,.5)"}},
             height=380), use_container_width=True)
 
         st.markdown('<div class="sec-label" style="margin-top:12px">📈 Geomagnetic Kp — 24 hours</div>', unsafe_allow_html=True)
@@ -2249,7 +2371,7 @@ with tab_civil:
             layers=[pdk.Layer("ScatterplotLayer",data=mdf,get_position=["lon","lat"],get_radius="radius",get_fill_color="color",pickable=True,auto_highlight=True)],
             initial_view_state=pdk.ViewState(latitude=25,longitude=20,zoom=1.3),
             map_style=CARTO_DARK,
-            tooltip={"text":"{tip}","style":{"backgroundColor":"#080f1c","color":"#e2ecf8","border":"1px solid rgba(157,110,255,.25)","fontFamily":"IBM Plex Mono","fontSize":"12px","padding":"10px","borderRadius":"8px"}},
+            tooltip={"html":"<div style='font-family:IBM Plex Mono,monospace;font-size:11px;color:#e2ecf8;line-height:1.6;white-space:pre-wrap;max-width:280px'>{tip}</div>","style":{"backgroundColor":"#080f1c","border":"1px solid rgba(157,110,255,.35)","borderRadius":"8px","padding":"10px","boxShadow":"0 4px 20px rgba(0,0,0,.5)"}},
             height=350), use_container_width=True)
         st.markdown('<div class="sec-label" style="margin-top:12px">📊 Mobilisation Scale</div>', unsafe_allow_html=True)
         st.plotly_chart(mv_bar(MOVEMENTS),use_container_width=True,config={"displayModeBar":False})
