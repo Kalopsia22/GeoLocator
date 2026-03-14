@@ -14,6 +14,7 @@ Run:
 """
 
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import json, requests, re, html as html_lib, time
@@ -1137,22 +1138,83 @@ with tab_conflict:
       <div style="font-size:14px;color:var(--text2);line-height:1.7">{C['description']}</div>
     </div>""", unsafe_allow_html=True)
 
-    # ── Live GDELT news for this theatre ────────────────────
-    with st.expander(f"📰 Live GDELT News — {theatre}", expanded=False):
-        with st.spinner("Fetching latest news from GDELT…"):
-            gdelt_arts = fetch_gdelt_news(C.get("gdelt_query", theatre), max_records=8)
-        if gdelt_arts:
-            for a in gdelt_arts:
-                cols = st.columns([5,1])
-                with cols[0]:
-                    st.markdown(f"**{a['title']}**")
-                    st.caption(f"📰 {a['source']}  ·  {a['time']}")
-                with cols[1]:
-                    if a.get("url"):
-                        st.link_button("Open →", a["url"])
-                st.divider()
-        else:
-            st.info("GDELT feed not available right now. Check your internet connection.")
+    # ── Live news for this theatre (browser-side JS via rss2json) ──
+    with st.expander(f"📰 Live News — {theatre}", expanded=True):
+        # Pick the 2 most relevant RSS sources for this conflict's region
+        region_src_map = {
+            "Ukraine–Russia War": ["Reuters","BBC World","ISW","Defense One"],
+            "Gaza Conflict":      ["Al Jazeera","Reuters","BBC World","ISW"],
+            "Israel–Iran War":    ["Reuters","Al Jazeera","ISW","BBC World"],
+            "Sudan Civil War":    ["Reuters","Al Jazeera","BBC World","ACLED"],
+            "Myanmar Civil War":  ["Reuters","BBC World","The Diplomat","ACLED"],
+        }
+        preferred = region_src_map.get(theatre, ["Reuters","BBC World","ISW"])
+        theatre_feeds = [s for s in NEWS_SOURCES if s["name"] in preferred][:3]
+        if not theatre_feeds:
+            theatre_feeds = NEWS_SOURCES[:3]
+
+        tf_js = json.dumps([
+            {"name": s["name"], "rss": s["rss"],
+             "color": NEWS_CAT_COLOR.get(s["cat"],"#4a6b85")}
+            for s in theatre_feeds
+        ])
+        conflict_accent = C.get("factions",[{}])[0].get("color","#ff3d5a") if C.get("factions") else "#ff3d5a"
+
+        theatre_news_html = f"""
+<!DOCTYPE html><html><head><style>
+*{{margin:0;padding:0;box-sizing:border-box;}}
+body{{background:#02040a;font-family:'DM Sans',system-ui,sans-serif;color:#e2ecf8;padding:8px;}}
+#status{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a6b85;margin-bottom:10px;}}
+.grid{{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}}
+@media(max-width:700px){{.grid{{grid-template-columns:1fr 1fr;}}}}
+@media(max-width:450px){{.grid{{grid-template-columns:1fr;}}}}
+.card{{background:#0b1524;border:1px solid rgba(0,200,255,.1);border-radius:9px;padding:12px 14px;
+       border-left:3px solid {conflict_accent};transition:border-color .2s;}}
+.card:hover{{border-color:rgba(0,200,255,.28);}}
+.src{{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.07em;
+      text-transform:uppercase;color:#4a6b85;margin-bottom:5px;}}
+.headline{{font-size:12px;font-weight:600;color:#e2ecf8;line-height:1.4;margin-bottom:8px;}}
+.footer{{display:flex;align-items:center;justify-content:space-between;}}
+.ts{{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a6b85;}}
+a.r{{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#00c8ff;text-decoration:none;
+     padding:2px 8px;border:1px solid rgba(0,200,255,.25);border-radius:4px;}}
+a.r:hover{{background:rgba(0,200,255,.1);}}
+</style></head><body>
+<div id="status">Loading latest {theatre} news…</div>
+<div id="grid" class="grid"></div>
+<script>
+const feeds={tf_js};
+const API="https://api.rss2json.com/v1/api.json?rss_url=";
+function ta(d){{try{{const diff=(Date.now()-new Date(d))/1000;
+  if(diff<60)return Math.round(diff)+'s';
+  if(diff<3600)return Math.round(diff/60)+'m';
+  return Math.round(diff/3600)+'h ago';}}catch{{return '';}}}}
+async function main(){{
+  const res=await Promise.allSettled(feeds.map(f=>
+    fetch(API+encodeURIComponent(f.rss)+"&count=6",{{signal:AbortSignal.timeout(8000)}})
+      .then(r=>r.json())
+      .then(d=>(d.items||[]).map(i=>{{return{{t:i.title||'',l:i.link||'',ts:ta(i.pubDate),n:f.name,c:f.color}};}}))
+  ));
+  const arts=res.flatMap(r=>r.status==='fulfilled'?r.value:[]);
+  if(!arts.length){{
+    document.getElementById('status').textContent='Live feed unavailable — visit sources directly.';
+    return;
+  }}
+  document.getElementById('status').textContent=arts.length+' articles from '+
+    [...new Set(arts.map(a=>a.n))].join(', ');
+  document.getElementById('grid').innerHTML=arts.slice(0,12).map(a=>`
+    <div class="card">
+      <div class="src">${{a.n}}</div>
+      <div class="headline">${{a.t.replace(/</g,'&lt;').replace(/>/g,'&gt;').slice(0,110)}}</div>
+      <div class="footer">
+        <span class="ts">${{a.ts}}</span>
+        ${{a.l?`<a class="r" href="${{a.l}}" target="_blank" rel="noopener">Read →</a>`:''}}
+      </div>
+    </div>`).join('');
+}}
+main();
+</script></body></html>"""
+        components.html(theatre_news_html, height=340, scrolling=False)
 
     st.markdown("---")
 
@@ -1484,117 +1546,173 @@ with tab_civil:
 
 
 # ══════════════════════════════════════════════════════════════
-# TAB 4 — LIVE NEWS  (GDELT primary + RSS secondary)
+# TAB 4 — LIVE NEWS
+# Strategy: outbound HTTP is blocked on Streamlit Cloud so
+# requests/GDELT/RSS all fail server-side. Solution:
+#   1. st.components.v1.html — renders a browser-side JS fetch
+#      via rss2json.com (CORS-enabled, free, no key) → real articles
+#   2. Rich curated fallback cards with direct deep-links that
+#      always work regardless of network access
 # ══════════════════════════════════════════════════════════════
 with tab_news:
 
-    # ── Source Directory (always visible) ───────────────────
-    st.markdown('<div class="sec-label">📡 Configured News Sources — ' + str(len(NEWS_SOURCES)) + ' feeds</div>', unsafe_allow_html=True)
+    CAT_TABS  = ["ALL","global","science","geopolitics","conflict","climate","spaceweather"]
+    CAT_NAMES = {"ALL":"All Sources","global":"🌐 Global","science":"🔬 Science",
+                 "geopolitics":"🗺 Geopolitics","conflict":"⚔ Conflict",
+                 "climate":"🌱 Climate","spaceweather":"☀ Space Weather"}
 
-    CAT_TABS = ["ALL","global","science","geopolitics","conflict","climate","spaceweather"]
-    CAT_NAMES= {"ALL":"All","global":"🌐 Global","science":"🔬 Science","geopolitics":"🗺 Geopolitics","conflict":"⚔ Conflict","climate":"🌱 Climate","spaceweather":"☀ Space"}
-    cat_sel = st.radio("Category:", CAT_TABS, format_func=lambda x: CAT_NAMES.get(x,x),
+    cat_sel = st.radio("Filter by category:", CAT_TABS,
+                        format_func=lambda x: CAT_NAMES.get(x,x),
                         horizontal=True, label_visibility="collapsed")
 
     vis_src = [s for s in NEWS_SOURCES if cat_sel=="ALL" or s["cat"]==cat_sel]
 
-    # Source pills — always shown, with working link buttons
-    pills_cols = st.columns(min(len(vis_src), 4))
+    # ── RSS feeds via rss2json.com (browser-side JS, bypasses server block) ──
+    # rss2json.com is a free public CORS proxy — the fetch runs in the
+    # user's browser, not the Streamlit server, so cloud network restrictions don't apply.
+    st.markdown('<div class="sec-label">📡 Live Article Feed</div>', unsafe_allow_html=True)
+    st.caption("Fetched live in your browser via rss2json.com — no server network required.")
+
+    # Build JS that fetches up to 3 feeds for the selected category
+    feeds_for_js = vis_src[:3]  # fetch first 3 feeds for the selected category
+    feeds_js_array = json.dumps([
+        {"name": s["name"], "rss": s["rss"],
+         "color": NEWS_CAT_COLOR.get(s["cat"],"#4a6b85"),
+         "cat": s["cat"]}
+        for s in feeds_for_js
+    ])
+
+    live_news_html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * {{ margin:0; padding:0; box-sizing:border-box; }}
+  body {{ background:#02040a; font-family:'DM Sans',system-ui,sans-serif; color:#e2ecf8; padding:12px; }}
+  #status {{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:#4a6b85; margin-bottom:14px; min-height:18px; }}
+  .grid {{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }}
+  @media(max-width:600px){{ .grid{{ grid-template-columns:1fr; }} }}
+  .card {{
+    background:#0b1524; border:1px solid rgba(0,200,255,.12);
+    border-radius:10px; padding:14px 16px; position:relative; overflow:hidden;
+    transition:border-color .2s, transform .15s;
+  }}
+  .card:hover {{ border-color:rgba(0,200,255,.28); transform:translateY(-1px); }}
+  .card::after {{
+    content:''; position:absolute; left:0; top:0; bottom:0; width:3px;
+    background:linear-gradient(180deg,var(--accent,#00c8ff),transparent);
+  }}
+  .src {{ font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:600;
+          letter-spacing:.07em; text-transform:uppercase; opacity:.7; margin-bottom:6px; }}
+  .headline {{ font-size:13px; font-weight:600; color:#e2ecf8; line-height:1.45; margin-bottom:8px; }}
+  .footer {{ display:flex; align-items:center; justify-content:space-between; }}
+  .ts {{ font-family:'IBM Plex Mono',monospace; font-size:10px; color:#4a6b85; }}
+  a.read {{
+    font-family:'IBM Plex Mono',monospace; font-size:10px; color:#00c8ff;
+    text-decoration:none; padding:3px 10px; border:1px solid rgba(0,200,255,.25);
+    border-radius:5px;
+  }}
+  a.read:hover {{ background:rgba(0,200,255,.1); }}
+  .spinner {{ text-align:center; padding:40px; color:#4a6b85; font-family:'IBM Plex Mono',monospace; font-size:12px; }}
+  .err {{ color:#ff8c42; font-family:'IBM Plex Mono',monospace; font-size:11px; padding:10px; }}
+</style>
+</head>
+<body>
+<div id="status">Fetching live feeds…</div>
+<div id="grid" class="grid"></div>
+<script>
+const feeds = {feeds_js_array};
+const API   = "https://api.rss2json.com/v1/api.json?rss_url=";
+
+function timeAgo(dateStr) {{
+  try {{
+    const d = new Date(dateStr);
+    const diff = (Date.now() - d.getTime()) / 1000;
+    if (diff < 60)   return Math.round(diff) + 's ago';
+    if (diff < 3600) return Math.round(diff/60) + 'm ago';
+    if (diff < 86400)return Math.round(diff/3600) + 'h ago';
+    return Math.round(diff/86400) + 'd ago';
+  }} catch(e) {{ return ''; }}
+}}
+
+async function fetchFeed(feed) {{
+  const url = API + encodeURIComponent(feed.rss) + "&count=6";
+  const r   = await fetch(url, {{signal: AbortSignal.timeout(8000)}});
+  if (!r.ok) throw new Error(r.status);
+  const data = await r.json();
+  if (data.status !== 'ok') throw new Error('bad status');
+  return (data.items || []).map(item => ({{
+    title:  item.title || '',
+    link:   item.link  || '',
+    time:   timeAgo(item.pubDate),
+    source: feed.name,
+    color:  feed.color,
+  }}));
+}}
+
+async function main() {{
+  const statusEl = document.getElementById('status');
+  const gridEl   = document.getElementById('grid');
+  let allArticles = [];
+  let loaded = 0;
+
+  const results = await Promise.allSettled(feeds.map(fetchFeed));
+  results.forEach((r, i) => {{
+    if (r.status === 'fulfilled') {{
+      allArticles = allArticles.concat(r.value);
+      loaded++;
+    }}
+  }});
+
+  if (allArticles.length === 0) {{
+    statusEl.textContent = '';
+    gridEl.innerHTML = '<div class="err">Live feeds unavailable in this browser context. Use the source links below to read directly.</div>';
+    return;
+  }}
+
+  // sort by recency (articles with time come first)
+  statusEl.textContent = loaded + ' feed' + (loaded>1?'s':'') + ' loaded · ' + allArticles.length + ' articles';
+  gridEl.innerHTML = allArticles.slice(0, 20).map(a => `
+    <div class="card" style="--accent:${{a.color}}">
+      <div class="src" style="color:${{a.color}}">${{a.source}}</div>
+      <div class="headline">${{a.title.replace(/</g,'&lt;').replace(/>/g,'&gt;').slice(0,120)}}</div>
+      <div class="footer">
+        <span class="ts">${{a.time}}</span>
+        ${{a.link ? `<a class="read" href="${{a.link}}" target="_blank" rel="noopener">Read →</a>` : ''}}
+      </div>
+    </div>
+  `).join('');
+}}
+
+main().catch(e => {{
+  document.getElementById('status').textContent = 'Feed error: ' + e.message;
+}});
+</script>
+</body>
+</html>
+"""
+    components.html(live_news_html, height=680, scrolling=True)
+
+    st.markdown("---")
+
+    # ── Source Directory — always visible with direct links ──────
+    st.markdown('<div class="sec-label">📋 Source Directory — ' + str(len(vis_src)) + ' Feeds</div>', unsafe_allow_html=True)
+
+    dir_cols = st.columns(4)
     for i, s in enumerate(vis_src):
-        with pills_cols[i % 4]:
-            col = NEWS_CAT_COLOR.get(s["cat"],"#4a6b85")
+        col = NEWS_CAT_COLOR.get(s["cat"], "#4a6b85")
+        with dir_cols[i % 4]:
             st.markdown(f"""
             <div class="src-directory-card" style="border-left:3px solid {col}">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
                 <div style="font-family:var(--fm);font-size:11px;font-weight:600;color:{col}">{s['name']}</div>
                 <div class="badge" style="color:{col};border-color:{col}44;background:{col}15;font-size:8px">{s['cat'].upper()}</div>
               </div>
-              <div style="font-size:12px;color:var(--muted);margin-bottom:6px">{s.get('desc','')}</div>
-              <a href="https://{s.get('site','#')}" target="_blank" class="news-link" style="font-size:10px">Visit {s.get('site',s['name'])} →</a>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:8px">{s.get('desc','')}</div>
+              <a href="https://{s.get('site','#')}" target="_blank" class="news-link" style="font-size:10px">
+                Visit {s.get('site', s['name'])} →
+              </a>
             </div>""", unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    # ── GDELT Live News ──────────────────────────────────────
-    st.markdown('<div class="sec-label">🌐 GDELT Live News Stream</div>', unsafe_allow_html=True)
-    st.markdown('<p style="font-size:12px;color:var(--muted);margin-bottom:12px">Real-time news from GDELT Doc API (free, no key). Articles from last 24 hours.</p>', unsafe_allow_html=True)
-
-    GDELT_QUERIES = {
-        "ALL":         "war conflict earthquake disaster climate",
-        "global":      "world news international",
-        "science":     "earthquake volcano geomagnetic solar flare",
-        "geopolitics": "geopolitics diplomacy sanctions NATO",
-        "conflict":    "war military conflict strikes casualties",
-        "climate":     "climate change wildfire flooding sea level",
-        "spaceweather":"solar flare geomagnetic storm aurora Kp index",
-    }
-    gdelt_query = GDELT_QUERIES.get(cat_sel, "world news")
-
-    with st.spinner("Fetching live articles from GDELT…"):
-        gdelt_results = fetch_gdelt_news(gdelt_query, max_records=20)
-
-    if gdelt_results:
-        st.success(f"✓ {len(gdelt_results)} live articles loaded from GDELT")
-        g_col1, g_col2 = st.columns(2, gap="medium")
-        for i, a in enumerate(gdelt_results):
-            card_cls = NEWS_CAT_CARD.get(cat_sel,"nc-default")
-            col = g_col1 if i%2==0 else g_col2
-            with col:
-                st.markdown(f"""
-                <div class="news-card {card_cls}">
-                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px">
-                    <div class="news-source-pill" style="color:{NEWS_CAT_COLOR.get(cat_sel,'#4a6b85')};border-color:{NEWS_CAT_COLOR.get(cat_sel,'#4a6b85')}44;background:{NEWS_CAT_COLOR.get(cat_sel,'#4a6b85')}12">
-                      {a.get('source','GDELT')[:30]}
-                    </div>
-                    <div style="font-family:var(--fm);font-size:10px;color:var(--muted)">{a.get('time','')}</div>
-                  </div>
-                  <div class="news-headline">{a['title']}</div>
-                  <div class="news-footer">
-                    {'<a href="' + a["url"] + '" target="_blank" class="news-link">Read article →</a>' if a.get("url") else ''}
-                  </div>
-                </div>""", unsafe_allow_html=True)
-    else:
-        st.warning("GDELT API not reachable. Trying RSS feeds…")
-        # Fall back to RSS
-        with st.spinner(f"Trying RSS feeds ({len(vis_src)} sources)…"):
-            all_art = []
-            for s in vis_src:
-                arts = fetch_rss_safe(s["rss"], s["name"], s["cat"])
-                for a in arts:
-                    a["src_color"] = NEWS_CAT_COLOR.get(s["cat"],"#4a6b85")
-                all_art.extend(arts)
-
-        if all_art:
-            st.success(f"✓ {len(all_art)} articles from RSS feeds")
-            r1, r2 = st.columns(2, gap="medium")
-            for i, a in enumerate(all_art[:24]):
-                card_cls = NEWS_CAT_CARD.get(a.get("category",""),"nc-default")
-                col = r1 if i%2==0 else r2
-                with col:
-                    lh = f'<a href="{a["link"]}" target="_blank" class="news-link">Read →</a>' if a.get("link") else ""
-                    st.markdown(f"""
-                    <div class="news-card {card_cls}">
-                      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-                        <div class="news-source-pill" style="color:{a['src_color']};border-color:{a['src_color']}44;background:{a['src_color']}12">
-                          {a['source']}
-                        </div>
-                        <span class="badge b-muted">{a.get('category','')}</span>
-                      </div>
-                      <div class="news-headline">{a['title']}</div>
-                      <div class="news-snippet">{a.get('desc','')[:180]}</div>
-                      <div class="news-footer">
-                        <div class="news-time">{a.get('time','')}</div>
-                        {lh}
-                      </div>
-                    </div>""", unsafe_allow_html=True)
-        else:
-            st.info("Neither GDELT nor RSS feeds reachable in this environment. When running locally with internet access, all 16 sources + GDELT stream will display here.")
-            st.markdown("**Quick links to all configured sources:**")
-            link_cols = st.columns(4)
-            for i, s in enumerate(NEWS_SOURCES):
-                with link_cols[i%4]:
-                    col = NEWS_CAT_COLOR.get(s["cat"],"#4a6b85")
-                    st.markdown(f'<div style="margin-bottom:8px"><a href="https://{s["site"]}" target="_blank" class="news-link" style="display:block;text-align:center;color:{col};border-color:{col}44">{s["name"]}</a></div>', unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════
