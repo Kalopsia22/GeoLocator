@@ -1161,57 +1161,91 @@ with tab_conflict:
         conflict_accent = C.get("factions",[{}])[0].get("color","#ff3d5a") if C.get("factions") else "#ff3d5a"
 
         theatre_news_html = f"""
-<!DOCTYPE html><html><head><style>
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
 *{{margin:0;padding:0;box-sizing:border-box;}}
 body{{background:#02040a;font-family:'DM Sans',system-ui,sans-serif;color:#e2ecf8;padding:8px;}}
-#status{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a6b85;margin-bottom:10px;}}
+#status{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a6b85;margin-bottom:10px;
+         display:flex;align-items:center;gap:6px;}}
+.dot{{width:5px;height:5px;border-radius:50%;background:#00c8ff;
+      animation:blink 1.2s ease-in-out infinite;flex-shrink:0;}}
+@keyframes blink{{0%,100%{{opacity:1}}50%{{opacity:.2}}}}
 .grid{{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}}
 @media(max-width:700px){{.grid{{grid-template-columns:1fr 1fr;}}}}
 @media(max-width:450px){{.grid{{grid-template-columns:1fr;}}}}
-.card{{background:#0b1524;border:1px solid rgba(0,200,255,.1);border-radius:9px;padding:12px 14px;
-       border-left:3px solid {conflict_accent};transition:border-color .2s;}}
+.card{{background:#0b1524;border:1px solid rgba(0,200,255,.1);border-radius:9px;
+       padding:12px 14px;border-left:3px solid {conflict_accent};transition:border-color .2s;}}
 .card:hover{{border-color:rgba(0,200,255,.28);}}
-.src{{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.07em;
-      text-transform:uppercase;color:#4a6b85;margin-bottom:5px;}}
-.headline{{font-size:12px;font-weight:600;color:#e2ecf8;line-height:1.4;margin-bottom:8px;}}
-.footer{{display:flex;align-items:center;justify-content:space-between;}}
+.src{{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;
+      letter-spacing:.07em;text-transform:uppercase;color:#4a6b85;margin-bottom:5px;}}
+.hl{{font-size:12px;font-weight:600;color:#e2ecf8;line-height:1.4;margin-bottom:8px;}}
+.foot{{display:flex;align-items:center;justify-content:space-between;}}
 .ts{{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a6b85;}}
 a.r{{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#00c8ff;text-decoration:none;
      padding:2px 8px;border:1px solid rgba(0,200,255,.25);border-radius:4px;}}
 a.r:hover{{background:rgba(0,200,255,.1);}}
+.err{{color:#ff8c42;font-size:11px;font-family:'IBM Plex Mono',monospace;line-height:1.6;}}
+.srclinks{{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}}
+.srclinks a{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#00c8ff;
+             text-decoration:none;padding:3px 10px;
+             border:1px solid rgba(0,200,255,.25);border-radius:12px;}}
 </style></head><body>
-<div id="status">Loading latest {theatre} news…</div>
+<div id="status"><div class="dot"></div><span>Loading {theatre} news…</span></div>
 <div id="grid" class="grid"></div>
 <script>
-const feeds={tf_js};
-const API="https://api.rss2json.com/v1/api.json?rss_url=";
-function ta(d){{try{{const diff=(Date.now()-new Date(d))/1000;
-  if(diff<60)return Math.round(diff)+'s';
-  if(diff<3600)return Math.round(diff/60)+'m';
-  return Math.round(diff/3600)+'h ago';}}catch{{return '';}}}}
-async function main(){{
-  const res=await Promise.allSettled(feeds.map(f=>
-    fetch(API+encodeURIComponent(f.rss)+"&count=6",{{signal:AbortSignal.timeout(8000)}})
-      .then(r=>r.json())
-      .then(d=>(d.items||[]).map(i=>{{return{{t:i.title||'',l:i.link||'',ts:ta(i.pubDate),n:f.name,c:f.color}};}}))
-  ));
-  const arts=res.flatMap(r=>r.status==='fulfilled'?r.value:[]);
-  if(!arts.length){{
-    document.getElementById('status').textContent='Live feed unavailable — visit sources directly.';
-    return;
-  }}
-  document.getElementById('status').textContent=arts.length+' articles from '+
-    [...new Set(arts.map(a=>a.n))].join(', ');
-  document.getElementById('grid').innerHTML=arts.slice(0,12).map(a=>`
-    <div class="card">
-      <div class="src">${{a.n}}</div>
-      <div class="headline">${{a.t.replace(/</g,'&lt;').replace(/>/g,'&gt;').slice(0,110)}}</div>
-      <div class="footer">
-        <span class="ts">${{a.ts}}</span>
-        ${{a.l?`<a class="r" href="${{a.l}}" target="_blank" rel="noopener">Read →</a>`:''}}
-      </div>
-    </div>`).join('');
+const FEEDS={tf_js};
+const PROXIES=[
+  u=>`https://api.allorigins.win/get?url=${{encodeURIComponent(u)}}`,
+  u=>`https://corsproxy.io/?${{encodeURIComponent(u)}}`,
+  u=>`https://api.codetabs.com/v1/proxy?quest=${{encodeURIComponent(u)}}`,
+];
+function ta(s){{try{{const d=new Date(s),x=(Date.now()-d)/1000;
+  if(x<60)return Math.round(x)+'s';if(x<3600)return Math.round(x/60)+'m';
+  return Math.round(x/3600)+'h ago';}}catch{{return '';}}}}
+function esc(s){{return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}}
+function parseXML(xml){{
+  try{{const doc=new DOMParser().parseFromString(xml,'text/xml');
+    if(doc.querySelector('parsererror'))return[];
+    return[...doc.querySelectorAll('item')].slice(0,6).map(it=>{{
+      const txt=n=>{{const el=it.querySelector(n);const raw=(el?.textContent||el?.getAttribute('href')||'');return raw.split('<![CDATA[').join('').split(']]>').join('').trim();}};
+      return{{title:txt('title'),link:txt('link'),pub:txt('pubDate')}};
+    }});}}catch{{return[];}}}}
+async function fetchFeed(f){{
+  for(const px of PROXIES){{try{{
+    const r=await fetch(px(f.rss),{{signal:AbortSignal.timeout(9000)}});
+    if(!r.ok)continue;
+    const ct=r.headers.get('content-type')||'';
+    let xml='';
+      if(ct.includes('json')){{const j=await r.json();xml=j.contents||j.data||'';}}
+    else xml=await r.text();
+    const items=parseXML(xml);
+    if(items.length)return{{f,items}};
+  }}catch{{}}}}
+  return{{f,items:[]}};
 }}
+async function main(){{
+  const statusEl=document.getElementById('status');
+  const gridEl=document.getElementById('grid');
+  const res=await Promise.all(FEEDS.map(fetchFeed));
+  const arts=[];let n=0;
+  res.forEach(({{f,items}})=>{{if(items.length){{n++;
+    items.forEach(it=>arts.push({{title:it.title,link:it.link,
+      time:ta(it.pub),src:f.name,col:f.color}}));}}
+  }});
+  if(!arts.length){{
+    statusEl.innerHTML='<span style="color:#ff8c42">⚠ feeds blocked</span>';
+    gridEl.innerHTML='<div class="err">Live feeds could not load in this viewer.<div class="srclinks">'+
+      FEEDS.map(f=>`<a href="https://${{f.name.toLowerCase().replace(/\\s+/g,'')}}.com" target="_blank">${{f.name}}</a>`).join('')+
+      '</div></div>';return;}}
+  statusEl.innerHTML=`<div class="dot" style="background:#00e676"></div><span>${{n}} feed${{n>1?'s':''}} · ${{arts.length}} articles</span>`;
+  gridEl.innerHTML=arts.slice(0,12).map(a=>`
+    <div class="card">
+      <div class="src" style="color:${{a.col}}">${{esc(a.src)}}</div>
+      <div class="hl">${{esc(a.title).slice(0,110)}}</div>
+      <div class="foot">
+        <span class="ts">${{a.time}}</span>
+        ${{a.link?`<a class="r" href="${{a.link}}" target="_blank" rel="noopener">Read →</a>`:''}}
+      </div>
+    </div>`).join('');}}
 main();
 </script></body></html>"""
         components.html(theatre_news_html, height=340, scrolling=False)
@@ -1586,107 +1620,168 @@ with tab_news:
 <!DOCTYPE html>
 <html>
 <head>
+<meta charset="utf-8">
 <style>
   * {{ margin:0; padding:0; box-sizing:border-box; }}
   body {{ background:#02040a; font-family:'DM Sans',system-ui,sans-serif; color:#e2ecf8; padding:12px; }}
-  #status {{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:#4a6b85; margin-bottom:14px; min-height:18px; }}
+  #status {{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:#4a6b85;
+             margin-bottom:14px; min-height:18px; display:flex; align-items:center; gap:8px; }}
+  .dot {{ width:6px; height:6px; border-radius:50%; background:#00c8ff;
+          animation:blink 1.2s ease-in-out infinite; flex-shrink:0; }}
+  @keyframes blink {{ 0%,100%{{opacity:1}} 50%{{opacity:.2}} }}
   .grid {{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }}
-  @media(max-width:600px){{ .grid{{ grid-template-columns:1fr; }} }}
+  @media(max-width:580px){{ .grid{{ grid-template-columns:1fr; }} }}
   .card {{
-    background:#0b1524; border:1px solid rgba(0,200,255,.12);
-    border-radius:10px; padding:14px 16px; position:relative; overflow:hidden;
-    transition:border-color .2s, transform .15s;
+    background:#0b1524; border:1px solid rgba(0,200,255,.12); border-radius:10px;
+    padding:14px 16px; position:relative; overflow:hidden;
+    transition:border-color .18s, transform .15s;
   }}
-  .card:hover {{ border-color:rgba(0,200,255,.28); transform:translateY(-1px); }}
-  .card::after {{
-    content:''; position:absolute; left:0; top:0; bottom:0; width:3px;
-    background:linear-gradient(180deg,var(--accent,#00c8ff),transparent);
-  }}
+  .card:hover {{ border-color:rgba(0,200,255,.3); transform:translateY(-1px); }}
+  .card::after {{ content:''; position:absolute; left:0; top:0; bottom:0; width:3px;
+                  background:linear-gradient(180deg,var(--ac,#00c8ff),transparent); }}
   .src {{ font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:600;
-          letter-spacing:.07em; text-transform:uppercase; opacity:.7; margin-bottom:6px; }}
-  .headline {{ font-size:13px; font-weight:600; color:#e2ecf8; line-height:1.45; margin-bottom:8px; }}
-  .footer {{ display:flex; align-items:center; justify-content:space-between; }}
+          letter-spacing:.07em; text-transform:uppercase; margin-bottom:6px; }}
+  .hl {{ font-size:13px; font-weight:600; color:#e2ecf8; line-height:1.45; margin-bottom:8px; }}
+  .foot {{ display:flex; align-items:center; justify-content:space-between; }}
   .ts {{ font-family:'IBM Plex Mono',monospace; font-size:10px; color:#4a6b85; }}
-  a.read {{
-    font-family:'IBM Plex Mono',monospace; font-size:10px; color:#00c8ff;
-    text-decoration:none; padding:3px 10px; border:1px solid rgba(0,200,255,.25);
-    border-radius:5px;
-  }}
-  a.read:hover {{ background:rgba(0,200,255,.1); }}
-  .spinner {{ text-align:center; padding:40px; color:#4a6b85; font-family:'IBM Plex Mono',monospace; font-size:12px; }}
-  .err {{ color:#ff8c42; font-family:'IBM Plex Mono',monospace; font-size:11px; padding:10px; }}
+  a.rd {{ font-family:'IBM Plex Mono',monospace; font-size:10px; color:#00c8ff;
+          text-decoration:none; padding:3px 10px; border:1px solid rgba(0,200,255,.28);
+          border-radius:5px; white-space:nowrap; }}
+  a.rd:hover {{ background:rgba(0,200,255,.1); }}
+  .err {{ color:#ff8c42; font-family:'IBM Plex Mono',monospace; font-size:11px;
+          padding:12px; border:1px solid rgba(255,140,66,.25); border-radius:8px;
+          background:rgba(255,140,66,.05); line-height:1.6; }}
+  .srclinks {{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }}
+  .srclinks a {{ font-family:'IBM Plex Mono',monospace; font-size:10px; color:#00c8ff;
+                 text-decoration:none; padding:4px 12px;
+                 border:1px solid rgba(0,200,255,.25); border-radius:20px; }}
+  .srclinks a:hover {{ background:rgba(0,200,255,.1); }}
 </style>
 </head>
 <body>
-<div id="status">Fetching live feeds…</div>
+<div id="status"><div class="dot"></div><span>Loading feeds…</span></div>
 <div id="grid" class="grid"></div>
-<script>
-const feeds = {feeds_js_array};
-const API   = "https://api.rss2json.com/v1/api.json?rss_url=";
 
-function timeAgo(dateStr) {{
+<script>
+const FEEDS = {feeds_js_array};
+
+// Three independent CORS proxies tried in sequence
+// allorigins wraps URL in a JSON envelope: {{ "contents": "<xml>..." }}
+// corsproxy just forwards the raw response
+// codetabs returns {{ "contents": "..." }}
+const PROXIES = [
+  url => `https://api.allorigins.win/get?url=${{encodeURIComponent(url)}}`,
+  url => `https://corsproxy.io/?${{encodeURIComponent(url)}}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${{encodeURIComponent(url)}}`,
+];
+
+function ta(s) {{
   try {{
-    const d = new Date(dateStr);
-    const diff = (Date.now() - d.getTime()) / 1000;
-    if (diff < 60)   return Math.round(diff) + 's ago';
-    if (diff < 3600) return Math.round(diff/60) + 'm ago';
-    if (diff < 86400)return Math.round(diff/3600) + 'h ago';
-    return Math.round(diff/86400) + 'd ago';
-  }} catch(e) {{ return ''; }}
+    const d = new Date(s), diff = (Date.now() - d) / 1000;
+    if (diff < 60)    return Math.round(diff) + 's ago';
+    if (diff < 3600)  return Math.round(diff/60) + 'm ago';
+    if (diff < 86400) return Math.round(diff/3600) + 'h ago';
+    return d.toLocaleDateString();
+  }} catch {{ return ''; }}
 }}
 
-async function fetchFeed(feed) {{
-  const url = API + encodeURIComponent(feed.rss) + "&count=6";
-  const r   = await fetch(url, {{signal: AbortSignal.timeout(8000)}});
-  if (!r.ok) throw new Error(r.status);
-  const data = await r.json();
-  if (data.status !== 'ok') throw new Error('bad status');
-  return (data.items || []).map(item => ({{
-    title:  item.title || '',
-    link:   item.link  || '',
-    time:   timeAgo(item.pubDate),
-    source: feed.name,
-    color:  feed.color,
-  }}));
+function esc(s) {{
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}}
+
+function parseXML(xmlStr) {{
+  try {{
+    const p = new DOMParser();
+    const doc = p.parseFromString(xmlStr, 'text/xml');
+    if (doc.querySelector('parsererror')) return [];
+    return [...doc.querySelectorAll('item')].slice(0, 7).map(it => ({{
+      title: (it.querySelector('title')?.textContent || '').split('<![CDATA[').join('').split(']]>').join('').trim(),
+      link:  (it.querySelector('link')?.textContent ||
+              it.querySelector('link')?.getAttribute('href') || '').trim(),
+      pub:   it.querySelector('pubDate')?.textContent || '',
+    }}));
+  }} catch {{ return []; }}
+}}
+
+async function fetchWithProxy(rssUrl, proxyFn) {{
+  const proxied = proxyFn(rssUrl);
+  const r = await fetch(proxied, {{ signal: AbortSignal.timeout(9000) }});
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const ct = r.headers.get('content-type') || '';
+  // allorigins / codetabs return JSON wrapper
+  if (ct.includes('json')) {{
+    const j = await r.json();
+    const xml = j.contents || j.data || '';
+    if (!xml) throw new Error('empty');
+    return parseXML(xml);
+  }}
+  // corsproxy returns raw XML/text
+  const txt = await r.text();
+  return parseXML(txt);
+}}
+
+async function fetchFeedAny(feed) {{
+  for (const proxy of PROXIES) {{
+    try {{
+      const items = await fetchWithProxy(feed.rss, proxy);
+      if (items.length) return {{ feed, items }};
+    }} catch {{ /* try next proxy */ }}
+  }}
+  return {{ feed, items: [] }};
+}}
+
+function renderCards(allArticles) {{
+  if (!allArticles.length) return '';
+  return allArticles.slice(0, 20).map(a => `
+    <div class="card" style="--ac:${{a.color}}">
+      <div class="src" style="color:${{a.color}}">${{esc(a.source)}}</div>
+      <div class="hl">${{esc(a.title).slice(0,120)}}</div>
+      <div class="foot">
+        <span class="ts">${{a.time}}</span>
+        ${{a.link ? `<a class="rd" href="${{a.link}}" target="_blank" rel="noopener">Read →</a>` : ''}}
+      </div>
+    </div>`).join('');
 }}
 
 async function main() {{
   const statusEl = document.getElementById('status');
   const gridEl   = document.getElementById('grid');
-  let allArticles = [];
-  let loaded = 0;
 
-  const results = await Promise.allSettled(feeds.map(fetchFeed));
-  results.forEach((r, i) => {{
-    if (r.status === 'fulfilled') {{
-      allArticles = allArticles.concat(r.value);
-      loaded++;
+  // Fetch all feeds concurrently — each tries 3 proxies internally
+  const results = await Promise.all(FEEDS.map(fetchFeedAny));
+
+  const allArticles = [];
+  let loadedCount = 0;
+  results.forEach(({{ feed, items }}) => {{
+    if (items.length) {{
+      loadedCount++;
+      items.forEach(it => allArticles.push({{
+        title:  it.title,
+        link:   it.link,
+        time:   ta(it.pub),
+        source: feed.name,
+        color:  feed.color,
+      }}));
     }}
   }});
 
   if (allArticles.length === 0) {{
-    statusEl.textContent = '';
-    gridEl.innerHTML = '<div class="err">Live feeds unavailable in this browser context. Use the source links below to read directly.</div>';
+    statusEl.innerHTML = '<span style="color:#ff8c42">⚠ All proxies blocked by this environment</span>';
+    const names = FEEDS.map(f => `<a href="https://${{f.name.toLowerCase().replace(/ /g,'')}}.com" target="_blank">${{f.name}}</a>`);
+    gridEl.innerHTML = `<div class="err">
+      Live RSS feeds could not be loaded. This is a browser security restriction in the embedded viewer.
+      <br><br>Click any source below to read directly:
+      <div class="srclinks">${{FEEDS.map(f=>`<a href="${{f.rss.replace('/rss.xml','').replace('/feed','').replace('/xml/rss/all.xml','').replace('/rss/all/','').split('/').slice(0,3).join('/')}}" target="_blank">${{f.name}}</a>`).join('')}}</div>
+    </div>`;
     return;
   }}
 
-  // sort by recency (articles with time come first)
-  statusEl.textContent = loaded + ' feed' + (loaded>1?'s':'') + ' loaded · ' + allArticles.length + ' articles';
-  gridEl.innerHTML = allArticles.slice(0, 20).map(a => `
-    <div class="card" style="--accent:${{a.color}}">
-      <div class="src" style="color:${{a.color}}">${{a.source}}</div>
-      <div class="headline">${{a.title.replace(/</g,'&lt;').replace(/>/g,'&gt;').slice(0,120)}}</div>
-      <div class="footer">
-        <span class="ts">${{a.time}}</span>
-        ${{a.link ? `<a class="read" href="${{a.link}}" target="_blank" rel="noopener">Read →</a>` : ''}}
-      </div>
-    </div>
-  `).join('');
+  statusEl.innerHTML = `<div class="dot" style="background:#00e676"></div>
+    <span>${{loadedCount}} feed${{loadedCount>1?'s':''}} · ${{allArticles.length}} articles</span>`;
+  gridEl.innerHTML = renderCards(allArticles);
 }}
 
-main().catch(e => {{
-  document.getElementById('status').textContent = 'Feed error: ' + e.message;
-}});
+main();
 </script>
 </body>
 </html>
