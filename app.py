@@ -1,12 +1,14 @@
 """
-OSINT ARENA v5
+OSINT ARENA v6
 ==============
-Fixes in v5:
-  1. MAP FIXED  — switched from mapbox:// (requires token) to carto-darkmatter (free, no key)
-  2. NEWS FIXED — GDELT Doc API (free JSON, no key) as primary; RSS as secondary; rich fallback
-  3. ISRAEL-IRAN WAR — full conflict dataset added
-  4. AUTO-REFRESH — streamlit-autorefresh (30s ticker, 5min data)
-  5. WEB-DEPENDENT — live GDELT GKG conflict news, live ACLED-style GDELT event stream
+Changes from v5:
+  - FIXED: YT_CAT_NAMES, CAT_TABS_NEWS, CAT_NAMES_ART were undefined → defined properly
+  - REMOVED: AI Provider sidebar section
+  - REMOVED: Analyst Profile sidebar section
+  - REMOVED: Training Arena tab
+  - REMOVED: AI Analyst tab
+  - REMOVED: AI Situation Report Generator from Conflict Dashboard
+  - REMOVED: call_ai() and all AI-related session state
 
 Run:
     pip install streamlit pydeck plotly pandas numpy requests streamlit-autorefresh
@@ -32,15 +34,15 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── Auto-refresh (optional) ──────────────────
+# ── Auto-refresh ─────────────────────────────
 try:
     from streamlit_autorefresh import st_autorefresh
-    st_autorefresh(interval=300_000, key="auto5min")   # refresh every 5 min
+    st_autorefresh(interval=300_000, key="auto5min")
 except ImportError:
-    pass   # works fine without it
+    pass
 
 # ─────────────────────────────────────────────
-# CSS  (unchanged from v4, condensed)
+# CSS
 # ─────────────────────────────────────────────
 st.markdown("""
 <style>
@@ -77,7 +79,6 @@ div[data-testid="stMetricLabel"]{font-family:var(--fb)!important;font-size:11px!
 .stError{background:rgba(255,61,90,.07)!important;border:1px solid rgba(255,61,90,.25)!important;color:var(--red)!important;border-radius:10px!important;font-size:13px!important;}
 .stInfo{background:rgba(0,200,255,.07)!important;border:1px solid rgba(0,200,255,.25)!important;color:var(--cyan)!important;border-radius:10px!important;font-size:13px!important;}
 hr{border:none!important;border-top:1px solid var(--bord2)!important;margin:18px 0!important;}
-/* COMPONENTS */
 .wordmark{font-family:var(--fd);font-size:30px;letter-spacing:.16em;line-height:1;color:var(--cyan);text-shadow:0 0 28px rgba(0,200,255,.45);}
 .wordmark em{color:var(--amber);font-style:normal;}
 .sec-label{font-family:var(--fb);font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px;margin-bottom:12px;}
@@ -120,8 +121,6 @@ hr{border:none!important;border-top:1px solid var(--bord2)!important;margin:18px
 .scale-wrap{display:flex;align-items:center;gap:8px;margin-top:8px;}
 .scale-track{flex:1;height:4px;background:var(--dim);border-radius:2px;overflow:hidden;}
 .scale-fill{height:100%;border-radius:2px;}
-.xp-track{height:5px;background:var(--dim);border-radius:3px;overflow:hidden;margin-top:6px;}
-.xp-fill{height:100%;background:linear-gradient(90deg,var(--violet),var(--cyan));border-radius:3px;}
 .m-panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:10px;}
 .m-label{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
 .m-val{font-family:var(--fd);font-size:36px;letter-spacing:.04em;line-height:1;margin-bottom:4px;}
@@ -131,17 +130,6 @@ hr{border:none!important;border-top:1px solid var(--bord2)!important;margin:18px
 .m-red{color:var(--red);text-shadow:0 0 20px rgba(255,61,90,.25);}
 .m-green{color:var(--green);text-shadow:0 0 20px rgba(0,230,118,.2);}
 .m-violet{color:var(--violet);text-shadow:0 0 20px rgba(157,110,255,.2);}
-.lb-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--bord2);transition:background .15s;}
-.lb-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;}
-.ch-card{background:var(--card);border:1px solid var(--border);border-radius:14px;margin-bottom:16px;overflow:hidden;}
-.ch-header{padding:12px 18px;border-bottom:1px solid var(--bord2);display:flex;align-items:center;justify-content:space-between;}
-.ch-title{font-family:var(--fd);font-size:16px;letter-spacing:.09em;color:var(--violet);}
-.ch-body{padding:16px 18px;}
-.ch-q{font-size:14px;color:var(--text);line-height:1.65;margin-bottom:14px;}
-.clue{display:flex;gap:8px;font-family:var(--fm);font-size:11px;color:var(--muted);margin-bottom:6px;line-height:1.5;}
-.clue span{color:var(--violet);flex-shrink:0;}
-
-/* NEWS CARDS */
 .news-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px;position:relative;overflow:hidden;transition:border-color .2s,transform .15s;}
 .news-card:hover{border-color:rgba(0,200,255,.25);transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,0,0,.3);}
 .news-card::after{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;}
@@ -152,7 +140,6 @@ hr{border:none!important;border-top:1px solid var(--bord2)!important;margin:18px
 .nc-climate::after{background:linear-gradient(180deg,#00e676,transparent);}
 .nc-space::after{background:linear-gradient(180deg,#ffb400,transparent);}
 .nc-default::after{background:linear-gradient(180deg,#4a6b85,transparent);}
-.news-source-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-family:var(--fm);font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;border:1px solid;}
 .news-headline{font-size:14px;font-weight:600;color:var(--text);line-height:1.45;margin:8px 0 6px;}
 .news-snippet{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:10px;}
 .news-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;}
@@ -161,13 +148,9 @@ hr{border:none!important;border-top:1px solid var(--bord2)!important;margin:18px
 .news-link:hover{background:rgba(0,200,255,.1);}
 .src-directory-card{background:var(--card);border:1px solid var(--bord2);border-radius:10px;padding:14px 16px;margin-bottom:10px;transition:border-color .2s;}
 .src-directory-card:hover{border-color:var(--border);}
-
-/* GLOBAL MAP HEADER */
 .map-top-bar{background:var(--panel);border:1px solid var(--border);border-radius:14px 14px 0 0;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;}
 .map-title-text{font-family:var(--fd);font-size:17px;letter-spacing:.14em;color:var(--cyan);text-shadow:0 0 16px rgba(0,200,255,.3);}
 .map-legend{display:flex;gap:16px;align-items:center;font-family:var(--fm);font-size:10px;color:var(--muted);flex-wrap:wrap;}
-.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-
 .ticker-wrap{background:var(--deep);border-top:1px solid var(--border);border-bottom:1px solid var(--bord2);overflow:hidden;padding:8px 0;}
 .ticker-inner{display:inline-block;white-space:nowrap;animation:ticker-scroll 90s linear infinite;font-family:var(--fm);font-size:11px;color:var(--muted);}
 @keyframes ticker-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
@@ -175,8 +158,6 @@ hr{border:none!important;border-top:1px solid var(--bord2)!important;margin:18px
 .t-hi{color:var(--text);}
 .t-red{color:var(--red);}
 .t-amb{color:var(--amber);}
-.ai-terminal{background:#010710;border:1px solid var(--border);border-radius:10px;padding:18px;font-family:var(--fm);font-size:13px;color:var(--text);line-height:1.75;white-space:pre-wrap;min-height:180px;}
-.ai-terminal::before{content:'▸ ANALYSIS OUTPUT';display:block;font-size:10px;letter-spacing:.2em;color:var(--muted);margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--bord2);}
 .helper{font-size:12px;color:var(--muted);line-height:1.6;padding:10px 14px;background:var(--dim);border-radius:8px;border-left:3px solid var(--bord2);margin-bottom:14px;}
 .helper b{color:var(--text2);font-style:normal;}
 .sb-div{height:1px;background:var(--bord2);margin:16px 0;}
@@ -193,8 +174,6 @@ hr{border:none!important;border-top:1px solid var(--bord2)!important;margin:18px
 # SESSION STATE
 # ─────────────────────────────────────────────
 for k, v in {
-    "score": 2840, "answered": {}, "ai_provider": "groq", "ai_key": "",
-    "ai_output": "", "conflict_sitrep": "",
     "selected_conflict": "Ukraine–Russia War",
     "last_refresh": 0,
 }.items():
@@ -204,12 +183,6 @@ for k, v in {
 # ─────────────────────────────────────────────
 # HELPERS
 # ─────────────────────────────────────────────
-def get_tier(s):
-    if s >= 10000: return "HANDLER","b-red","#ff3d5a"
-    if s >=  5000: return "AGENT","b-violet","#9d6eff"
-    if s >=  2000: return "ANALYST","b-cyan","#00c8ff"
-    return "RECRUIT","b-green","#00e676"
-
 def bg_chart():
     return dict(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
 
@@ -220,7 +193,6 @@ def ax(color="#4a6b85", grid="#0f2035", sz=10):
 # CONFLICT DATA
 # ─────────────────────────────────────────────
 CONFLICTS = {
-# ── Ukraine–Russia ──────────────────────────────────────────
 "Ukraine–Russia War": {
   "status":"ACTIVE","intensity":"CRITICAL","start":"2022-02-24","region":"Eastern Europe",
   "escalation":87,"ceasefire":False,"casualties_total":350000,"displaced":14200000,
@@ -258,9 +230,7 @@ CONFLICTS = {
     {"name":"Reuters","bias":"Centre","reliability":92},{"name":"BBC","bias":"Centre-Left","reliability":88},
     {"name":"RT","bias":"State/RU","reliability":28},{"name":"Kyiv Independent","bias":"Pro-UA","reliability":74},
   ],
-  "gdelt_query":"Ukraine Russia war",
 },
-# ── Gaza Conflict ────────────────────────────────────────────
 "Gaza Conflict": {
   "status":"ACTIVE","intensity":"CRITICAL","start":"2023-10-07","region":"Middle East",
   "escalation":92,"ceasefire":False,"casualties_total":46000,"displaced":1900000,
@@ -295,13 +265,11 @@ CONFLICTS = {
     {"name":"Al Jazeera","bias":"Pro-Palestinian","reliability":72},{"name":"Times of Israel","bias":"Pro-Israel","reliability":71},
     {"name":"Reuters","bias":"Centre","reliability":91},{"name":"Haaretz","bias":"Centre-Left","reliability":83},
   ],
-  "gdelt_query":"Gaza Israel Hamas war",
 },
-# ── Israel–Iran War ─────────────────────────────────────────
 "Israel–Iran War": {
   "status":"ACTIVE","intensity":"CRITICAL","start":"2024-04-13","region":"Middle East",
   "escalation":88,"ceasefire":False,"casualties_total":2800,"displaced":280000,
-  "description":"Direct military confrontation between Israel and Iran, escalating from decades of proxy conflict. Iran's April 2024 drone/missile barrage marked the first direct Iranian attack on Israeli soil. Israel struck Iranian nuclear and military sites in response. Hezbollah, IRGC proxies, and Houthi forces in Yemen form a multi-front pressure network. Risk of regional expansion remains high.",
+  "description":"Direct military confrontation between Israel and Iran, escalating from decades of proxy conflict. Iran's April 2024 drone/missile barrage marked the first direct Iranian attack on Israeli soil. Israel struck Iranian nuclear and military sites in response. Hezbollah, IRGC proxies, and Houthi forces in Yemen form a multi-front pressure network.",
   "factions":[
     {"name":"Israel Defense Forces","side":"IL","color":"#1a9fff","territory_pct":0,"strength":"High","weapons":["F-35I","Arrow-3","David's Sling","Jericho III ICBM"],"support":["USA","UK","Jordan (limited)"],"status":"Offensive"},
     {"name":"Islamic Republic of Iran (IRGC)","side":"IR","color":"#ff3d5a","territory_pct":0,"strength":"High","weapons":["Shahab-3","Fattah-2 hypersonic","Shahed-136","S-300 equivalent"],"support":["Russia","China (covert)","Hezbollah","Houthis"],"status":"Retaliatory"},
@@ -317,7 +285,7 @@ CONFLICTS = {
     {"type":"airstrike","title":"IDF destroys Fordow enrichment facility","loc":"Fordow, Iran","lat":34.88,"lon":49.93,"date":"2026-03-11","severity":"CRITICAL","casualties":62},
     {"type":"naval","title":"IRGC seizes commercial vessel in Strait of Hormuz","loc":"Strait of Hormuz","lat":26.56,"lon":56.26,"date":"2026-03-10","severity":"HIGH","casualties":0},
     {"type":"cyber","title":"Stuxnet-class malware hits Iranian power grid","loc":"Tehran, Iran","lat":35.69,"lon":51.39,"date":"2026-03-09","severity":"HIGH","casualties":0},
-    {"type":"airstrike","title":"Israel strikes Natanz nuclear site — centrifuges destroyed","loc":"Natanz, Iran","lat":33.72,"lon":51.73,"date":"2026-03-07","severity":"CRITICAL","casualties":28},
+    {"type":"airstrike","title":"Israel strikes Natanz nuclear site","loc":"Natanz, Iran","lat":33.72,"lon":51.73,"date":"2026-03-07","severity":"CRITICAL","casualties":28},
     {"type":"diplomatic","title":"UN Security Council convenes — US vetoes ceasefire resolution","loc":"New York","lat":40.75,"lon":-73.98,"date":"2026-03-08","severity":"INFO","casualties":0},
     {"type":"airstrike","title":"US B-2 strikes IRGC air defence network — Bushehr","loc":"Bushehr, Iran","lat":28.98,"lon":50.84,"date":"2026-03-06","severity":"CRITICAL","casualties":34},
   ],
@@ -350,9 +318,7 @@ CONFLICTS = {
     {"name":"Iranian Press TV","bias":"State/IR","reliability":21},
     {"name":"Jerusalem Post","bias":"Right/Israel","reliability":68},
   ],
-  "gdelt_query":"Israel Iran war strikes nuclear",
 },
-# ── Sudan Civil War ──────────────────────────────────────────
 "Sudan Civil War": {
   "status":"ACTIVE","intensity":"HIGH","start":"2023-04-15","region":"Sub-Saharan Africa",
   "escalation":74,"ceasefire":False,"casualties_total":15000,"displaced":8100000,
@@ -384,9 +350,7 @@ CONFLICTS = {
     {"name":"Sudan Tribune","bias":"Local","reliability":67},{"name":"Reuters","bias":"Centre","reliability":91},
     {"name":"BBC","bias":"Centre","reliability":86},{"name":"Al Jazeera","bias":"Centre-Left","reliability":75},
   ],
-  "gdelt_query":"Sudan RSF SAF war Darfur",
 },
-# ── Myanmar Civil War ────────────────────────────────────────
 "Myanmar Civil War": {
   "status":"ACTIVE","intensity":"HIGH","start":"2021-02-01","region":"Southeast Asia",
   "escalation":68,"ceasefire":False,"casualties_total":50000,"displaced":2600000,
@@ -416,7 +380,6 @@ CONFLICTS = {
     {"name":"Irrawaddy","bias":"Pro-Resistance","reliability":75},{"name":"Myanmar Now","bias":"Pro-Resistance","reliability":70},
     {"name":"Reuters","bias":"Centre","reliability":91},{"name":"Global New Light","bias":"State/Junta","reliability":22},
   ],
-  "gdelt_query":"Myanmar junta resistance war",
 },
 }
 
@@ -438,35 +401,6 @@ MOVEMENTS = [
     {"id":"mv7","type":"protest","title":"Cost-of-living rally","location":"London, UK","country":"GB","size":"25,000","sentiment":"MED","scale":50,"lat":51.51,"lon":-0.12,"age_h":14},
 ]
 
-CHALLENGES = [
-    {"id":"c1","pts":250,"difficulty":"ANALYST","color":"#00c8ff","title":"SEISMIC TRAIL",
-     "question":"A M6.1 earthquake struck northern Japan at 55km depth near the Pacific coast. What is the PRIMARY secondary hazard?",
-     "clues":["Depth <70km = shallow — strong surface shaking","Pacific Ring of Fire subduction zone","JMA issued Level 3 coastal alert"],
-     "options":["Volcanic co-eruption","Tsunami risk within 300km coastline","Inland liquefaction","Atmospheric pressure wave"],"correct":1,
-     "explain":"Shallow subduction-zone quakes near coastlines carry the highest tsunami risk. JMA auto-issues warnings for M6+ shallow Pacific events."},
-    {"id":"c2","pts":400,"difficulty":"AGENT","color":"#9d6eff","title":"CIVIL UNREST",
-     "question":"New Delhi protest: 200,000+ over 72h, rated CRITICAL. Which indicator MOST reliably signals imminent escalation?",
-     "clues":["ACLED: protests >72h have 3× higher escalation probability","Government: no dialogue initiated","Coordinated hashtags across 12 states"],
-     "options":["Aerial crowd-density photograph","Mobile data traffic spike inside the protest zone","Absence of counter-protests","Regional weather forecast"],"correct":1,
-     "explain":"Mobile network traffic anomalies reveal real-time C2 coordination — key ACLED escalation precursor (78% correlation)."},
-    {"id":"c3","pts":350,"difficulty":"ANALYST","color":"#ff3d5a","title":"CONFLICT INTEL",
-     "question":"Regarding the Israel-Iran conflict: Iran launched ~300 drones and missiles at Israel in April 2024. Approximately what percentage were intercepted?",
-     "clues":["Multi-layered air defence: Iron Dome, David's Sling, Arrow-3","Assisted interception by US, UK, Jordan, France","First direct Iranian attack on Israeli soil"],
-     "options":["~50% intercepted","~70% intercepted","~99% intercepted","~30% intercepted"],"correct":2,
-     "explain":"Approximately 99% of ~300 projectiles were intercepted by the combined layered defence of Israel, USA, UK, Jordan, and France — one of history's most successful interceptions."},
-    {"id":"c4","pts":500,"difficulty":"HANDLER","color":"#ffb400","title":"MULTI-SOURCE FUSION",
-     "question":"Correlating Israel-Iran escalation + Strait of Hormuz vessel seizures + oil market data: which cascading systemic risk is MOST likely?",
-     "clues":["Strait of Hormuz carries ~20% of global seaborne oil","Iran has repeatedly threatened closure of the Strait","Oil price spikes historically trigger inflation and recession"],
-     "options":["Global currency devaluation","Energy supply shock and inflationary cascade","Tech sector collapse","Global tourism collapse"],"correct":1,
-     "explain":"Energy supply disruption via Strait of Hormuz closure is the primary cascading risk. ~20% of global oil and 18% of LNG transits this chokepoint — an Iranian blockade would spike oil >$150/bbl within days."},
-]
-
-LEADERBOARD = [
-    ("vectorx","HANDLER",18450,"#ff3d5a"),("sigint_reaper","AGENT",16220,"#9d6eff"),
-    ("phantomhex","AGENT",14875,"#ffb400"),("n0de_k1ller","ANALYST",13100,"#ff8c42"),
-    ("ghost_proto","ANALYST",9800,"#3d5a75"),
-]
-
 # News sources registry
 NEWS_SOURCES = [
     {"name":"Reuters",       "cat":"global",       "color":"#ff8c42", "site":"reuters.com",        "desc":"Global wire service, 170+ countries",          "rss":"https://feeds.reuters.com/reuters/worldNews"},
@@ -486,6 +420,7 @@ NEWS_SOURCES = [
     {"name":"SpaceWeather",  "cat":"spaceweather", "color":"#4a148c", "site":"spaceweather.com",    "desc":"Solar activity, geomagnetic storms, aurora",   "rss":"https://spaceweather.com/index.xml"},
     {"name":"NOAA SWPC",     "cat":"spaceweather", "color":"#0d47a1", "site":"swpc.noaa.gov",       "desc":"NOAA Space Weather Prediction Center",         "rss":"https://www.swpc.noaa.gov/news/rss.xml"},
 ]
+
 NEWS_CAT_COLOR = {
     "global":"#ff8c42","science":"#00c8ff","geopolitics":"#9d6eff",
     "conflict":"#ff3d5a","climate":"#00e676","spaceweather":"#ffb400",
@@ -495,10 +430,104 @@ NEWS_CAT_CARD = {
     "conflict":"nc-conflict","climate":"nc-climate","spaceweather":"nc-space",
 }
 
+# ── News category helpers (previously undefined) ──────────────
+CAT_TABS_NEWS = ["ALL", "global", "geopolitics", "conflict", "science", "climate", "spaceweather"]
+CAT_NAMES_ART = {
+    "ALL":         "🌐 All",
+    "global":      "🌍 Global",
+    "geopolitics": "🏛 Geopolitics",
+    "conflict":    "⚔ Conflict",
+    "science":     "🔬 Science",
+    "climate":     "🌿 Climate",
+    "spaceweather":"🌌 Space Weather",
+}
+
+# ── HLS channel category name map (previously undefined) ──────
+HLS_CHANNELS = [
+    {"name":"Al Jazeera English","color":"#00873c","cat":"global",
+     "hls":"https://live-hls-web-aje.getaj.net/AJE/index.m3u8",
+     "web":"https://www.aljazeera.com/live",
+     "desc":"Qatar — 24/7 English, global coverage"},
+    {"name":"Al Jazeera Arabic","color":"#007a4d","cat":"global",
+     "hls":"https://live-hls-web-aja.getaj.net/AJA/index.m3u8",
+     "web":"https://www.aljazeera.net/live",
+     "desc":"الجزيرة — Arabic 24/7 stream"},
+    {"name":"DW News","color":"#003087","cat":"global",
+     "hls":"https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/index.m3u8",
+     "web":"https://www.dw.com/en/media-center/live-tv/l-150330",
+     "desc":"Deutsche Welle — German public broadcaster"},
+    {"name":"France 24 English","color":"#002395","cat":"global",
+     "hls":"https://static.france24.com/live/F24_EN_HI_HLS/live_tv.m3u8",
+     "web":"https://www.france24.com/en/live-news",
+     "desc":"French international broadcaster in English"},
+    {"name":"France 24 Arabic","color":"#4a9fd4","cat":"global",
+     "hls":"https://static.france24.com/live/F24_AR_HI_HLS/live_tv.m3u8",
+     "web":"https://www.france24.com/ar",
+     "desc":"France 24 عربي — 24/7 Arabic stream"},
+    {"name":"France 24 Français","color":"#1a5276","cat":"global",
+     "hls":"https://static.france24.com/live/F24_FR_HI_HLS/live_tv.m3u8",
+     "web":"https://www.france24.com/fr",
+     "desc":"France 24 en français — flux continu 24h"},
+    {"name":"Bloomberg TV","color":"#474747","cat":"global",
+     "hls":"https://bloomberg-bloombergtv-5-eu.plex.wurl.tv/playlist.m3u8",
+     "web":"https://www.bloomberg.com/live",
+     "desc":"Global markets, business, finance"},
+    {"name":"NHK World Japan","color":"#003087","cat":"global",
+     "hls":"https://nhkwlive-ojp.nhkworld.jp/hls/live/2003459/nhkwlive-ojp-en/index.m3u8",
+     "web":"https://www3.nhk.or.jp/nhkworld/en/live",
+     "desc":"Japan Broadcasting — English international"},
+    {"name":"CGTN English","color":"#c00","cat":"global",
+     "hls":"https://news.cgtn.com/resource/live/english/cgtn-news.m3u8",
+     "web":"https://www.cgtn.com/live",
+     "desc":"China Global Television Network"},
+    {"name":"CNN International","color":"#cc0000","cat":"global",
+     "hls":"https://ds2c506obo7m8.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-7zjq3tdqasbg8/index.m3u8",
+     "web":"https://edition.cnn.com/live-tv",
+     "desc":"CNN International 24/7 news stream"},
+    {"name":"ABC News Live","color":"#00008b","cat":"global",
+     "hls":"https://content.uplynk.com/channel/3324f2467c414329b3b0cc5cd987b6be.m3u8",
+     "web":"https://abcnews.go.com/live",
+     "desc":"ABC News USA — 24/7 live stream"},
+    {"name":"CBS News 24/7","color":"#00008b","cat":"global",
+     "hls":"https://cbsn-us.cbsnstream.cbsnews.com/out/v1/55a8648e8f134e82a470f83d562deeca/master.m3u8",
+     "web":"https://www.cbsnews.com/live",
+     "desc":"CBS News — continuous US news stream"},
+    {"name":"Sky News Australia","color":"#005a9c","cat":"conflict",
+     "hls":"https://cdn-apse1-prod.tsv2.amagi.tv/linear/amg00663-skynews-skynewsau-samsungau/playlist.m3u8",
+     "web":"https://www.skynews.com.au/live-channel",
+     "desc":"Sky News Australia — breaking & analysis"},
+    {"name":"Sky News (UK)","color":"#004f9f","cat":"conflict",
+     "hls":"https://d25w9q07b2mtmw.cloudfront.net/live/master.m3u8",
+     "web":"https://news.sky.com/watch-live",
+     "desc":"UK breaking news & international coverage"},
+    {"name":"TRT World","color":"#e30a17","cat":"conflict",
+     "hls":"https://trtcanlitv-lh.akamaihd.net/i/TRTWORLD_1@321783/master.m3u8",
+     "web":"https://www.trtworld.com/live",
+     "desc":"Turkish public broadcaster — global news"},
+    {"name":"Al Arabiya","color":"#b8860b","cat":"conflict",
+     "hls":"https://live.alarabiya.net/alarabiapublish/alarabiya.smil/playlist.m3u8",
+     "web":"https://www.alarabiya.net",
+     "desc":"Saudi-owned pan-Arab news channel"},
+    {"name":"NDTV 24x7","color":"#e31837","cat":"conflict",
+     "hls":"https://ndtv24x7elemarchana.akamaized.net/hls/live/2003678/ndtv24x7/ndtv24x7master.m3u8",
+     "web":"https://www.ndtv.com/live-tv",
+     "desc":"India — English news, international affairs"},
+    {"name":"NASA TV","color":"#0b3d91","cat":"science",
+     "hls":"https://nasa-i.akamaihd.net/hls/live/253565/NASA-NTV1-HLS/master.m3u8",
+     "web":"https://www.nasa.gov/nasatv",
+     "desc":"NASA — missions, spacewalks, Earth science"},
+]
+
+HLS_CAT_NAMES = {
+    "ALL":         "🌐 All",
+    "global":      "🌍 Global",
+    "conflict":    "⚔ Conflict",
+    "science":     "🔬 Science",
+}
+
 # ─────────────────────────────────────────────
 # LIVE DATA FETCHERS
 # ─────────────────────────────────────────────
-
 @st.cache_data(ttl=60, show_spinner=False)
 def fetch_usgs():
     try:
@@ -547,86 +576,6 @@ def fetch_kp():
     except:
         return {"kp": 3.7, "series": [1,2,1.5,2.3,3.1,3.7,2.8,2.1,1.8,2.5,3,3.7]*2}
 
-@st.cache_data(ttl=600, show_spinner=False)
-def fetch_gdelt_news(query: str, max_records: int = 10) -> list:
-    """
-    GDELT Doc 2.0 API — free, no key required.
-    Returns recent news articles matching the query.
-    """
-    try:
-        url = "https://api.gdeltproject.org/api/v2/doc/doc"
-        params = {
-            "query": query,
-            "mode": "artlist",
-            "maxrecords": max_records,
-            "format": "json",
-            "timespan": "24h",
-            "sort": "DateDesc",
-        }
-        r = requests.get(url, params=params, timeout=12)
-        r.raise_for_status()
-        articles = r.json().get("articles", [])
-        results = []
-        for a in articles:
-            # parse GDELT datetime format: YYYYMMDDHHMMSS
-            raw_dt = str(a.get("seendate",""))
-            try:
-                dt = datetime.strptime(raw_dt[:14], "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
-                age = datetime.now(tz=timezone.utc) - dt
-                age_s = f"{int(age.total_seconds()//3600)}h ago" if age.total_seconds()>3600 else f"{int(age.total_seconds()//60)}m ago"
-            except:
-                age_s = "recent"
-            results.append({
-                "title":  a.get("title","")[:120],
-                "url":    a.get("url",""),
-                "source": a.get("domain",""),
-                "time":   age_s,
-                "lang":   a.get("language",""),
-            })
-        return results
-    except:
-        return []
-
-@st.cache_data(ttl=600, show_spinner=False)
-def fetch_rss_safe(url: str, source: str, cat: str = "general") -> list:
-    """
-    Fetch and parse an RSS feed. Returns list of article dicts.
-    Falls back to empty list on any error.
-    """
-    try:
-        r = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0 (OSINTArena/5.0)"})
-        r.raise_for_status()
-        items = re.findall(r'<item>(.*?)</item>', r.text, re.DOTALL)
-        arts = []
-        for item in items[:6]:
-            def g(tag, txt):
-                m = re.search(rf'<{tag}[^>]*>(.*?)</{tag}>', txt, re.DOTALL | re.IGNORECASE)
-                if m:
-                    v = m.group(1).strip()
-                    v = re.sub(r'<!\[CDATA\[(.*?)\]\]>', r'\1', v, flags=re.DOTALL)
-                    return html_lib.unescape(re.sub(r'<[^>]+>', '', v)).strip()
-                return ""
-            title = g("title", item); desc = g("description", item)
-            link  = g("link",  item); pub  = g("pubDate", item)
-            try:
-                from email.utils import parsedate_to_datetime
-                dt = parsedate_to_datetime(pub)
-                age = datetime.now(tz=timezone.utc) - dt.astimezone(timezone.utc)
-                age_s = (f"{int(age.total_seconds()//3600)}h ago"
-                         if age.total_seconds() > 3600
-                         else f"{int(age.total_seconds()//60)}m ago")
-            except:
-                age_s = "recent"
-            if title and len(title) > 10:
-                arts.append({
-                    "source": source, "category": cat,
-                    "title": title[:120], "desc": (desc or "")[:220],
-                    "link": link, "time": age_s,
-                })
-        return arts
-    except:
-        return []
-
 def _sq():
     rng = np.random.default_rng(42)
     lats = rng.uniform(-55,70,30); lons = rng.uniform(-170,170,30)
@@ -647,9 +596,9 @@ def _se():
         {"title":"Texas Wildfires","cat":"Wildfires","date":"2026-03-12","lon":-101.0,"lat":32.5,"type":"eonet"},
     ])
 
-# ─────────────────────────────────────────────────────────────
-# MAP BUILDER  — FIX: uses carto-darkmatter (no Mapbox token)
-# ─────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────
+# MAP BUILDER
+# ─────────────────────────────────────────────
 CARTO_DARK = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
 
 def _sev_colors():
@@ -660,8 +609,6 @@ def _sev_colors():
 
 def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf, show_supply, show_heat):
     layers = []
-
-    # Seismic
     if show_seis and not eq_df.empty:
         ep = eq_df.copy()
         ep["color"] = ep["mag"].apply(lambda m:
@@ -672,8 +619,6 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
                                  get_radius="radius", get_fill_color="color",
                                  get_line_color=[255,255,255,30], line_width_min_pixels=1,
                                  pickable=True, auto_highlight=True))
-
-    # EONET
     if show_volc and not eonet_df.empty:
         eo = eonet_df.copy()
         eo["color"]  = [[255,110,40,200]]*len(eo)
@@ -682,8 +627,6 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
         layers.append(pdk.Layer("ScatterplotLayer", data=eo, get_position=["lon","lat"],
                                  get_radius="radius", get_fill_color="color",
                                  pickable=True, auto_highlight=True))
-
-    # Conflict incidents
     if show_conf:
         rows = []
         for cname, c in CONFLICTS.items():
@@ -699,8 +642,6 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
             layers.append(pdk.Layer("ScatterplotLayer", data=cdf, get_position=["lon","lat"],
                                      get_radius="radius", get_fill_color="color",
                                      pickable=True, auto_highlight=True))
-
-    # Civil movements
     if show_mvmt:
         mdf = pd.DataFrame(MOVEMENTS)
         mdf["color"]  = mdf["sentiment"].map({"CRIT":[200,60,255,200],"HIGH":[157,110,255,185],"MED":[120,80,220,165]})
@@ -710,8 +651,6 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
         layers.append(pdk.Layer("ScatterplotLayer", data=mdf, get_position=["lon","lat"],
                                  get_radius="radius", get_fill_color="color",
                                  pickable=True, auto_highlight=True))
-
-    # Supply arcs
     if show_supply:
         arc_rows = []
         for c in CONFLICTS.values():
@@ -730,15 +669,11 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
                                      get_target_position=["to_lon","to_lat"],
                                      get_source_color="color", get_target_color="color",
                                      get_width=2, pickable=True, auto_highlight=True))
-
-    # Heatmap
     if show_heat and not eq_df.empty:
         layers.append(pdk.Layer("HeatmapLayer",
                                  data=eq_df[["lat","lon","mag"]].rename(columns={"mag":"weight"}),
                                  get_position=["lon","lat"], get_weight="weight",
                                  radiusPixels=50, opacity=0.45))
-
-    # ── KEY FIX: carto-darkmatter requires NO token ──────────
     return pdk.Deck(
         layers=layers,
         initial_view_state=pdk.ViewState(latitude=22, longitude=18, zoom=1.4, pitch=0),
@@ -894,37 +829,6 @@ def media_bias_chart(sources):
     return f
 
 # ─────────────────────────────────────────────
-# AI CALLER
-# ─────────────────────────────────────────────
-def call_ai(prompt, provider, api_key):
-    if provider == "groq" and api_key:
-        try:
-            r = requests.post("https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization":f"Bearer {api_key}","Content-Type":"application/json"},
-                json={"model":"llama-3.1-8b-instant","max_tokens":400,
-                      "messages":[{"role":"system","content":"You are a concise OSINT intelligence analyst. Respond in plain text, no markdown, max 380 words."},
-                                   {"role":"user","content":prompt}]},timeout=15)
-            r.raise_for_status()
-            return r.json()["choices"][0]["message"]["content"]
-        except Exception as e: return f"[Groq error: {e}]"
-    if provider == "ollama":
-        try:
-            r = requests.post("http://localhost:11434/api/generate",
-                json={"model":"llama3","prompt":prompt,"stream":False},timeout=25)
-            return r.json().get("response","No response")
-        except Exception as e: return f"[Ollama error: {e}]"
-    if provider == "openrouter" and api_key:
-        try:
-            r = requests.post("https://openrouter.ai/api/v1/chat/completions",
-                headers={"Authorization":f"Bearer {api_key}","HTTP-Referer":"https://osint-arena.app","Content-Type":"application/json"},
-                json={"model":"meta-llama/llama-3.1-8b-instruct:free","max_tokens":400,
-                      "messages":[{"role":"user","content":prompt}]},timeout=16)
-            r.raise_for_status()
-            return r.json()["choices"][0]["message"]["content"]
-        except Exception as e: return f"[OpenRouter error: {e}]"
-    return "⚠  No AI provider configured. Select Groq, Ollama, or OpenRouter in the sidebar."
-
-# ─────────────────────────────────────────────
 # FETCH LIVE DATA
 # ─────────────────────────────────────────────
 eq_df    = fetch_usgs()
@@ -937,36 +841,7 @@ utc_now  = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d  %H:%M UTC")
 # ─────────────────────────────────────────────
 with st.sidebar:
     st.markdown('<div class="wordmark" style="margin-bottom:4px">OSINT<em>ARENA</em></div>', unsafe_allow_html=True)
-    st.markdown('<p style="font-size:10px;color:var(--muted);letter-spacing:.14em;font-weight:700;margin-bottom:16px">GLOBAL INTELLIGENCE PLATFORM v5</p>', unsafe_allow_html=True)
-
-    tn, tc, tcol = get_tier(st.session_state.score)
-    nt  = {"RECRUIT":2000,"ANALYST":5000,"AGENT":10000,"HANDLER":10000}[tn]
-    xpp = min(100, int(st.session_state.score/nt*100))
-    st.markdown(f"""
-    <div class="m-panel">
-      <div class="m-label">Analyst Profile</div>
-      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px">
-        <div class="m-val m-violet" style="font-size:28px">{st.session_state.score:,}</div>
-        <div class="badge {tc}">{tn}</div>
-      </div>
-      <div class="xp-track"><div class="xp-fill" style="width:{xpp}%"></div></div>
-      <div class="m-sub" style="margin-top:4px">{xpp}% → next tier at {nt:,} XP</div>
-    </div>""", unsafe_allow_html=True)
-
-    st.markdown('<div class="sb-div"></div>', unsafe_allow_html=True)
-    st.markdown("#### 🤖 AI Provider")
-    st.caption("Enables AI analysis and situation reports.")
-    prov = st.selectbox("AI Provider", ["groq","ollama","openrouter","none"], label_visibility="collapsed")
-    st.session_state.ai_provider = prov
-    if prov in ("groq","openrouter"):
-        st.session_state.ai_key = st.text_input("API Key", type="password",
-            placeholder="Paste your API key…", label_visibility="collapsed")
-        if prov == "groq":
-            st.caption("Free key at console.groq.com")
-        else:
-            st.caption("Free key at openrouter.ai")
-    elif prov == "ollama":
-        st.info("Ollama local: `ollama pull llama3 && ollama serve`")
+    st.markdown('<p style="font-size:10px;color:var(--muted);letter-spacing:.14em;font-weight:700;margin-bottom:16px">GLOBAL INTELLIGENCE PLATFORM v6</p>', unsafe_allow_html=True)
 
     st.markdown('<div class="sb-div"></div>', unsafe_allow_html=True)
     st.markdown("#### 🗺 Global Map Layers")
@@ -994,10 +869,6 @@ with st.sidebar:
       <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px">
         <span><span class="pulse p-cyan"></span>NOAA Kp-index</span>
         <span style="color:var(--muted);font-size:11px">Kp {kp_data['kp']:.1f}</span>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px">
-        <span><span class="pulse p-cyan"></span>GDELT News API</span>
-        <span style="color:var(--muted);font-size:11px">free / no key</span>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px">
         <span><span class="pulse p-red"></span>Conflict Theatres</span>
@@ -1038,23 +909,20 @@ st.markdown(f"""
   <span><span class="pulse p-{'red' if kp>=5 else 'amber'}"></span>Kp {kp:.1f}{'  ⚠ STORM WATCH' if kp>=5 else ''}</span>
 </div>""", unsafe_allow_html=True)
 
-# Metrics
-c1,c2,c3,c4,c5,c6 = st.columns(6)
+c1,c2,c3,c4,c5 = st.columns(5)
 with c1: st.metric("Active Conflicts",  active_conf,       delta="LIVE")
 with c2: st.metric("Total Casualties",  f"{total_cas:,}",  delta="All theatres")
 with c3: st.metric("Seismic (24h)",     len(eq_df),        delta=f"M5+: {len(m5p)}")
 with c4: st.metric("Civil Movements",   len(MOVEMENTS),    delta=f"Critical: {len(crit_mv)}")
 with c5: st.metric("Kp Index",          f"{kp:.1f}",       delta="Storm ≥5.0")
-with c6: st.metric("Analyst XP",        f"{st.session_state.score:,}", delta=tn)
 st.markdown("---")
 
-# ═══════════════════════════════════════════════════════════════
-# PERSISTENT GLOBAL MAP  (always visible, above all tabs)
-# ═══════════════════════════════════════════════════════════════
+# ─────────────────────────────────────────────
+# GLOBAL MAP
+# ─────────────────────────────────────────────
 total_inc     = sum(len(c["incidents"]) for c in CONFLICTS.values())
 crit_inc_cnt  = sum(1 for c in CONFLICTS.values() for i in c["incidents"] if i["severity"]=="CRITICAL")
 
-# Map header bar
 st.markdown(f"""
 <div class="map-top-bar">
   <div style="display:flex;align-items:center;gap:14px">
@@ -1077,7 +945,6 @@ st.markdown(f"""
   </div>
 </div>""", unsafe_allow_html=True)
 
-# Map container with border connecting header
 st.markdown('<div style="border:1px solid rgba(0,200,255,.12);border-top:none;border-radius:0 0 14px 14px;overflow:hidden;margin-bottom:20px">', unsafe_allow_html=True)
 st.pydeck_chart(
     build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf, show_supp, show_heat),
@@ -1096,15 +963,13 @@ st.markdown(f'<div class="ticker-wrap"><div class="ticker-inner">{ts}<span class
 st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
-# TABS
+# TABS  (removed Training Arena + AI Analyst)
 # ─────────────────────────────────────────────
-tab_conflict, tab_earth, tab_civil, tab_news, tab_arena, tab_ai = st.tabs([
+tab_conflict, tab_earth, tab_civil, tab_news = st.tabs([
     "⚔  Conflict Dashboard",
     "🌍  Earth Signals",
     "✊  Civil Movements",
     "📡  Live News",
-    "🎯  Training Arena",
-    "🤖  AI Analyst",
 ])
 
 # ══════════════════════════════════════════════════════════════
@@ -1113,15 +978,14 @@ tab_conflict, tab_earth, tab_civil, tab_news, tab_arena, tab_ai = st.tabs([
 with tab_conflict:
     st.markdown("""
     <div class="helper">
-      <b>Select a conflict theatre</b> below to explore its incident map, faction tracker, timeline,
-      supply lines, and media reliability. Use the <b>AI Sitrep Generator</b> at the bottom for live intelligence reports.
+      <b>Select a conflict theatre</b> below to explore its incident map, faction tracker,
+      timeline, supply lines, and media reliability.
     </div>""", unsafe_allow_html=True)
 
     theatre = st.radio("Select theatre:", list(CONFLICTS.keys()), horizontal=True, key="theatre_sel")
     st.session_state.selected_conflict = theatre
     C = CONFLICTS[theatre]
 
-    int_cls = {"CRITICAL":"m-red","HIGH":"m-orange","MED":"m-amber"}
     esc = C["escalation"]
     esc_col = "#ff3d5a" if esc>=80 else "#ff8c42" if esc>=60 else "#ffb400" if esc>=40 else "#00e676"
     esc_lbl = "CRITICAL" if esc>=80 else "HIGH" if esc>=60 else "ELEVATED" if esc>=40 else "LOW"
@@ -1138,9 +1002,8 @@ with tab_conflict:
       <div style="font-size:14px;color:var(--text2);line-height:1.7">{C['description']}</div>
     </div>""", unsafe_allow_html=True)
 
-    # ── Live news for this theatre (browser-side JS via rss2json) ──
+    # Live theatre news
     with st.expander(f"📰 Live News — {theatre}", expanded=True):
-        # Pick the 2 most relevant RSS sources for this conflict's region
         region_src_map = {
             "Ukraine–Russia War": ["Reuters","BBC World","ISW","Defense One"],
             "Gaza Conflict":      ["Al Jazeera","Reuters","BBC World","ISW"],
@@ -1164,30 +1027,23 @@ with tab_conflict:
 <!DOCTYPE html><html><head><meta charset="utf-8"><style>
 *{{margin:0;padding:0;box-sizing:border-box;}}
 body{{background:#02040a;font-family:'DM Sans',system-ui,sans-serif;color:#e2ecf8;padding:8px;}}
-#status{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a6b85;margin-bottom:10px;
-         display:flex;align-items:center;gap:6px;}}
-.dot{{width:5px;height:5px;border-radius:50%;background:#00c8ff;
-      animation:blink 1.2s ease-in-out infinite;flex-shrink:0;}}
+#status{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a6b85;margin-bottom:10px;display:flex;align-items:center;gap:6px;}}
+.dot{{width:5px;height:5px;border-radius:50%;background:#00c8ff;animation:blink 1.2s ease-in-out infinite;flex-shrink:0;}}
 @keyframes blink{{0%,100%{{opacity:1}}50%{{opacity:.2}}}}
 .grid{{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}}
 @media(max-width:700px){{.grid{{grid-template-columns:1fr 1fr;}}}}
 @media(max-width:450px){{.grid{{grid-template-columns:1fr;}}}}
-.card{{background:#0b1524;border:1px solid rgba(0,200,255,.1);border-radius:9px;
-       padding:12px 14px;border-left:3px solid {conflict_accent};transition:border-color .2s;}}
+.card{{background:#0b1524;border:1px solid rgba(0,200,255,.1);border-radius:9px;padding:12px 14px;border-left:3px solid {conflict_accent};transition:border-color .2s;}}
 .card:hover{{border-color:rgba(0,200,255,.28);}}
-.src{{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;
-      letter-spacing:.07em;text-transform:uppercase;color:#4a6b85;margin-bottom:5px;}}
+.src{{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#4a6b85;margin-bottom:5px;}}
 .hl{{font-size:12px;font-weight:600;color:#e2ecf8;line-height:1.4;margin-bottom:8px;}}
 .foot{{display:flex;align-items:center;justify-content:space-between;}}
 .ts{{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a6b85;}}
-a.r{{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#00c8ff;text-decoration:none;
-     padding:2px 8px;border:1px solid rgba(0,200,255,.25);border-radius:4px;}}
+a.r{{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#00c8ff;text-decoration:none;padding:2px 8px;border:1px solid rgba(0,200,255,.25);border-radius:4px;}}
 a.r:hover{{background:rgba(0,200,255,.1);}}
 .err{{color:#ff8c42;font-size:11px;font-family:'IBM Plex Mono',monospace;line-height:1.6;}}
 .srclinks{{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}}
-.srclinks a{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#00c8ff;
-             text-decoration:none;padding:3px 10px;
-             border:1px solid rgba(0,200,255,.25);border-radius:12px;}}
+.srclinks a{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#00c8ff;text-decoration:none;padding:3px 10px;border:1px solid rgba(0,200,255,.25);border-radius:12px;}}
 </style></head><body>
 <div id="status"><div class="dot"></div><span>Loading {theatre} news…</span></div>
 <div id="grid" class="grid"></div>
@@ -1215,7 +1071,7 @@ async function fetchFeed(f){{
     if(!r.ok)continue;
     const ct=r.headers.get('content-type')||'';
     let xml='';
-      if(ct.includes('json')){{const j=await r.json();xml=j.contents||j.data||'';}}
+    if(ct.includes('json')){{const j=await r.json();xml=j.contents||j.data||'';}}
     else xml=await r.text();
     const items=parseXML(xml);
     if(items.length)return{{f,items}};
@@ -1228,8 +1084,7 @@ async function main(){{
   const res=await Promise.all(FEEDS.map(fetchFeed));
   const arts=[];let n=0;
   res.forEach(({{f,items}})=>{{if(items.length){{n++;
-    items.forEach(it=>arts.push({{title:it.title,link:it.link,
-      time:ta(it.pub),src:f.name,col:f.color}}));}}
+    items.forEach(it=>arts.push({{title:it.title,link:it.link,time:ta(it.pub),src:f.name,col:f.color}}));}}
   }});
   if(!arts.length){{
     statusEl.innerHTML='<span style="color:#ff8c42">⚠ feeds blocked</span>';
@@ -1252,7 +1107,6 @@ main();
 
     st.markdown("---")
 
-    # Map + gauges
     map_c, esc_c, cas_c = st.columns([3,1,1], gap="medium")
     with map_c:
         st.markdown(f'<div class="sec-label">📍 Theatre Incident Map — {theatre}</div>', unsafe_allow_html=True)
@@ -1282,7 +1136,6 @@ main();
 
     st.markdown("---")
 
-    # Incidents + Factions
     inc_c, fac_c = st.columns([3,2], gap="medium")
     with inc_c:
         st.markdown('<div class="sec-label">📋 Incident Feed</div>', unsafe_allow_html=True)
@@ -1338,7 +1191,6 @@ main();
 
     st.markdown("---")
 
-    # Timeline + Supply + Media
     tl_c, side_c = st.columns([2,1], gap="medium")
     with tl_c:
         st.markdown('<div class="sec-label">📅 Conflict Timeline</div>', unsafe_allow_html=True)
@@ -1420,42 +1272,6 @@ main();
                       <div style="font-family:var(--fd);font-size:15px;color:{col}">{sc}</div>
                     </div>""", unsafe_allow_html=True)
 
-    st.markdown("---")
-
-    # AI Sitrep
-    st.markdown('<div class="sec-label">🤖 AI Situation Report Generator</div>', unsafe_allow_html=True)
-    sr1, sr2 = st.columns([1,1], gap="medium")
-    with sr1:
-        sitrep_type = st.selectbox("Report type:", [
-            "Executive Summary (3 paragraphs)",
-            "Escalation Risk Assessment",
-            "Humanitarian Impact Brief",
-            "Supply Chain & External Support Analysis",
-            "Media Bias & Information Environment",
-            "Ceasefire / Diplomatic Prospects",
-        ])
-        if st.button(f"⚡  Generate Sitrep — {theatre.split('–')[0].strip()}", use_container_width=True):
-            fac_s = "\n".join([f"  - {f['name']} ({f['side']}): {f['status']}, {f['territory_pct']}% territory, backed by {', '.join(f['support'])}" for f in C["factions"]])
-            inc_s = "\n".join([f"  - {i['date']} [{i['type']}]: {i['title']} ({i['severity']}, {i['casualties']} cas.)" for i in C["incidents"][:5]])
-            prompt = (f"Write a '{sitrep_type}' for the {theatre}.\n\n"
-                      f"DATA:\nStatus: {C['status']} | Intensity: {C['intensity']} | Escalation: {C['escalation']}/100\n"
-                      f"Casualties: {C['casualties_total']:,} | Displaced: {C['displaced']:,} | Ceasefire: {'Yes' if C['ceasefire'] else 'No'}\n\n"
-                      f"FACTIONS:\n{fac_s}\n\nRECENT INCIDENTS:\n{inc_s}\n\n"
-                      f"Plain text, professional intelligence style, no markdown, 250-380 words.")
-            with st.spinner("Generating intelligence report…"):
-                result = call_ai(prompt, st.session_state.ai_provider, st.session_state.ai_key)
-            st.session_state.conflict_sitrep = result
-    with sr2:
-        if st.session_state.conflict_sitrep:
-            st.markdown(f'<div class="ai-terminal">{st.session_state.conflict_sitrep}</div>', unsafe_allow_html=True)
-        else:
-            st.markdown(f"""
-            <div class="gcard" style="min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center">
-              <div style="font-size:28px">📄</div>
-              <div style="font-size:14px;color:var(--text2);font-weight:500">No report generated yet</div>
-              <div style="font-size:12px;color:var(--muted)">Select a report type and click Generate.</div>
-            </div>""", unsafe_allow_html=True)
-
 
 # ══════════════════════════════════════════════════════════════
 # TAB 2 — EARTH SIGNALS
@@ -1464,7 +1280,7 @@ with tab_earth:
     st.markdown("""
     <div class="helper">
       <b>Earth Signals</b> shows live USGS seismic data, NASA EONET volcanic/wildfire events,
-      and NOAA geomagnetic conditions. The global command map above already shows all layers.
+      and NOAA geomagnetic conditions. The global command map above shows all layers combined.
     </div>""", unsafe_allow_html=True)
 
     mc, rc = st.columns([3,1], gap="medium")
@@ -1579,106 +1395,22 @@ with tab_civil:
             </div>""", unsafe_allow_html=True)
 
 
-
 # ══════════════════════════════════════════════════════════════
-# TAB 4 — LIVE NEWS  +  LIVE TV STUDIO
+# TAB 4 — LIVE NEWS
 # ══════════════════════════════════════════════════════════════
 with tab_news:
-
-
-    # ── Verified HLS channel registry ──────────────────────
-    # URLs sourced from community-verified IPTV databases (iptv-org, Free-TV, LegalStream)
-    # All streams are publicly broadcast CDN endpoints — no auth needed.
-    HLS_CHANNELS = [
-        # ── Global / International ───────────────────────────
-        {"name":"Al Jazeera English","color":"#00873c","cat":"global",
-         "hls":"https://live-hls-web-aje.getaj.net/AJE/index.m3u8",
-         "web":"https://www.aljazeera.com/live",
-         "desc":"Qatar — 24/7 English, global coverage"},
-        {"name":"Al Jazeera Arabic","color":"#007a4d","cat":"global",
-         "hls":"https://live-hls-web-aja.getaj.net/AJA/index.m3u8",
-         "web":"https://www.aljazeera.net/live",
-         "desc":"الجزيرة — Arabic 24/7 stream"},
-        {"name":"DW News","color":"#003087","cat":"global",
-         "hls":"https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/index.m3u8",
-         "web":"https://www.dw.com/en/media-center/live-tv/l-150330",
-         "desc":"Deutsche Welle — German public broadcaster"},
-        {"name":"France 24 English","color":"#002395","cat":"global",
-         "hls":"https://static.france24.com/live/F24_EN_HI_HLS/live_tv.m3u8",
-         "web":"https://www.france24.com/en/live-news",
-         "desc":"French international broadcaster in English"},
-        {"name":"France 24 Arabic","color":"#4a9fd4","cat":"global",
-         "hls":"https://static.france24.com/live/F24_AR_HI_HLS/live_tv.m3u8",
-         "web":"https://www.france24.com/ar",
-         "desc":"France 24 عربي — 24/7 Arabic stream"},
-        {"name":"France 24 Français","color":"#1a5276","cat":"global",
-         "hls":"https://static.france24.com/live/F24_FR_HI_HLS/live_tv.m3u8",
-         "web":"https://www.france24.com/fr",
-         "desc":"France 24 en français — flux continu 24h"},
-        {"name":"Bloomberg TV","color":"#474747","cat":"global",
-         "hls":"https://bloomberg-bloombergtv-5-eu.plex.wurl.tv/playlist.m3u8",
-         "web":"https://www.bloomberg.com/live",
-         "desc":"Global markets, business, finance"},
-        {"name":"NHK World Japan","color":"#003087","cat":"global",
-         "hls":"https://nhkwlive-ojp.nhkworld.jp/hls/live/2003459/nhkwlive-ojp-en/index.m3u8",
-         "web":"https://www3.nhk.or.jp/nhkworld/en/live",
-         "desc":"Japan Broadcasting — English international"},
-        {"name":"CGTN English","color":"#c00","cat":"global",
-         "hls":"https://news.cgtn.com/resource/live/english/cgtn-news.m3u8",
-         "web":"https://www.cgtn.com/live",
-         "desc":"China Global Television Network"},
-        {"name":"CNN International","color":"#cc0000","cat":"global",
-         "hls":"https://ds2c506obo7m8.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-7zjq3tdqasbg8/index.m3u8",
-         "web":"https://edition.cnn.com/live-tv",
-         "desc":"CNN International 24/7 news stream"},
-        {"name":"ABC News Live","color":"#00008b","cat":"global",
-         "hls":"https://content.uplynk.com/channel/3324f2467c414329b3b0cc5cd987b6be.m3u8",
-         "web":"https://abcnews.go.com/live",
-         "desc":"ABC News USA — 24/7 live stream"},
-        {"name":"CBS News 24/7","color":"#00008b","cat":"global",
-         "hls":"https://cbsn-us.cbsnstream.cbsnews.com/out/v1/55a8648e8f134e82a470f83d562deeca/master.m3u8",
-         "web":"https://www.cbsnews.com/live",
-         "desc":"CBS News — continuous US news stream"},
-        {"name":"Sky News Australia","color":"#005a9c","cat":"conflict",
-         "hls":"https://cdn-apse1-prod.tsv2.amagi.tv/linear/amg00663-skynews-skynewsau-samsungau/playlist.m3u8",
-         "web":"https://www.skynews.com.au/live-channel",
-         "desc":"Sky News Australia — breaking & analysis"},
-        {"name":"Sky News (UK)","color":"#004f9f","cat":"conflict",
-         "hls":"https://d25w9q07b2mtmw.cloudfront.net/live/master.m3u8",
-         "web":"https://news.sky.com/watch-live",
-         "desc":"UK breaking news & international coverage"},
-        # ── Conflict / Middle East ───────────────────────────
-        {"name":"TRT World","color":"#e30a17","cat":"conflict",
-         "hls":"https://trtcanlitv-lh.akamaihd.net/i/TRTWORLD_1@321783/master.m3u8",
-         "web":"https://www.trtworld.com/live",
-         "desc":"Turkish public broadcaster — global news"},
-        {"name":"Al Arabiya","color":"#b8860b","cat":"conflict",
-         "hls":"https://live.alarabiya.net/alarabiapublish/alarabiya.smil/playlist.m3u8",
-         "web":"https://www.alarabiya.net",
-         "desc":"Saudi-owned pan-Arab news channel"},
-        {"name":"NDTV 24x7","color":"#e31837","cat":"conflict",
-         "hls":"https://ndtv24x7elemarchana.akamaized.net/hls/live/2003678/ndtv24x7/ndtv24x7master.m3u8",
-         "web":"https://www.ndtv.com/live-tv",
-         "desc":"India — English news, international affairs"},
-        # ── Science ──────────────────────────────────────────
-        {"name":"NASA TV","color":"#0b3d91","cat":"science",
-         "hls":"https://nasa-i.akamaihd.net/hls/live/253565/NASA-NTV1-HLS/master.m3u8",
-         "web":"https://www.nasa.gov/nasatv",
-         "desc":"NASA — missions, spacewalks, Earth science"},
-    ]
-
     sub_tv, sub_articles, sub_directory = st.tabs([
         "📺  Live TV Streams",
         "📰  Article Feeds",
         "📋  Source Directory",
     ])
 
-    # ── SUB-TAB A: LIVE TV (HLS via hls.js) ─────────────────
+    # ── SUB-TAB A: LIVE TV ───────────────────────────────────
     with sub_tv:
         hls_cats = list(dict.fromkeys([c["cat"] for c in HLS_CHANNELS]))
         hls_cat_sel = st.radio(
             "Filter:", ["ALL"] + hls_cats,
-            format_func=lambda x: YT_CAT_NAMES.get(x, x.title()),
+            format_func=lambda x: HLS_CAT_NAMES.get(x, x.title()),
             horizontal=True, label_visibility="collapsed",
         )
         vis_ch = [c for c in HLS_CHANNELS if hls_cat_sel=="ALL" or c["cat"]==hls_cat_sel]
@@ -1689,8 +1421,7 @@ with tab_news:
 *{{margin:0;padding:0;box-sizing:border-box;}}
 body{{background:#02040a;font-family:'DM Sans',system-ui,sans-serif;color:#e2ecf8;}}
 #cg{{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;padding:12px 12px 0;}}
-.cb{{background:#0b1524;border:1px solid rgba(0,200,255,.12);border-radius:8px;
-     padding:9px 11px;cursor:pointer;transition:all .18s;text-align:left;}}
+.cb{{background:#0b1524;border:1px solid rgba(0,200,255,.12);border-radius:8px;padding:9px 11px;cursor:pointer;transition:all .18s;text-align:left;}}
 .cb:hover{{border-color:rgba(0,200,255,.35);background:#0f1e35;}}
 .cb.active{{border-color:var(--col,#00c8ff);background:rgba(0,200,255,.07);box-shadow:0 0 12px rgba(0,200,255,.08);}}
 .cn{{font-size:12px;font-weight:600;color:#e2ecf8;line-height:1.3;margin-bottom:3px;}}
@@ -1728,7 +1459,6 @@ body{{background:#02040a;font-family:'DM Sans',system-ui,sans-serif;color:#e2ecf
 <script>
 const CH={ch_js};
 let cur=null,muted=true,hls=null,curWeb='';
-
 function renderGrid(){{
   document.getElementById('cg').innerHTML=CH.map((c,i)=>`
     <div class="cb" id="b${{i}}" style="--col:${{c.color}}" onclick="pick(${{i}})">
@@ -1736,12 +1466,10 @@ function renderGrid(){{
       <div class="cd">${{c.desc.slice(0,52)}}</div>
     </div>`).join('');
 }}
-
 function setSt(txt,cls){{
   document.getElementById('stxt').textContent=txt;
   document.getElementById('sdot').className='sdot '+cls;
 }}
-
 function pick(i){{
   cur=i;
   document.querySelectorAll('.cb').forEach((b,j)=>b.classList.toggle('active',j===i));
@@ -1771,7 +1499,6 @@ function pick(i){{
     setSt('● Live · '+c.name+' (Safari HLS)','ok');
   }}else{{setSt('HLS not supported — visit: '+c.web,'err');}}
 }}
-
 function doMute(){{
   const v=document.getElementById('vw');
   muted=!muted;v.muted=muted;
@@ -1783,25 +1510,23 @@ function doFS(){{
   if(!document.fullscreenElement)w.requestFullscreen?.();
   else document.exitFullscreen?.();
 }}
-
 renderGrid();pick(0);
 </script></body></html>"""
 
         components.html(tv_html, height=880, scrolling=False)
-        st.caption("Streams delivered via official channel CDNs (Akamai/CloudFront). Video starts muted — click 🔊 Unmute for audio. If a stream fails, try another channel.")
-
+        st.caption("Streams delivered via official channel CDNs. Video starts muted — click 🔊 Unmute for audio. If a stream fails, try another channel.")
 
     # ── SUB-TAB B: ARTICLE FEEDS ─────────────────────────────
     with sub_articles:
         cat_sel = st.radio(
             "Category:", CAT_TABS_NEWS,
-            format_func=lambda x: CAT_NAMES_ART.get(x,x),
+            format_func=lambda x: CAT_NAMES_ART.get(x, x),
             horizontal=True, label_visibility="collapsed",
         )
         vis_src = [s for s in NEWS_SOURCES if cat_sel=="ALL" or s["cat"]==cat_sel]
 
         st.markdown('<div class="sec-label">📡 Live Article Feed</div>', unsafe_allow_html=True)
-        st.caption("Fetched live in your browser — three CORS proxy fallbacks (allorigins → corsproxy → codetabs).")
+        st.caption("Fetched live in your browser via CORS proxy fallbacks.")
 
         feeds_js = json.dumps([
             {"name":s["name"],"rss":s["rss"],
@@ -1812,29 +1537,23 @@ renderGrid();pick(0);
         art_html = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>
 *{{margin:0;padding:0;box-sizing:border-box;}}
 body{{background:#02040a;font-family:'DM Sans',system-ui,sans-serif;color:#e2ecf8;padding:12px;}}
-#st{{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#4a6b85;margin-bottom:14px;
-      display:flex;align-items:center;gap:8px;min-height:18px;}}
+#st{{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#4a6b85;margin-bottom:14px;display:flex;align-items:center;gap:8px;min-height:18px;}}
 .dot{{width:6px;height:6px;border-radius:50%;background:#00c8ff;animation:bl 1.2s ease-in-out infinite;flex-shrink:0;}}
 @keyframes bl{{0%,100%{{opacity:1}}50%{{opacity:.2}}}}
 .g{{display:grid;grid-template-columns:1fr 1fr;gap:12px;}}
 @media(max-width:560px){{.g{{grid-template-columns:1fr;}}}}
-.c{{background:#0b1524;border:1px solid rgba(0,200,255,.12);border-radius:10px;
-     padding:14px 16px;position:relative;overflow:hidden;transition:border-color .18s,transform .15s;}}
+.c{{background:#0b1524;border:1px solid rgba(0,200,255,.12);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden;transition:border-color .18s,transform .15s;}}
 .c:hover{{border-color:rgba(0,200,255,.3);transform:translateY(-1px);}}
-.c::after{{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
-            background:linear-gradient(180deg,var(--ac,#00c8ff),transparent);}}
+.c::after{{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--ac,#00c8ff),transparent);}}
 .s{{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;margin-bottom:6px;}}
 .h{{font-size:13px;font-weight:600;color:#e2ecf8;line-height:1.45;margin-bottom:8px;}}
 .f{{display:flex;align-items:center;justify-content:space-between;}}
 .t{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a6b85;}}
-a.r{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#00c8ff;text-decoration:none;
-     padding:3px 10px;border:1px solid rgba(0,200,255,.28);border-radius:5px;white-space:nowrap;}}
+a.r{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#00c8ff;text-decoration:none;padding:3px 10px;border:1px solid rgba(0,200,255,.28);border-radius:5px;white-space:nowrap;}}
 a.r:hover{{background:rgba(0,200,255,.1);}}
-.err{{color:#ff8c42;font-family:'IBM Plex Mono',monospace;font-size:11px;padding:12px;
-       border:1px solid rgba(255,140,66,.25);border-radius:8px;background:rgba(255,140,66,.05);line-height:1.6;}}
+.err{{color:#ff8c42;font-family:'IBM Plex Mono',monospace;font-size:11px;padding:12px;border:1px solid rgba(255,140,66,.25);border-radius:8px;background:rgba(255,140,66,.05);line-height:1.6;}}
 .sl{{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}}
-.sl a{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#00c8ff;text-decoration:none;
-        padding:4px 12px;border:1px solid rgba(0,200,255,.25);border-radius:20px;}}
+.sl a{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#00c8ff;text-decoration:none;padding:4px 12px;border:1px solid rgba(0,200,255,.25);border-radius:20px;}}
 </style></head><body>
 <div id="st"><div class="dot"></div><span>Loading feeds…</span></div>
 <div id="g" class="g"></div>
@@ -1876,7 +1595,7 @@ async function main(){{
   res.forEach(({{f,items}})=>{{if(items.length){{n++;items.forEach(it=>arts.push({{ti:it.ti,li:it.li,tm:ta(it.pu),sr:f.name,co:f.color}}));}}}});
   if(!arts.length){{
     se.innerHTML='<span style="color:#ff8c42">All proxies blocked</span>';
-    ge.innerHTML='<div class="err">RSS feeds could not load in this browser context.<div class="sl">'+
+    ge.innerHTML='<div class="err">RSS feeds could not load.<div class="sl">'+
       F.map(f=>`<a href="https://${{f.rss.split('/').slice(0,3).join('/')}}" target="_blank">${{f.name}}</a>`).join('')+
       '</div></div>';return;}}
   se.innerHTML=`<div class="dot" style="background:#00e676"></div><span>${{n}} feed${{n>1?'s':''}} · ${{arts.length}} articles</span>`;
@@ -1907,8 +1626,7 @@ main();
                     <div class="badge" style="color:{col};border-color:{col}44;background:{col}15;font-size:8px">{ch['cat'].upper()}</div>
                   </div>
                   <div style="font-size:12px;color:var(--muted);margin-bottom:8px">{ch['desc']}</div>
-                  <a href="{ch['web']}" target="_blank"
-                     class="news-link" style="font-size:10px">Watch live →</a>
+                  <a href="{ch['web']}" target="_blank" class="news-link" style="font-size:10px">Watch live →</a>
                 </div>""", unsafe_allow_html=True)
 
         st.markdown("---")
@@ -1924,218 +1642,6 @@ main();
                     <div class="badge" style="color:{col};border-color:{col}44;background:{col}15;font-size:8px">{s['cat'].upper()}</div>
                   </div>
                   <div style="font-size:12px;color:var(--muted);margin-bottom:8px">{s.get('desc','')}</div>
-                  <a href="https://{s.get('site','#')}" target="_blank"
+                  <a href="https://{s.get('site',s['name'])}" target="_blank"
                      class="news-link" style="font-size:10px">Visit {s.get('site',s['name'])} →</a>
                 </div>""", unsafe_allow_html=True)
-
-
-# ══════════════════════════════════════════════════════════════
-# TAB 5 — TRAINING ARENA
-# ══════════════════════════════════════════════════════════════
-with tab_arena:
-    st.markdown("""
-    <div class="helper">
-      <b>Training Arena</b> tests OSINT analysis skills with real-world intelligence scenarios.
-      Correct answers earn XP and advance your analyst tier: Recruit → Analyst → Agent → Handler.
-    </div>""", unsafe_allow_html=True)
-
-    lc, cc2 = st.columns([1,2], gap="medium")
-    with lc:
-        st.markdown('<div class="sec-label">🏆 Leaderboard</div>', unsafe_allow_html=True)
-        avts = ["background:rgba(255,61,90,.15);color:#ff3d5a","background:rgba(157,110,255,.15);color:#9d6eff",
-                "background:rgba(255,180,0,.15);color:#ffb400","background:rgba(255,140,66,.15);color:#ff8c42",
-                "background:rgba(74,107,133,.15);color:#4a6b85"]
-        medals = ["🥇","🥈","🥉","④","⑤"]
-        for i,(name,tier,sc,col) in enumerate(LEADERBOARD):
-            st.markdown(f"""
-            <div class="lb-row">
-              <div style="font-size:16px;width:22px">{medals[i]}</div>
-              <div class="lb-avatar" style="{avts[i]}">{name[:2].upper()}</div>
-              <div style="flex:1">
-                <div class="sig-title" style="color:{col};font-size:13px">{name}</div>
-                <div class="sig-meta">{tier}</div>
-              </div>
-              <div style="font-family:var(--fd);font-size:18px;color:var(--green)">{sc:,}</div>
-            </div>""", unsafe_allow_html=True)
-
-        tn2,tc2,_ = get_tier(st.session_state.score)
-        st.markdown(f"""
-        <div style="margin:10px 4px 0">
-          <div class="lb-row" style="background:rgba(157,110,255,.05);border:1px solid rgba(157,110,255,.22);border-radius:10px;padding:12px 14px">
-            <div style="font-family:var(--fd);font-size:18px;color:var(--violet);width:32px">#142</div>
-            <div class="lb-avatar" style="background:rgba(0,200,255,.12);color:var(--cyan)">YOU</div>
-            <div style="flex:1">
-              <div class="sig-title" style="color:#9d6eff">you</div>
-              <div class="sig-meta">{tn2}</div>
-            </div>
-            <div style="font-family:var(--fd);font-size:18px;color:var(--green)">{st.session_state.score:,}</div>
-          </div>
-        </div>""", unsafe_allow_html=True)
-
-        st.markdown('<div class="sec-label" style="margin-top:16px">📈 Your Progress</div>', unsafe_allow_html=True)
-        ac  = len(st.session_state.answered)
-        cor = sum(1 for cid,a in st.session_state.answered.items()
-                   for c in CHALLENGES if c["id"]==cid and a==c["correct"])
-        acc_pct = int(cor/ac*100) if ac>0 else 0
-        st.markdown(f"""
-        <div class="m-panel">
-          <div style="display:flex;justify-content:space-around;margin-bottom:10px">
-            <div style="text-align:center">
-              <div class="m-label">Attempted</div>
-              <div class="m-val m-cyan" style="font-size:28px">{ac}/{len(CHALLENGES)}</div>
-            </div>
-            <div style="text-align:center">
-              <div class="m-label">Correct</div>
-              <div class="m-val m-green" style="font-size:28px">{cor}</div>
-            </div>
-            <div style="text-align:center">
-              <div class="m-label">Accuracy</div>
-              <div class="m-val m-violet" style="font-size:28px">{acc_pct}%</div>
-            </div>
-          </div>
-          <div class="xp-track"><div class="xp-fill" style="width:{int(cor/len(CHALLENGES)*100)}%"></div></div>
-        </div>""", unsafe_allow_html=True)
-
-    with cc2:
-        st.markdown('<div class="sec-label">🎯 Active Challenges</div>', unsafe_allow_html=True)
-        for ch in CHALLENGES:
-            done = ch["id"] in st.session_state.answered
-            clues_html = "".join(
-                f'<div class="clue"><span>▸</span>{c}</div>' for c in ch["clues"]
-            )
-            st.markdown(f"""
-            <div class="ch-card">
-              <div class="ch-header">
-                <div class="ch-title">{ch['title']}</div>
-                <div style="display:flex;gap:8px;align-items:center">
-                  <div class="badge" style="color:{ch['color']};border-color:{ch['color']}44;background:{ch['color']}14">{ch['difficulty']}</div>
-                  <div class="badge b-green">+{ch['pts']} XP</div>
-                  {'<div class="badge b-green">✓ Done</div>' if done else ''}
-                </div>
-              </div>
-              <div class="ch-body">
-                <div class="ch-q">{ch['question']}</div>
-                <div style="margin-bottom:12px">{clues_html}</div>
-              </div>
-            </div>""", unsafe_allow_html=True)
-
-            if not done:
-                sel = st.radio(f"Your answer:", ch["options"],
-                                index=None, key=f"r_{ch['id']}", label_visibility="visible")
-                if st.button("Submit answer →", key=f"b_{ch['id']}", disabled=(sel is None)):
-                    idx = ch["options"].index(sel)
-                    st.session_state.answered[ch["id"]] = idx
-                    if idx == ch["correct"]:
-                        st.session_state.score += ch["pts"]
-                    st.rerun()
-            else:
-                chosen = st.session_state.answered[ch["id"]]
-                if chosen == ch["correct"]:
-                    st.success(f"✓ Correct! +{ch['pts']} XP — {ch['explain']}")
-                else:
-                    st.error(f"✗ Incorrect (you chose: '{ch['options'][chosen]}') — {ch['explain']}")
-            st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-
-
-# ══════════════════════════════════════════════════════════════
-# TAB 6 — AI ANALYST
-# ══════════════════════════════════════════════════════════════
-with tab_ai:
-    st.markdown("""
-    <div class="helper">
-      <b>AI Analyst</b> queries an LLM with live data injected automatically — current earthquakes,
-      Kp index, all conflict escalation scores, and civil movement status.
-      Configure your provider in the sidebar first.
-    </div>""", unsafe_allow_html=True)
-
-    al, ar = st.columns([1,1], gap="medium")
-    with al:
-        ready = (st.session_state.ai_provider in ("groq","openrouter") and st.session_state.ai_key) \
-                or st.session_state.ai_provider == "ollama"
-        status_color = "var(--green)" if ready else "var(--amber)"
-        st.markdown(f"""
-        <div class="gcard" style="margin-bottom:16px">
-          <div style="display:flex;gap:14px;align-items:center">
-            <div>
-              <div class="m-label">Provider</div>
-              <div style="font-size:16px;font-weight:600;color:var(--cyan)">{st.session_state.ai_provider.upper()}</div>
-            </div>
-            <div>
-              <div class="m-label">Model</div>
-              <div style="font-family:var(--fm);font-size:12px;color:var(--text2)">llama-3.1-8b-instant</div>
-            </div>
-            <div style="margin-left:auto">
-              <div style="font-size:13px;font-weight:600;color:{status_color}">
-                {'● Ready' if ready else '○ No API key — configure in sidebar'}
-              </div>
-            </div>
-          </div>
-        </div>""", unsafe_allow_html=True)
-
-        tmpls = [
-            "— or type your own below —",
-            "Summarise the top 3 seismic risks right now",
-            "Assess escalation probability for the New Delhi farmers protest",
-            "Analyse the Israel-Iran war escalation trajectory",
-            "What does the elevated Kp index mean for satellite operators?",
-            "Compare risk levels across all 5 active conflict theatres",
-            "Humanitarian risk assessment for all active conflict zones",
-            "Assess Strait of Hormuz closure risk given current Israel-Iran situation",
-        ]
-        tmpl = st.selectbox("Quick-start prompts:", tmpls, label_visibility="visible")
-        prompt = st.text_area("Your query:", value="" if tmpl==tmpls[0] else tmpl, height=130,
-                               placeholder="Ask about current global events, seismic data, conflict status, or geopolitical risk…",
-                               label_visibility="visible")
-        inject = st.checkbox("Inject live data context (earthquakes, Kp, conflicts, movements)", value=True)
-
-        if st.button("⚡  Run Analysis", use_container_width=True, disabled=not prompt.strip()):
-            final = prompt
-            if inject:
-                top5 = eq_df.nlargest(5,"mag")[["mag","place","depth_km"]].to_dict("records")
-                conf_ctx = {n:{"escalation":c["escalation"],"intensity":c["intensity"],
-                                "casualties":c["casualties_total"],"ceasefire":c["ceasefire"]}
-                             for n,c in CONFLICTS.items()}
-                final += (f"\n\n[LIVE DATA — {utc_now}]\n"
-                          f"Top earthquakes: {json.dumps(top5)}\n"
-                          f"Kp: {kp_data['kp']}\n"
-                          f"Conflicts: {json.dumps(conf_ctx)}\n"
-                          f"Movements: {json.dumps([{k:m[k] for k in ('title','location','sentiment','size')} for m in MOVEMENTS])}")
-            with st.spinner("Analysing…"):
-                result = call_ai(final, st.session_state.ai_provider, st.session_state.ai_key)
-            st.session_state.ai_output = result
-
-        if st.session_state.ai_output:
-            st.markdown(f'<div class="ai-terminal">{st.session_state.ai_output}</div>', unsafe_allow_html=True)
-            if st.button("🗑  Clear"):
-                st.session_state.ai_output = ""; st.rerun()
-
-    with ar:
-        st.markdown('<div class="sec-label">📊 Live Charts</div>', unsafe_allow_html=True)
-        if not eq_df.empty:
-            st.markdown("**Seismic Breakdown (24h)**")
-            st.plotly_chart(mag_donut(eq_df),use_container_width=True,config={"displayModeBar":False})
-
-        st.markdown("**Civil Sentiment**")
-        snt = {"Critical":0,"High":0,"Medium":0}
-        for m in MOVEMENTS:
-            k = {"CRIT":"Critical","HIGH":"High","MED":"Medium"}[m["sentiment"]]
-            snt[k] += 1
-        fig_s = go.Figure(go.Bar(x=list(snt.keys()),y=list(snt.values()),
-                                  marker_color=["#ff3d5a","#ff8c42","#ffb400"],marker_line_width=0,opacity=.85))
-        fig_s.update_layout(height=150,margin=dict(l=0,r=0,t=10,b=0),**bg_chart(),xaxis=ax(),yaxis=ax())
-        st.plotly_chart(fig_s,use_container_width=True,config={"displayModeBar":False})
-
-        st.markdown("**Conflict Escalation Scores**")
-        cnames = [n.split("–")[0].split(" ")[0][:10] for n in CONFLICTS]
-        cescs  = [c["escalation"] for c in CONFLICTS.values()]
-        ccols  = ["#ff3d5a" if e>=80 else "#ff8c42" if e>=60 else "#ffb400" if e>=40 else "#00e676" for e in cescs]
-        fig_c = go.Figure(go.Bar(x=cnames,y=cescs,marker_color=ccols,marker_line_width=0,opacity=.85,
-                                  text=cescs,textposition="outside",textfont=dict(size=10,color="#e2ecf8")))
-        fig_c.update_layout(height=180,margin=dict(l=0,r=0,t=10,b=0),**bg_chart(),
-                             xaxis=ax(),yaxis=dict(**ax(),range=[0,110]))
-        st.plotly_chart(fig_c,use_container_width=True,config={"displayModeBar":False})
-
-        st.markdown("**Recent Earthquakes**")
-        st.dataframe(eq_df[["mag","place","depth_km","time"]].head(14).rename(
-            columns={"mag":"Mag","place":"Location","depth_km":"Depth km","time":"UTC"}),
-            use_container_width=True, height=200, hide_index=True)
