@@ -1660,144 +1660,202 @@ with tab_news:
           <b>YouTube Data API v3 key</b> below for automatic live-stream detection.
         </div>""", unsafe_allow_html=True)
 
-        yt_api_key = st.text_input(
-            "YouTube Data API v3 Key (optional)",
-            type="password",
-            placeholder="AIza… — get free key at console.cloud.google.com",
-            help="Free key at console.cloud.google.com → Enable YouTube Data API v3 → Create API Key",
-        )
 
-        yt_cats = list(dict.fromkeys([c["cat"] for c in YT_CHANNELS]))
-        yt_cat_sel = st.radio(
-            "Filter:", ["ALL"] + yt_cats,
+    # ── Channel registry — direct HLS streams (no YouTube embed needed) ──
+    # Official Akamai/CloudFront CDN streams. No embed restrictions.
+    HLS_CHANNELS = [
+        {"name":"Al Jazeera English","color":"#00873c","cat":"global",
+         "hls":"https://live-hls-web-aje.getaj.net/AJE/index.m3u8",
+         "web":"https://www.aljazeera.com/live",
+         "desc":"Qatar-based global news, 24/7 English"},
+        {"name":"DW News","color":"#003087","cat":"global",
+         "hls":"https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/stream01/streamPlaylist.m3u8",
+         "web":"https://www.dw.com/en/media-center/live-tv/l-150330",
+         "desc":"Deutsche Welle — German public broadcaster"},
+        {"name":"France 24 English","color":"#002395","cat":"global",
+         "hls":"https://live.france.tv/france-24-en/index.m3u8",
+         "web":"https://www.france24.com/en/live-news",
+         "desc":"French international broadcaster in English"},
+        {"name":"TRT World","color":"#e30a17","cat":"conflict",
+         "hls":"https://tv-trtworld.live.trt.com.tr/master.m3u8",
+         "web":"https://www.trtworld.com/live",
+         "desc":"Turkish public broadcaster — global news"},
+        {"name":"Euronews","color":"#006fbf","cat":"global",
+         "hls":"https://euronews-euronews-english-1-eu.rakuten.wurl.tv/playlist.m3u8",
+         "web":"https://www.euronews.com/live",
+         "desc":"Pan-European news in English"},
+        {"name":"NHK World","color":"#003087","cat":"global",
+         "hls":"https://cdn.nhkworld.jp/www11/nhkworld-tv/pre/hlscomp.m3u8",
+         "web":"https://www3.nhk.or.jp/nhkworld/en/live",
+         "desc":"Japan Broadcasting Corporation — English"},
+        {"name":"CGTN English","color":"#c00","cat":"global",
+         "hls":"https://news.cgtn.com/resource/live/english/cgtn-news.m3u8",
+         "web":"https://www.cgtn.com/live",
+         "desc":"China Global Television Network"},
+        {"name":"Al Arabiya","color":"#b8860b","cat":"conflict",
+         "hls":"https://live.alarabiya.net/alarabiapublish/alarabiya.smil/playlist.m3u8",
+         "web":"https://www.alarabiya.net",
+         "desc":"Saudi-owned pan-Arab news channel"},
+        {"name":"Al Jazeera Arabic","color":"#007a4d","cat":"conflict",
+         "hls":"https://live-hls-web-ajf.getaj.net/AJF/index.m3u8",
+         "web":"https://www.aljazeera.net/live",
+         "desc":"Al Jazeera العربية — Arabic stream"},
+        {"name":"NASA TV","color":"#0b3d91","cat":"science",
+         "hls":"https://nasa-i.akamaihd.net/hls/live/253565/NASA-NTV1-HLS/master.m3u8",
+         "web":"https://www.nasa.gov/nasatv",
+         "desc":"NASA — missions, Earth science, spacewalks"},
+        {"name":"ABC News Live","color":"#00008b","cat":"global",
+         "hls":"https://abcnewslive-abcnewslive.akamaized.net/hls/live/2028883/abcnewslive/master.m3u8",
+         "web":"https://abcnews.go.com/live",
+         "desc":"ABC News 24/7 live stream — USA"},
+        {"name":"Bloomberg TV","color":"#474747","cat":"global",
+         "hls":"https://cdn-videos.akamaized.net/btv/desktop/akamai/europe/live/primary.m3u8",
+         "web":"https://www.bloomberg.com/live",
+         "desc":"Global markets, business, finance"},
+        {"name":"VOA News","color":"#003478","cat":"global",
+         "hls":"https://voa-ingest.akamaized.net/hls/live/2033874/tvmc06/playlist.m3u8",
+         "web":"https://www.voanews.com",
+         "desc":"Voice of America — US international broadcaster"},
+        {"name":"France 24 Arabic","color":"#4a9fd4","cat":"conflict",
+         "hls":"https://live.france.tv/france-24-ar/index.m3u8",
+         "web":"https://www.france24.com/ar",
+         "desc":"France 24 عربي — 24/7 Arabic stream"},
+    ]
+
+    YT_CAT_NAMES = {
+        "ALL":"All Channels","global":"Global Wire",
+        "conflict":"Conflict / Middle East","science":"Science",
+    }
+    CAT_TABS_NEWS = ["ALL","global","science","geopolitics","conflict","climate","spaceweather"]
+    CAT_NAMES_ART = {
+        "ALL":"All Sources","global":"Global","science":"Science",
+        "geopolitics":"Geopolitics","conflict":"Conflict",
+        "climate":"Climate","spaceweather":"Space Weather",
+    }
+
+    sub_tv, sub_articles, sub_directory = st.tabs([
+        "📺  Live TV Streams",
+        "📰  Article Feeds",
+        "📋  Source Directory",
+    ])
+
+    # ── SUB-TAB A: LIVE TV (HLS via hls.js) ─────────────────
+    with sub_tv:
+        hls_cats = list(dict.fromkeys([c["cat"] for c in HLS_CHANNELS]))
+        hls_cat_sel = st.radio(
+            "Filter:", ["ALL"] + hls_cats,
             format_func=lambda x: YT_CAT_NAMES.get(x, x.title()),
             horizontal=True, label_visibility="collapsed",
         )
-        vis_ch = [c for c in YT_CHANNELS if yt_cat_sel == "ALL" or c["cat"] == yt_cat_sel]
+        vis_ch = [c for c in HLS_CHANNELS if hls_cat_sel=="ALL" or c["cat"]==hls_cat_sel]
+        ch_js  = json.dumps(vis_ch)
 
-        yt_js  = json.dumps([{"name":c["name"],"id":c["id"],"color":c["color"],
-                               "cat":c["cat"],"desc":c["desc"],"live_vid":c["live_vid"]}
-                              for c in vis_ch])
-        yt_key = json.dumps(yt_api_key or "")
-
-        tv_html = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+        tv_html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
 *{{margin:0;padding:0;box-sizing:border-box;}}
 body{{background:#02040a;font-family:'DM Sans',system-ui,sans-serif;color:#e2ecf8;}}
-#ch-grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px;padding:12px 12px 0;}}
-.ch-btn{{background:#0b1524;border:1px solid rgba(0,200,255,.12);border-radius:8px;
-          padding:10px 12px;cursor:pointer;transition:all .18s;text-align:left;}}
-.ch-btn:hover{{border-color:rgba(0,200,255,.35);background:#0f1e35;}}
-.ch-btn.active{{border-color:var(--col,#00c8ff);background:rgba(0,200,255,.06);}}
-.ch-name{{font-size:12px;font-weight:600;color:#e2ecf8;line-height:1.3;margin-bottom:3px;}}
-.ch-desc{{font-size:10px;color:#4a6b85;line-height:1.3;}}
-.dot-sm{{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:middle;}}
-#pw{{margin:10px 12px 0;background:#000;border-radius:10px;overflow:hidden;
-      border:1px solid rgba(0,200,255,.15);}}
-#pbar{{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;
-        background:#070e1a;border-bottom:1px solid rgba(0,200,255,.1);}}
-#np{{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#e2ecf8;
-      display:flex;align-items:center;gap:8px;}}
-.lpill{{background:#ff3d5a;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;
-         border-radius:20px;letter-spacing:.05em;animation:lp 2s ease-in-out infinite;}}
-@keyframes lp{{0%,100%{{opacity:1}}50%{{opacity:.55}}}}
-#pacts{{display:flex;gap:8px;}}
-.pb{{background:transparent;border:1px solid rgba(0,200,255,.2);color:#00c8ff;
-      font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 10px;
-      border-radius:5px;cursor:pointer;transition:background .15s;}}
-.pb:hover{{background:rgba(0,200,255,.1);}}
-#yf{{width:100%;aspect-ratio:16/9;border:none;display:block;}}
-#sbar{{padding:6px 14px;background:#060d18;font-family:'IBM Plex Mono',monospace;
-        font-size:10px;color:#4a6b85;border-top:1px solid rgba(0,200,255,.08);min-height:26px;}}
+#cg{{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;padding:12px 12px 0;}}
+.cb{{background:#0b1524;border:1px solid rgba(0,200,255,.12);border-radius:8px;
+     padding:9px 11px;cursor:pointer;transition:all .18s;text-align:left;}}
+.cb:hover{{border-color:rgba(0,200,255,.35);background:#0f1e35;}}
+.cb.active{{border-color:var(--col,#00c8ff);background:rgba(0,200,255,.07);box-shadow:0 0 12px rgba(0,200,255,.08);}}
+.cn{{font-size:12px;font-weight:600;color:#e2ecf8;line-height:1.3;margin-bottom:3px;}}
+.cd{{font-size:10px;color:#4a6b85;line-height:1.3;}}
+.ds{{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:middle;}}
+#pw{{margin:10px 12px 8px;background:#000;border-radius:10px;overflow:hidden;border:1px solid rgba(0,200,255,.15);}}
+#pb{{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:#070e1a;border-bottom:1px solid rgba(0,200,255,.1);}}
+#np{{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#e2ecf8;display:flex;align-items:center;gap:8px;}}
+.lp{{background:#ff3d5a;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.05em;animation:lpa 2s ease-in-out infinite;}}
+@keyframes lpa{{0%,100%{{opacity:1}}50%{{opacity:.55}}}}
+#pa{{display:flex;gap:8px;}}
+.pb2{{background:transparent;border:1px solid rgba(0,200,255,.2);color:#00c8ff;font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 10px;border-radius:5px;cursor:pointer;transition:background .15s;}}
+.pb2:hover{{background:rgba(0,200,255,.1);}}
+#vw{{width:100%;aspect-ratio:16/9;background:#000;display:block;}}
+#sb{{padding:6px 14px;background:#060d18;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a6b85;border-top:1px solid rgba(0,200,255,.08);min-height:26px;display:flex;align-items:center;gap:6px;}}
+.sdot{{width:5px;height:5px;border-radius:50%;flex-shrink:0;}}
+.ok{{background:#00e676;box-shadow:0 0 5px #00e676;}}
+.loading{{background:#ffb400;animation:lpa 1s ease-in-out infinite;}}
+.err{{background:#ff3d5a;}}
 </style></head><body>
-<div id="ch-grid"></div>
+<div id="cg"></div>
 <div id="pw">
-  <div id="pbar">
-    <div id="np"><span class="lpill">● LIVE</span><span id="pname">Select a channel</span></div>
-    <div id="pacts">
-      <button class="pb" onclick="doMute()">🔇 Mute</button>
-      <button class="pb" onclick="doYT()">↗ YouTube</button>
-      <button class="pb" onclick="doFS()">⛶ Fullscreen</button>
+  <div id="pb">
+    <div id="np"><span class="lp">● LIVE</span><span id="pname">Select a channel</span></div>
+    <div id="pa">
+      <button class="pb2" id="mbtn" onclick="doMute()">🔊 Unmute</button>
+      <button class="pb2" onclick="doWeb()">↗ Website</button>
+      <button class="pb2" onclick="doFS()">⛶ Fullscreen</button>
     </div>
   </div>
-  <iframe id="yf" src="about:blank"
-    allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-    allowfullscreen></iframe>
-  <div id="sbar">Ready — select a channel above</div>
+  <video id="vw" controls autoplay muted playsinline></video>
+  <div id="sb"><div class="sdot loading" id="sdot"></div><span id="stxt">Ready — select a channel above</span></div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js"></script>
 <script>
-const CH={yt_js};
-const AK={yt_key};
-let cur=null,muted=false,curYTUrl='';
+const CH={ch_js};
+let cur=null,muted=true,hls=null,curWeb='';
 
 function renderGrid(){{
-  document.getElementById('ch-grid').innerHTML=CH.map((c,i)=>`
-    <div class="ch-btn" id="b${{i}}" style="--col:${{c.color}}" onclick="pick(${{i}})">
-      <div class="ch-name"><span class="dot-sm" style="background:${{c.color}}"></span>${{c.name}}</div>
-      <div class="ch-desc">${{c.desc.slice(0,52)}}</div>
+  document.getElementById('cg').innerHTML=CH.map((c,i)=>`
+    <div class="cb" id="b${{i}}" style="--col:${{c.color}}" onclick="pick(${{i}})">
+      <div class="cn"><span class="ds" style="background:${{c.color}}"></span>${{c.name}}</div>
+      <div class="cd">${{c.desc.slice(0,52)}}</div>
     </div>`).join('');
 }}
 
-async function getLive(cid){{
-  if(!AK)return null;
-  try{{
-    const u=`https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${{cid}}&eventType=live&type=video&key=${{AK}}&maxResults=1`;
-    const r=await fetch(u,{{signal:AbortSignal.timeout(6000)}});
-    if(!r.ok)return null;
-    const j=await r.json();
-    return j.items?.[0]?.id?.videoId||null;
-  }}catch{{return null;}}
+function setSt(txt,cls){{
+  document.getElementById('stxt').textContent=txt;
+  document.getElementById('sdot').className='sdot '+cls;
 }}
 
-async function pick(i){{
+function pick(i){{
   cur=i;
-  document.querySelectorAll('.ch-btn').forEach((b,j)=>b.classList.toggle('active',j===i));
-  const c=CH[i];
+  document.querySelectorAll('.cb').forEach((b,j)=>b.classList.toggle('active',j===i));
+  const c=CH[i]; curWeb=c.web;
   document.getElementById('pname').textContent=c.name;
-  document.getElementById('sbar').textContent='Loading '+c.name+'...';
-  curYTUrl='https://www.youtube.com/channel/'+c.id;
-
-  // Priority: 1) YouTube API live search  2) hardcoded live_vid
-  let vid=await getLive(c.id);
-  if(!vid) vid=c.live_vid;
-
-  const params='autoplay=1&rel=0&modestbranding=1&playsinline=1'+(muted?'&mute=1':'');
-  document.getElementById('yf').src=`https://www.youtube.com/embed/${{vid}}?${{params}}`;
-  document.getElementById('sbar').textContent=
-    (await getLive(c.id)===vid&&AK)
-      ?`● LIVE · ${{c.name}} · detected via API`
-      :`● Stream · ${{c.name}}${{AK?' (API: no live active, showing broadcast)':' (hardcoded stream ID)'}}`;
+  setSt('Connecting to '+c.name+'...','loading');
+  const v=document.getElementById('vw');
+  if(hls){{hls.destroy();hls=null;}}
+  if(Hls.isSupported()){{
+    hls=new Hls({{enableWorker:true,lowLatencyMode:true,backBufferLength:30}});
+    hls.loadSource(c.hls);
+    hls.attachMedia(v);
+    hls.on(Hls.Events.MANIFEST_PARSED,()=>{{
+      v.muted=muted;
+      v.play().catch(()=>{{v.muted=true;muted=true;document.getElementById('mbtn').textContent='🔊 Unmute';v.play();}});
+      setSt('● Live · '+c.name+(muted?' · click 🔊 Unmute for audio':''),'ok');
+    }});
+    hls.on(Hls.Events.ERROR,(e,d)=>{{
+      if(d.fatal){{
+        if(d.type===Hls.ErrorTypes.NETWORK_ERROR){{setSt('Network error — retrying...','loading');hls.startLoad();}}
+        else if(d.type===Hls.ErrorTypes.MEDIA_ERROR){{setSt('Media error — recovering...','loading');hls.recoverMediaError();}}
+        else{{setSt('Stream unavailable — try another channel','err');}}
+      }}
+    }});
+  }}else if(v.canPlayType('application/vnd.apple.mpegurl')){{
+    v.src=c.hls;v.muted=muted;v.play().catch(()=>{{v.muted=true;v.play();}});
+    setSt('● Live · '+c.name+' (Safari HLS)','ok');
+  }}else{{setSt('HLS not supported — visit: '+c.web,'err');}}
 }}
 
 function doMute(){{
-  muted=!muted;
-  document.querySelector('.pb').textContent=muted?'🔊 Unmute':'🔇 Mute';
-  if(cur!==null)pick(cur);
+  const v=document.getElementById('vw');
+  muted=!muted;v.muted=muted;
+  document.getElementById('mbtn').textContent=muted?'🔊 Unmute':'🔇 Mute';
 }}
-function doYT(){{if(curYTUrl)window.open(curYTUrl,'_blank');}}
+function doWeb(){{if(curWeb)window.open(curWeb,'_blank');}}
 function doFS(){{
   const w=document.getElementById('pw');
   if(!document.fullscreenElement)w.requestFullscreen?.();
   else document.exitFullscreen?.();
 }}
 
-renderGrid();
-pick(0);
+renderGrid();pick(0);
 </script></body></html>"""
 
-        components.html(tv_html, height=860, scrolling=False)
+        components.html(tv_html, height=880, scrolling=False)
+        st.caption("Streams delivered via official channel CDNs (Akamai/CloudFront). Video starts muted — click 🔊 Unmute for audio. If a stream fails, try another channel.")
 
-        with st.expander("📖 How to get a free YouTube Data API key", expanded=False):
-            st.markdown("""
-**3-step setup (free, takes 2 minutes):**
-
-1. Go to **[console.cloud.google.com](https://console.cloud.google.com)**
-2. Create a project → **APIs & Services** → **Enable APIs** → search **YouTube Data API v3** → Enable
-3. **Credentials** → **Create Credentials** → **API Key** → paste above
-
-**Free quota:** 10,000 units/day. Each channel live-check costs ~100 units — enough for 100 channel switches/day.
-
-**Without a key:** The player uses YouTube's `/live` channel URL directly. Most live channels work fine this way, but occasional fallback to recent videos may occur.
-""")
 
     # ── SUB-TAB B: ARTICLE FEEDS ─────────────────────────────
     with sub_articles:
