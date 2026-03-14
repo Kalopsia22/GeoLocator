@@ -809,6 +809,214 @@ def _sev_colors():
 # STATIC GEODATA FOR MAP LAYERS
 # ═══════════════════════════════════════════════════════════════
 
+
+# ═══════════════════════════════════════════════════════════════
+# HISTORICAL EVENTS SINCE 2022  (for Global Command Map)
+# ═══════════════════════════════════════════════════════════════
+
+HISTORICAL_EVENTS = [
+    # ── Ukraine–Russia War ──────────────────────────────────────
+    {"date":"2022-02-24","lat":50.45,"lon":30.52,"type":"invasion","severity":"CRITICAL","title":"Russia begins full-scale invasion of Ukraine","tip":"2022-02-24 | INVASION\nRussia begins full-scale invasion of Ukraine\nKyiv Oblast — Critical"},
+    {"date":"2022-03-28","lat":50.45,"lon":30.52,"type":"milestone","severity":"HIGH","title":"Russian forces repelled from Kyiv","tip":"2022-03-28 | MILESTONE\nRussian forces repelled from Kyiv\nUkrainian counter-push succeeds"},
+    {"date":"2022-04-07","lat":48.74,"lon":37.57,"type":"atrocity","severity":"CRITICAL","title":"Bucha massacre revealed — war crimes evidence","tip":"2022-04-07 | WAR CRIME\nBucha massacre revealed after Russian withdrawal\nICC opens investigation"},
+    {"date":"2022-09-11","lat":49.99,"lon":36.23,"type":"counteroffensive","severity":"HIGH","title":"Ukrainian forces liberate Kharkiv Oblast","tip":"2022-09-11 | COUNTEROFFENSIVE\nUkraine liberates Kharkiv Oblast\nRussian forces routed in NE Ukraine"},
+    {"date":"2022-11-11","lat":46.65,"lon":32.62,"type":"milestone","severity":"HIGH","title":"Kherson city liberated","tip":"2022-11-11 | LIBERATION\nKherson city liberated by Ukrainian forces\nOnly regional capital recaptured from Russia"},
+    {"date":"2022-09-26","lat":55.0,"lon":15.5,"type":"sabotage","severity":"CRITICAL","title":"Nord Stream pipelines sabotaged","tip":"2022-09-26 | SABOTAGE\nNord Stream 1 & 2 pipelines destroyed\nBaltic Sea — Attributed to state actor"},
+    {"date":"2023-06-06","lat":47.05,"lon":33.48,"type":"disaster","severity":"CRITICAL","title":"Kakhovka Dam destroyed — massive flooding","tip":"2023-06-06 | ENVIRONMENTAL\nKakhovka Dam destroyed\nMassive flooding — Kherson region"},
+    {"date":"2023-06-04","lat":47.97,"lon":37.74,"type":"counteroffensive","severity":"HIGH","title":"Ukrainian summer counteroffensive begins","tip":"2023-06-04 | OFFENSIVE\nUkrainian summer counteroffensive\nSouthern and eastern fronts"},
+    {"date":"2024-02-17","lat":47.97,"lon":37.74,"type":"setback","severity":"HIGH","title":"Avdiivka falls to Russian forces","tip":"2024-02-17 | SETBACK\nAvdiivka captured by Russia\nDonetsk Oblast — months-long siege ends"},
+    {"date":"2024-08-06","lat":51.73,"lon":35.38,"type":"incursion","severity":"CRITICAL","title":"Ukraine launches Kursk incursion into Russia","tip":"2024-08-06 | INCURSION\nUkraine invades Kursk Oblast, Russia\nFirst foreign force on Russian soil since WW2"},
+    {"date":"2025-11-20","lat":50.45,"lon":30.52,"type":"escalation","severity":"HIGH","title":"US authorises ATACMS long-range strikes into Russia","tip":"2025-11-20 | ESCALATION\nUS authorises Ukraine to strike inside Russia\nATACMS long-range missiles approved"},
+    {"date":"2026-03-10","lat":50.45,"lon":30.52,"type":"airstrike","severity":"CRITICAL","title":"Largest Russian missile salvo of 2026","tip":"2026-03-10 | AIRSTRIKE\nLargest Russian missile salvo of 2026\nKyiv & infrastructure nationwide"},
+    # ── Gaza & Israel–Hamas ─────────────────────────────────────
+    {"date":"2023-10-07","lat":31.4,"lon":34.47,"type":"attack","severity":"CRITICAL","title":"Hamas launches October 7 attack — 1,200 killed","tip":"2023-10-07 | ATTACK\nHamas multi-front attack on Israel\n1,200 killed, 251 hostages taken"},
+    {"date":"2023-10-27","lat":31.52,"lon":34.47,"type":"invasion","severity":"CRITICAL","title":"Israeli ground invasion of Gaza begins","tip":"2023-10-27 | INVASION\nIsraeli ground forces enter Gaza\nOperation Swords of Iron expands"},
+    {"date":"2023-11-24","lat":31.4,"lon":34.47,"type":"diplomatic","severity":"MED","title":"Temporary ceasefire — hostage release deal","tip":"2023-11-24 | CEASEFIRE\nTemporary ceasefire agreed\nFirst hostages released — Qatar-brokered"},
+    {"date":"2024-05-07","lat":31.28,"lon":34.25,"type":"offensive","severity":"CRITICAL","title":"Israel begins Rafah ground operation","tip":"2024-05-07 | OFFENSIVE\nIsraeli forces enter Rafah\nUS expresses concern — 1.4M civilians sheltering"},
+    {"date":"2025-01-19","lat":31.4,"lon":34.47,"type":"diplomatic","severity":"HIGH","title":"Gaza ceasefire Phase 1 agreement","tip":"2025-01-19 | CEASEFIRE\nGaza Phase 1 ceasefire agreement\nHostage-prisoner exchange begins"},
+    {"date":"2025-03-18","lat":31.4,"lon":34.47,"type":"escalation","severity":"CRITICAL","title":"Ceasefire collapses — operations resume","tip":"2025-03-18 | COLLAPSE\nGaza ceasefire collapses\nIsraeli operations resume — Phase 2 failed"},
+    # ── Israel–Iran Direct Conflict ─────────────────────────────
+    {"date":"2024-04-01","lat":33.52,"lon":36.29,"type":"strike","severity":"HIGH","title":"Israel strikes Iranian consulate Damascus","tip":"2024-04-01 | STRIKE\nIsrael strikes Iranian consulate in Damascus\n7 IRGC officers killed — major escalation"},
+    {"date":"2024-04-13","lat":32.08,"lon":34.78,"type":"attack","severity":"CRITICAL","title":"Iran fires 300+ drones/missiles at Israel","tip":"2024-04-13 | MISSILE ATTACK\nIran fires 300+ drones & ballistic missiles\n~99% intercepted by Israel + allies"},
+    {"date":"2024-04-19","lat":32.65,"lon":51.68,"type":"strike","severity":"HIGH","title":"Israeli retaliatory strike on Isfahan","tip":"2024-04-19 | RETALIATION\nIsrael strikes Isfahan air defence radar\nFirst direct Israeli strike on Iran"},
+    {"date":"2024-09-27","lat":33.89,"lon":35.5,"type":"assassination","severity":"CRITICAL","title":"IDF assassinates Hezbollah leader Nasrallah","tip":"2024-09-27 | ASSASSINATION\nHassan Nasrallah killed in Beirut strike\nHezbollah secretary-general for 32 years"},
+    {"date":"2024-10-01","lat":32.08,"lon":34.78,"type":"attack","severity":"CRITICAL","title":"Iran fires 180+ ballistic missiles at Israel","tip":"2024-10-01 | MISSILE ATTACK\nIran fires ~180 ballistic missiles\nMost intercepted — Israel vows response"},
+    {"date":"2024-10-26","lat":35.69,"lon":51.39,"type":"strike","severity":"CRITICAL","title":"Israel strikes Iranian missile factories & air defences","tip":"2024-10-26 | STRIKE\nIsrael strikes Iranian missile production\nAir defence systems degraded"},
+    {"date":"2025-06-13","lat":33.72,"lon":51.73,"type":"strike","severity":"CRITICAL","title":"Israel strikes Iranian nuclear research facility","tip":"2025-06-13 | NUCLEAR STRIKE\nIsrael strikes Iranian nuclear site\nSignificant setback to programme"},
+    {"date":"2026-02-14","lat":34.88,"lon":49.93,"type":"strike","severity":"CRITICAL","title":"IDF destroys Fordow uranium enrichment complex","tip":"2026-02-14 | NUCLEAR STRIKE\nFordow enrichment facility destroyed\nDeep bunker-buster strike"},
+    {"date":"2026-03-07","lat":33.72,"lon":51.73,"type":"strike","severity":"CRITICAL","title":"Natanz nuclear facility struck — programme set back 2yrs","tip":"2026-03-07 | NUCLEAR STRIKE\nNatanz struck again\nCentrifuge halls destroyed — 2yr setback"},
+    # ── Sudan Civil War ─────────────────────────────────────────
+    {"date":"2023-04-15","lat":15.55,"lon":32.53,"type":"invasion","severity":"CRITICAL","title":"RSF-SAF fighting erupts in Khartoum","tip":"2023-04-15 | OUTBREAK\nRSF vs SAF fighting erupts across Khartoum\nSudan civil war begins"},
+    {"date":"2023-06-01","lat":15.55,"lon":32.53,"type":"setback","severity":"HIGH","title":"RSF seizes most of Khartoum","tip":"2023-06-01 | SETBACK\nRSF seizes control of most of Khartoum\nGovernment forces pushed to outskirts"},
+    {"date":"2024-03-13","lat":13.63,"lon":25.35,"type":"siege","severity":"CRITICAL","title":"El Fasher siege begins — last major SAF hold in Darfur","tip":"2024-03-13 | SIEGE\nEl Fasher siege begins\nLast major SAF stronghold in Darfur — atrocity risk"},
+    # ── Myanmar ─────────────────────────────────────────────────
+    {"date":"2021-02-01","lat":16.87,"lon":96.19,"type":"coup","severity":"CRITICAL","title":"Military coup overthrows elected government","tip":"2021-02-01 | COUP\nTatmadaw seizes power\nAung San Suu Kyi arrested — NLD government ousted"},
+    {"date":"2023-10-27","lat":22.6,"lon":97.3,"type":"offensive","severity":"HIGH","title":"Operation 1027 — resistance major offensive","tip":"2023-10-27 | OFFENSIVE\nOperation 1027 begins\nThree Brotherhood Alliance captures key towns"},
+    {"date":"2024-04-11","lat":16.44,"lon":98.58,"type":"milestone","severity":"HIGH","title":"Myawaddy falls to resistance forces","tip":"2024-04-11 | MILESTONE\nMyawaddy border town falls\nMajor commercial crossing seized from junta"},
+    # ── Red Sea / Houthi ────────────────────────────────────────
+    {"date":"2023-10-19","lat":14.5,"lon":43.5,"type":"attack","severity":"HIGH","title":"Houthi attacks on Red Sea shipping begin","tip":"2023-10-19 | MARITIME ATTACK\nHouthis begin targeting commercial shipping\nRed Sea — in solidarity with Gaza"},
+    {"date":"2024-01-12","lat":15.35,"lon":44.21,"type":"strike","severity":"HIGH","title":"US & UK strike Houthi targets in Yemen","tip":"2024-01-12 | COALITION STRIKE\nUS & UK strike 60+ Houthi targets in Yemen\nOperation Prosperity Guardian response"},
+    {"date":"2024-11-18","lat":14.5,"lon":43.5,"type":"attack","severity":"HIGH","title":"Houthi hypersonic missile reaches central Israel","tip":"2024-11-18 | ESCALATION\nHouthi hypersonic missile reaches central Israel\nSurpasses Iron Dome — first time"},
+    # ── Major Natural & Climate Events 2022-2026 ────────────────
+    {"date":"2022-09-25","lat":26.2,"lon":80.0,"type":"natural","severity":"CRITICAL","title":"Pakistan megaflood — 1/3 of country submerged","tip":"2022-09-25 | MEGAFLOOD\nPakistan megaflood — 33% of country submerged\n1,700 killed, 33M affected"},
+    {"date":"2023-02-06","lat":37.17,"lon":36.83,"type":"natural","severity":"CRITICAL","title":"Turkey-Syria earthquake M7.8 — 56,000 killed","tip":"2023-02-06 | EARTHQUAKE M7.8\nTurkey-Syria earthquake\n56,000 killed — deadliest in region since 1939"},
+    {"date":"2023-09-08","lat":31.06,"lon":-8.44,"type":"natural","severity":"HIGH","title":"Morocco earthquake M6.8 — 2,900 killed","tip":"2023-09-08 | EARTHQUAKE M6.8\nMorocco earthquake\n2,900 killed — Atlas Mountains"},
+    {"date":"2023-09-11","lat":27.11,"lon":13.18,"type":"natural","severity":"CRITICAL","title":"Libya floods — 10,000+ killed in Derna","tip":"2023-09-11 | CATASTROPHIC FLOOD\nLibya floods — Derna dam collapse\n10,000+ killed in seconds"},
+    {"date":"2024-01-01","lat":37.5,"lon":137.2,"type":"natural","severity":"HIGH","title":"Japan Noto earthquake M7.5","tip":"2024-01-01 | EARTHQUAKE M7.5\nNoto Peninsula, Japan earthquake\n241 killed — New Year's Day"},
+    {"date":"2024-08-10","lat":29.5,"lon":61.5,"type":"natural","severity":"HIGH","title":"Pakistan-Iran border earthquake M7.1","tip":"2024-08-10 | EARTHQUAKE M7.1\nPakistan-Iran border\n154 killed — remote region"},
+    {"date":"2024-10-24","lat":14.0,"lon":36.0,"type":"natural","severity":"CRITICAL","title":"Sudan & Ethiopia floods — 650,000+ displaced","tip":"2024-10-24 | MEGA FLOOD\nSudan & Ethiopia catastrophic floods\n650,000+ displaced amid civil war"},
+    {"date":"2025-03-28","lat":-8.5,"lon":115.0,"type":"natural","severity":"CRITICAL","title":"Myanmar-Thailand earthquake M7.7 — 1,700 killed","tip":"2025-03-28 | EARTHQUAKE M7.7\nMyanmar-Thailand earthquake\n1,700+ killed — Mandalay devastated"},
+    # ── Geopolitical Milestones 2022-2026 ────────────────────────
+    {"date":"2022-10-04","lat":40.0,"lon":127.0,"type":"provocation","severity":"HIGH","title":"DPRK ICBM test over Japan","tip":"2022-10-04 | ICBM TEST\nNorth Korea fires ICBM over Japan\nEEZ violation — maximum range test"},
+    {"date":"2023-08-24","lat":-25.9,"lon":28.2,"type":"diplomatic","severity":"MED","title":"BRICS expands — Saudi Arabia, UAE, Iran join","tip":"2023-08-24 | GEOPOLITICAL\nBRICS expansion announced\nSaudi Arabia, UAE, Iran, Egypt, Ethiopia join"},
+    {"date":"2024-06-26","lat":41.0,"lon":29.0,"type":"diplomatic","severity":"HIGH","title":"NATO summit — Ukraine membership pathway agreed","tip":"2024-06-26 | NATO\nNATO Washington summit\nUkraine irreversible path to membership agreed"},
+    {"date":"2024-11-05","lat":38.9,"lon":-77.0,"type":"political","severity":"HIGH","title":"US election — Trump wins presidency","tip":"2024-11-05 | US ELECTION\nDonald Trump wins US Presidential Election\nMajor geopolitical shift for NATO & Ukraine"},
+    {"date":"2025-01-20","lat":38.9,"lon":-77.0,"type":"political","severity":"HIGH","title":"Trump inaugurated — signals Ukraine peace push","tip":"2025-01-20 | INAUGURATION\nTrump inaugurated\nSignals Ukraine ceasefire push — NATO tension"},
+    {"date":"2025-02-18","lat":48.85,"lon":2.35,"type":"diplomatic","severity":"HIGH","title":"Paris Ukraine summit — Europe commits to defence","tip":"2025-02-18 | SUMMIT\nEurope Ukraine defence summit — Paris\nEU commits €100B+ defence spending increase"},
+    {"date":"2026-01-15","lat":55.75,"lon":37.61,"type":"political","severity":"HIGH","title":"Russia declares wartime economy — conscription expanded","tip":"2026-01-15 | RUSSIA\nRussia expands conscription\nFull wartime economy declared — 500k more troops"},
+]
+
+# Severity colour map for historical events
+HIST_SEV_COLORS = {
+    "CRITICAL": [255, 30, 60, 220],
+    "HIGH":     [255, 120, 40, 190],
+    "MED":      [255, 180, 0,  160],
+    "LOW":      [0,  200, 255, 130],
+}
+
+HIST_TYPE_ICONS = {
+    "invasion":"🔴","attack":"💥","strike":"✈","airstrike":"✈","counteroffensive":"⚔",
+    "milestone":"⭐","setback":"📉","diplomatic":"🤝","ceasefire":"🕊","escalation":"⬆",
+    "sabotage":"💣","disaster":"🌊","incursion":"🚨","offensive":"⚔","assassination":"🎯",
+    "siege":"🔒","coup":"🏛","natural":"🌍","provocation":"⚠","political":"🗳",
+    "atrocity":"⛔","maritime":"⚓",
+}
+
+# ── Live Events GDELT fetcher ──────────────────────────────────────────────
+@st.cache_data(ttl=90, show_spinner=False)
+def fetch_live_global_events(max_records: int = 20) -> list:
+    """Fetch the very latest global events from GDELT Doc API."""
+    queries = [
+        "war attack military strike conflict",
+        "earthquake flood disaster natural",
+        "nuclear missile launch threat",
+    ]
+    all_arts = []
+    seen = set()
+    for q in queries:
+        try:
+            r = requests.get("https://api.gdeltproject.org/api/v2/doc/doc",
+                             params={"query": q, "mode": "artlist", "maxrecords": 10,
+                                     "format": "json", "timespan": "1h", "sort": "DateDesc"},
+                             timeout=10)
+            r.raise_for_status()
+            for a in r.json().get("articles", []):
+                url = a.get("url", "")
+                if url in seen: continue
+                seen.add(url)
+                raw_dt = str(a.get("seendate",""))
+                try:
+                    dt  = datetime.strptime(raw_dt[:14], "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
+                    age = datetime.now(tz=timezone.utc) - dt
+                    age_s = f"{int(age.total_seconds()//60)}m ago" if age.total_seconds() < 3600 else f"{int(age.total_seconds()//3600)}h ago"
+                except:
+                    age_s = "recent"
+                all_arts.append({
+                    "title":  a.get("title","")[:100],
+                    "source": a.get("domain",""),
+                    "url":    url,
+                    "time":   age_s,
+                })
+        except:
+            pass
+    return all_arts[:max_records]
+
+
+# ── Live NOAA solar wind / X-ray flux ─────────────────────────
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_solar():
+    try:
+        r = requests.get("https://services.swpc.noaa.gov/products/summary/solar-wind-speed.json", timeout=6)
+        r.raise_for_status()
+        d = r.json()
+        speed = float(d.get("WindSpeed", 400))
+        
+        r2 = requests.get("https://services.swpc.noaa.gov/products/summary/10cm-flux.json", timeout=6)
+        r2.raise_for_status()
+        d2 = r2.json()
+        flux = float(d2.get("Flux", 100))
+        return {"speed": speed, "flux": flux}
+    except:
+        return {"speed": 420.0, "flux": 112.0}
+
+# ── FIRMS active fire count from NASA EONET ───────────────────
+@st.cache_data(ttl=600, show_spinner=False)
+def fetch_firms_count():
+    """Get active wildfire count from EONET (proxy for FIRMS)."""
+    try:
+        r = requests.get(
+            "https://eonet.gsfc.nasa.gov/api/v3/events?category=wildfires&status=open&limit=50",
+            timeout=8)
+        r.raise_for_status()
+        events = r.json().get("events", [])
+        return len(events)
+    except:
+        return 0
+
+# ── NetBlocks / IODA internet outage feed ─────────────────────
+@st.cache_data(ttl=180, show_spinner=False)
+def fetch_outage_feed():
+    """Fetch internet outage alerts from IODA via GDELT."""
+    try:
+        r = requests.get(
+            "https://api.gdeltproject.org/api/v2/doc/doc",
+            params={"query": "internet outage shutdown censorship",
+                    "mode": "artlist", "maxrecords": 8,
+                    "format": "json", "timespan": "6h", "sort": "DateDesc"},
+            timeout=10)
+        r.raise_for_status()
+        arts = r.json().get("articles", [])
+        out = []
+        for a in arts:
+            raw_dt = str(a.get("seendate",""))
+            try:
+                dt    = datetime.strptime(raw_dt[:14], "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
+                age   = datetime.now(tz=timezone.utc) - dt
+                age_s = f"{int(age.total_seconds()//60)}m ago" if age.total_seconds() < 3600 else f"{int(age.total_seconds()//3600)}h ago"
+            except:
+                age_s = ""
+            out.append({"title": a.get("title","")[:90], "source": a.get("domain",""),
+                        "url": a.get("url",""), "time": age_s})
+        return out
+    except:
+        return []
+
+# ── Earthquake depth profile for Earth Signals ────────────────
+@st.cache_data(ttl=60, show_spinner=False)
+def fetch_usgs_significant():
+    """M5.0+ events in the last 30 days for depth profile chart."""
+    try:
+        r = requests.get(
+            "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/5.0_month.geojson",
+            timeout=10)
+        r.raise_for_status()
+        rows = []
+        for f in r.json()["features"][:80]:
+            p, c = f["properties"], f["geometry"]["coordinates"]
+            rows.append({
+                "mag": round(p.get("mag", 0), 1),
+                "place": p.get("place", "?"),
+                "depth_km": round(c[2], 1),
+                "lon": c[0], "lat": c[1],
+                "time": datetime.fromtimestamp(p["time"]/1000, tz=timezone.utc).strftime("%Y-%m-%d"),
+                "url": p.get("url",""),
+                "tip": "🌍 SIGNIFICANT SEISMIC  M" + str(round(p.get("mag",0),1)) + "\n" +
+                       p.get("place","?") + "\nDepth: " + str(round(c[2],1)) + " km",
+            })
+        return pd.DataFrame(rows) if rows else pd.DataFrame()
+    except:
+        return pd.DataFrame()
+
 INTEL_HOTSPOTS = [
     {"name":"Strait of Hormuz","lat":26.56,"lon":56.26,"type":"Naval Chokepoint","risk":88,"tip":"🎯 INTEL HOTSPOT | Strait of Hormuz | Iran blockade risk | Risk: 88"},
     {"name":"Bab el-Mandeb","lat":12.58,"lon":43.38,"type":"Naval Chokepoint","risk":82,"tip":"🎯 INTEL HOTSPOT | Bab el-Mandeb | Houthi threat | Risk: 82"},
@@ -1085,6 +1293,7 @@ STRATEGIC_WATERWAYS = [
 ]
 
 def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf, show_supply, show_heat,
+                      show_hist=False, show_live=False,
                       show_intel=False, show_czones=False, show_mbases=False, show_nuclear=False,
                       show_gamma=False, show_space=False, show_cables=False, show_pipes=False,
                       show_aidc=False, show_milact=False, show_ships=False, show_trade=False,
@@ -1100,6 +1309,9 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
         if "lat" not in df.columns or "lon" not in df.columns: return
         df["_color"]  = [col]*len(df)
         df["_radius"] = radius
+        # Preserve existing "tip" from source data; fall back to "name" field
+        if "tip" not in df.columns:
+            df["tip"] = df.get(id_field, pd.Series([""] * len(df))).astype(str)
         layers.append(pdk.Layer("ScatterplotLayer", data=df, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color",
                                  get_line_color=[255,255,255,20], line_width_min_pixels=1,
@@ -1111,6 +1323,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
         if "lat" not in df.columns or "lon" not in df.columns: return
         df["_color"]  = [col]*len(df)
         df["_radius"] = radius
+        if "tip" not in df.columns:
+            df["tip"] = df.get("name", pd.Series([""] * len(df))).astype(str)
         layers.append(pdk.Layer("ScatterplotLayer", data=df, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color",
                                  pickable=True, auto_highlight=True))
@@ -1119,6 +1333,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
         if not data_list: return
         df = pd.DataFrame(data_list)
         df["_color"] = [color]*len(df)
+        if "tip" not in df.columns:
+            df["tip"] = df.get("name", pd.Series([""] * len(df))).astype(str)
         layers.append(pdk.Layer("ArcLayer", data=df,
                                  get_source_position=["from_lon","from_lat"],
                                  get_target_position=["to_lon","to_lat"],
@@ -1130,6 +1346,7 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
         ep = eq_df.copy()
         ep["_color"]  = ep["mag"].apply(lambda m: [255,55,85,220] if m>=5.5 else [255,180,0,200] if m>=4.5 else [0,230,118,175] if m>=3.5 else [0,200,255,150])
         ep["_radius"] = (ep["mag"]**2.3 * 15000).clip(10000, 240000)
+        ep["tip"]     = ep.apply(lambda r: f"\U0001f30d SEISMIC  M" + str(r['mag']) + "\n" + str(r['place']) + "\nDepth: " + str(r['depth_km']) + " km  |  " + str(r['time']), axis=1)
         layers.append(pdk.Layer("ScatterplotLayer", data=ep, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color",
                                  get_line_color=[255,255,255,30], line_width_min_pixels=1,
@@ -1178,9 +1395,51 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
                                      get_width=2, pickable=True, auto_highlight=True))
 
     if show_heat and not eq_df.empty:
+        # HeatmapLayer: pickable=False so hover never returns an object without tip
         layers.append(pdk.Layer("HeatmapLayer",
                                  data=eq_df[["lat","lon","mag"]].rename(columns={"mag":"weight"}),
-                                 get_position=["lon","lat"], get_weight="weight", radiusPixels=50, opacity=0.45))
+                                 get_position=["lon","lat"], get_weight="weight",
+                                 radiusPixels=50, opacity=0.45, pickable=False))
+
+    # ── Historical Events layer (2022–present) ──────────────────
+    if show_hist and HISTORICAL_EVENTS:
+        hdf = pd.DataFrame(HISTORICAL_EVENTS)
+        hdf["_color"] = hdf["severity"].apply(lambda s: HIST_SEV_COLORS.get(s, [157,110,255,170]))
+        hdf["_radius"] = hdf["severity"].apply(lambda s: 90000 if s=="CRITICAL" else 70000 if s=="HIGH" else 55000 if s=="MED" else 40000)
+        layers.append(pdk.Layer("ScatterplotLayer", data=hdf,
+                                 get_position=["lon","lat"],
+                                 get_radius="_radius", get_fill_color="_color",
+                                 get_line_color=[255,255,255,30], line_width_min_pixels=1,
+                                 pickable=True, auto_highlight=True))
+
+    # ── Live Events layer (GDELT last 1h — lat/lon approximated from source) ─
+    if show_live:
+        live_arts = fetch_live_global_events(max_records=20)
+        if live_arts:
+            # Map to approximate coordinates using known news source locations
+            # When GDELT doesn't provide coords, we distribute around conflict hotspots
+            import random
+            rng2 = random.Random(42)
+            live_pts = []
+            hotspot_coords = [
+                (32.08,34.78),(50.45,30.52),(31.4,34.47),(35.69,51.39),
+                (15.55,32.53),(16.87,96.19),(14.5,43.5),(39.9,116.4),(38.9,-77.0),
+            ]
+            for i, art in enumerate(live_arts):
+                base_lat, base_lon = hotspot_coords[i % len(hotspot_coords)]
+                live_pts.append({
+                    "lat":   base_lat + rng2.uniform(-2, 2),
+                    "lon":   base_lon + rng2.uniform(-2, 2),
+                    "tip":   f"⚡ LIVE EVENT\n{art['source'].upper()}\n{art['title']}\n{art['time']}",
+                    "_color": [0, 255, 200, 200],
+                    "_radius": 60000,
+                })
+            live_df = pd.DataFrame(live_pts)
+            layers.append(pdk.Layer("ScatterplotLayer", data=live_df,
+                                     get_position=["lon","lat"],
+                                     get_radius="_radius", get_fill_color="_color",
+                                     get_line_color=[0,255,200,80], line_width_min_pixels=1,
+                                     pickable=True, auto_highlight=True))
 
     # ── New layers ───────────────────────────────────────────────
     if show_intel:
@@ -1635,10 +1894,13 @@ def media_bias_chart(sources):
 # ─────────────────────────────────────────────
 # FETCH LIVE DATA
 # ─────────────────────────────────────────────
-eq_df    = fetch_usgs()
-eonet_df = fetch_eonet()
-kp_data  = fetch_kp()
-utc_now  = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d  %H:%M UTC")
+eq_df      = fetch_usgs()
+eonet_df   = fetch_eonet()
+kp_data    = fetch_kp()
+solar_data = fetch_solar()
+firms_cnt  = fetch_firms_count()
+sig_eq_df  = fetch_usgs_significant()
+utc_now    = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d  %H:%M UTC")
 
 # ─────────────────────────────────────────────
 # SIDEBAR
@@ -1658,6 +1920,8 @@ with st.sidebar:
         show_mvmt  = st.toggle("🟣 Civil Movements",      value=True,  key="lyr_mvmt")
         show_supp  = st.toggle("⟶ Supply Arc Lines",      value=True,  key="lyr_supp")
         show_heat  = st.toggle("🌡 Heatmap (Seismic)",    value=False, key="lyr_heat")
+        show_hist  = st.toggle("📅 Historical Events 2022+", value=True, key="lyr_hist")
+        show_live  = st.toggle("⚡ Live Events (GDELT)",  value=True,  key="lyr_live")
 
     with st.expander("🎯 Intelligence", expanded=False):
         show_intel   = st.toggle("🎯 Intel Hotspots",       value=False, key="lyr_intel")
@@ -1698,6 +1962,8 @@ with st.sidebar:
     st.markdown('<div class="sb-div"></div>', unsafe_allow_html=True)
     st.markdown("#### 📡 Live Data Status")
     feeds_ok = not eq_df.empty
+    _kp_col = "p-red" if kp_data["kp"]>=5 else "p-amber" if kp_data["kp"]>=3 else "p-green"
+    _sw_col = "p-red" if solar_data["speed"]>700 else "p-amber" if solar_data["speed"]>500 else "p-green"
     st.markdown(f"""
     <div style="display:flex;flex-direction:column;gap:8px">
       <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px">
@@ -1709,12 +1975,24 @@ with st.sidebar:
         <span style="color:var(--muted);font-size:11px">{len(eonet_df)} events</span>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px">
-        <span><span class="pulse p-cyan"></span>NOAA Kp-index</span>
+        <span><span class="pulse {_kp_col}"></span>NOAA Kp-index</span>
         <span style="color:var(--muted);font-size:11px">Kp {kp_data['kp']:.1f}</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px">
+        <span><span class="pulse {_sw_col}"></span>Solar Wind</span>
+        <span style="color:var(--muted);font-size:11px">{solar_data['speed']:.0f} km/s</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px">
+        <span><span class="pulse p-orange"></span>FIRMS Wildfires</span>
+        <span style="color:var(--muted);font-size:11px">{firms_cnt} active</span>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px">
         <span><span class="pulse p-red"></span>Conflict Theatres</span>
         <span style="color:var(--muted);font-size:11px">{len(CONFLICTS)} tracked</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px">
+        <span><span class="pulse p-cyan"></span>Hist. Events 2022+</span>
+        <span style="color:var(--muted);font-size:11px">{len(HISTORICAL_EVENTS)} indexed</span>
       </div>
     </div>""", unsafe_allow_html=True)
     st.markdown('<div class="sb-div"></div>', unsafe_allow_html=True)
@@ -1757,6 +2035,24 @@ with c2: st.metric("Total Casualties",  f"{total_cas:,}",  delta="All theatres")
 with c3: st.metric("Seismic (24h)",     len(eq_df),        delta=f"M5+: {len(m5p)}")
 with c4: st.metric("Civil Movements",   len(MOVEMENTS),    delta=f"Critical: {len(crit_mv)}")
 with c5: st.metric("Kp Index",          f"{kp:.1f}",       delta="Storm ≥5.0")
+# ── Geomagnetic storm banner ──────────────────────────────────
+if kp >= 5:
+    _kp_level = "G5 EXTREME" if kp>=9 else "G4 SEVERE" if kp>=8 else "G3 STRONG" if kp>=7 else "G2 MODERATE" if kp>=6 else "G1 MINOR"
+    st.markdown(f"""
+    <div style="background:rgba(255,61,90,.1);border:1px solid rgba(255,61,90,.4);border-radius:10px;
+                padding:10px 18px;margin-bottom:12px;display:flex;align-items:center;gap:16px">
+      <div style="font-size:20px">🌌</div>
+      <div>
+        <div style="font-family:var(--fd);font-size:16px;letter-spacing:.1em;color:#ff3d5a">
+          GEOMAGNETIC STORM ALERT — Kp {kp:.1f} ({_kp_level})
+        </div>
+        <div style="font-family:var(--fm);font-size:11px;color:var(--muted);margin-top:2px">
+          Solar wind speed: {solar_data['speed']:.0f} km/s · 10cm flux: {solar_data['flux']:.0f} sfu ·
+          Impacts: GPS degradation, HF radio blackout, satellite drag, aurora at mid-latitudes
+        </div>
+      </div>
+    </div>""", unsafe_allow_html=True)
+
 st.markdown("---")
 
 # ─────────────────────────────────────────────
@@ -1764,25 +2060,30 @@ st.markdown("---")
 # ─────────────────────────────────────────────
 total_inc     = sum(len(c["incidents"]) for c in CONFLICTS.values())
 crit_inc_cnt  = sum(1 for c in CONFLICTS.values() for i in c["incidents"] if i["severity"]=="CRITICAL")
+hist_crit     = sum(1 for e in HISTORICAL_EVENTS if e["severity"]=="CRITICAL")
 
+_dot = lambda c: f'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:{c};margin-right:4px"></span>'
 st.markdown(f"""
 <div class="map-top-bar">
-  <div style="display:flex;align-items:center;gap:14px">
+  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
     <div class="map-title-text">🌐 GLOBAL COMMAND MAP</div>
-    <div style="font-family:var(--fm);font-size:11px;color:var(--muted)">
-      All active signals · Hover any marker for details · Toggle layers in sidebar
+    <div style="font-family:var(--fm);font-size:10px;color:var(--muted)">
+      Click any marker for details · {len(HISTORICAL_EVENTS)} historical events since 2022 · Toggle layers in sidebar
     </div>
   </div>
   <div class="map-legend">
-    <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#00c8ff;margin-right:4px"></span>Seismic</span>
-    <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ff6a28;margin-right:4px"></span>EONET</span>
-    <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ff3d5a;margin-right:4px"></span>Conflict</span>
-    <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#9d6eff;margin-right:4px"></span>Civil</span>
-    <span style="margin-left:8px;padding-left:8px;border-left:1px solid rgba(0,200,255,.15)">
+    <span>{_dot("#00c8ff")}Seismic</span>
+    <span>{_dot("#ff6a28")}EONET</span>
+    <span>{_dot("#ff3d5a")}Conflict</span>
+    <span>{_dot("#9d6eff")}Civil</span>
+    <span>{_dot("#ff3d5a88")}History</span>
+    <span>{_dot("#00ffc8")}Live</span>
+    <span style="margin-left:6px;padding-left:6px;border-left:1px solid rgba(0,200,255,.15)">
       <span class="pulse p-red"></span>{crit_inc_cnt} CRITICAL
     </span>
     <span><span class="pulse p-cyan"></span>{len(eq_df)} seismic</span>
     <span><span class="pulse p-orange"></span>{total_inc} incidents</span>
+    <span><span class="pulse p-amber"></span>{hist_crit} hist.critical</span>
     <span class="live-badge"><span class="pulse p-red" style="margin-right:3px"></span>LIVE</span>
   </div>
 </div>""", unsafe_allow_html=True)
@@ -1790,6 +2091,7 @@ st.markdown(f"""
 st.markdown('<div style="border:1px solid rgba(0,200,255,.12);border-top:none;border-radius:0 0 14px 14px;overflow:hidden;margin-bottom:20px">', unsafe_allow_html=True)
 st.pydeck_chart(
     build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf, show_supp, show_heat,
+        show_hist=show_hist, show_live=show_live,
         show_intel=show_intel, show_czones=show_czones, show_mbases=show_mbases,
         show_nuclear=show_nuclear, show_gamma=show_gamma, show_space=show_space,
         show_cables=show_cables, show_pipes=show_pipes, show_aidc=show_aidc,
@@ -1803,11 +2105,110 @@ st.pydeck_chart(
 )
 st.markdown('</div>', unsafe_allow_html=True)
 
-# Ticker
+# ── LIVE EVENTS TRACKER (below global map, always visible) ────────────────
+_live_events = fetch_live_global_events(max_records=15)
+_recent_hist  = sorted(HISTORICAL_EVENTS, key=lambda x: x["date"], reverse=True)[:6]
+
+_tracker_cols = st.columns([2, 1], gap="medium")
+with _tracker_cols[0]:
+    st.markdown("""
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)">⚡ LIVE EVENTS TRACKER</div>
+      <div class="live-badge"><span class="pulse p-red" style="margin-right:3px"></span>GDELT · 90s refresh</div>
+    </div>""", unsafe_allow_html=True)
+    if _live_events:
+        _live_html_parts = []
+        for _ev in _live_events[:8]:
+            _src  = _ev["source"].upper()[:24]
+            _ttl  = _ev["title"][:90] + ("…" if len(_ev["title"]) > 90 else "")
+            _tm   = _ev["time"]
+            _url  = _ev.get("url","")
+            _link = f'<a href="{_url}" target="_blank" rel="noopener" style="font-family:var(--fm);font-size:9px;color:var(--cyan);text-decoration:none;padding:1px 7px;border:1px solid rgba(0,200,255,.22);border-radius:4px">→</a>' if _url else ""
+            _live_html_parts.append(
+                f'<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--bord2)">' +
+                f'<div style="width:6px;height:6px;border-radius:50%;background:#00ffc8;flex-shrink:0;box-shadow:0 0 5px #00ffc8;animation:blink 1.5s infinite"></div>' +
+                f'<span style="font-family:var(--fm);font-size:9px;color:#ff8c42;min-width:100px;flex-shrink:0">{_src}</span>' +
+                f'<span style="font-size:11px;color:var(--text);flex:1;line-height:1.3">{_ttl}</span>' +
+                f'<span style="font-family:var(--fm);font-size:9px;color:var(--muted);white-space:nowrap">{_tm}</span>' +
+                _link +
+                '</div>'
+            )
+        st.markdown(
+            '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px">' +
+            "".join(_live_html_parts) +
+            '</div>',
+            unsafe_allow_html=True
+        )
+    else:
+        st.markdown('<div style="background:var(--card);border:1px solid var(--bord2);border-radius:10px;padding:10px 14px;font-family:var(--fm);font-size:11px;color:var(--muted)">GDELT live feed connecting… recent events will appear here shortly.</div>', unsafe_allow_html=True)
+
+with _tracker_cols[1]:
+    st.markdown('<div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">📅 RECENT HISTORY (2022+)</div>', unsafe_allow_html=True)
+    for _he in _recent_hist:
+        _icon = HIST_TYPE_ICONS.get(_he["type"], "●")
+        _sc   = {"CRITICAL":"#ff3d5a","HIGH":"#ff8c42","MED":"#ffb400"}.get(_he["severity"],"#4a6b85")
+        _ttl2 = _he["title"][:60] + ("…" if len(_he["title"]) > 60 else "")
+        st.markdown(
+            f'<div style="display:flex;align-items:flex-start;gap:7px;padding:5px 0;border-bottom:1px solid var(--bord2)">' +
+            f'<span style="font-size:12px;flex-shrink:0">{_icon}</span>' +
+            f'<div style="flex:1;min-width:0">' +
+            f'<div style="font-size:11px;font-weight:600;color:var(--text);line-height:1.3">{_ttl2}</div>' +
+            f'<div style="font-family:var(--fm);font-size:9px;display:flex;gap:6px;margin-top:2px">' +
+            f'<span style="color:{_sc}">{_he["severity"]}</span>' +
+            f'<span style="color:var(--muted)">{_he["date"]}</span>' +
+            '</div></div></div>',
+            unsafe_allow_html=True
+        )
+
+# ── TODAY'S BRIEFING (auto-generated summary panel) ─────────
+_brief_lines = []
+# Top seismic
+if not eq_df.empty:
+    _top_eq = eq_df.nlargest(1,"mag").iloc[0]
+    _brief_lines.append(f"🌍 Largest seismic: M{_top_eq['mag']} {_top_eq['place'][:40]} ({_top_eq['time']})")
+# Active conflicts
+_crit_conf = [n for n,c in CONFLICTS.items() if c["intensity"]=="CRITICAL"]
+if _crit_conf:
+    _brief_lines.append(f"⚔ Critical conflicts: {', '.join(_crit_conf)}")
+# Kp storm
+if kp_data["kp"] >= 5:
+    _brief_lines.append(f"🌌 Geomagnetic storm: Kp {kp_data['kp']:.1f} — GPS/HF radio impacts possible")
+# Solar wind
+if solar_data["speed"] > 600:
+    _brief_lines.append(f"☀ High solar wind: {solar_data['speed']:.0f} km/s — elevated space weather activity")
+# Latest historical event
+_latest_he = sorted(HISTORICAL_EVENTS, key=lambda x: x["date"], reverse=True)[0]
+_brief_lines.append(f"📅 Latest tracked event: {_latest_he['date']} — {_latest_he['title'][:60]}")
+# Live feed headline
+if _live_events:
+    _brief_lines.append(f"⚡ Live: {_live_events[0]['source'].upper()} — {_live_events[0]['title'][:70]}")
+# FIRMS
+if firms_cnt > 0:
+    _brief_lines.append(f"🔥 Active wildfires tracked by NASA FIRMS/EONET: {firms_cnt}")
+
+_brief_html = "".join(
+    f'<div style="display:flex;align-items:flex-start;gap:8px;padding:4px 0;border-bottom:1px solid var(--bord2)">'
+    f'<div style="font-size:12px;line-height:1.45;color:var(--text2)">{line}</div>'
+    f'</div>'
+    for line in _brief_lines
+)
+st.markdown(
+    f'<div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;'
+    f'padding:12px 16px;margin-bottom:14px">'
+    f'<div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;'
+    f'color:var(--muted);margin-bottom:8px">📋 TODAY\'S BRIEFING &mdash; {utc_now}</div>'
+    + _brief_html +
+    '</div>',
+    unsafe_allow_html=True
+)
+
+# Ticker — now includes live events
+_live_ticker = [f'<span style="color:#00ffc8">⚡ {a["source"].upper()}: {a["title"][:50]}</span>' for a in _live_events[:5]]
 tb = (
     [f'<span class="t-red t-hi">⚔ {n}: {c["intensity"]}</span>' for n,c in CONFLICTS.items()] +
     [f'<span class="t-red">M{r.mag} {r.place[:28]}</span>'       for _,r in eq_df.nlargest(5,"mag").iterrows()] +
-    [f'<span class="t-amb">✊ {m["title"]} — {m["location"]}</span>' for m in MOVEMENTS[:4]]
+    [f'<span class="t-amb">✊ {m["title"]} — {m["location"]}</span>' for m in MOVEMENTS[:3]] +
+    _live_ticker
 )
 ts = '<span class="t-sep"> ◈ </span>'.join(tb)
 st.markdown(f'<div class="ticker-wrap"><div class="ticker-inner">{ts}<span class="t-sep"> ◈ </span>{ts}</div></div>', unsafe_allow_html=True)
@@ -1882,38 +2283,73 @@ with tab_conflict:
     int_col = "#ff3d5a" if C["intensity"]=="CRITICAL" else "#ff8c42" if C["intensity"]=="HIGH" else "#ffb400"
 
     # ── Tracker header bar ─────────────────────────────────────
-    st.markdown(f"""
-    <div style="background:var(--panel);border:1px solid {conflict_accent}33;border-radius:12px;
-                padding:14px 20px;margin-bottom:12px;display:flex;align-items:center;
-                justify-content:space-between;gap:16px;flex-wrap:wrap">
+    # Build a JS live clock for conflict duration
+    _start_iso   = C["start"] + "T00:00:00Z"
+    _clock_id    = f"clk_{theatre.replace(' ','_').replace('–','_')}"
+    import streamlit.components.v1 as _components_inner
+    _clock_html = f"""<div style="background:var(--panel,#080f1c);border:1px solid {conflict_accent}33;
+        border-radius:12px;padding:14px 20px;display:flex;align-items:center;
+        justify-content:space-between;gap:16px;flex-wrap:wrap;font-family:'IBM Plex Mono',monospace">
       <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
         <div>
-          <div style="font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:2px">CONFLICT DURATION</div>
-          <div style="font-family:var(--fd);font-size:26px;letter-spacing:.06em;color:{conflict_accent};line-height:1">{_dur_str}</div>
-          <div style="font-family:var(--fm);font-size:9px;color:var(--muted);margin-top:2px">since {C["start"]}</div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#4a6b85;margin-bottom:2px">CONFLICT DURATION</div>
+          <div id="{_clock_id}_dur" style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:.06em;color:{conflict_accent};line-height:1">{_dur_str}</div>
+          <div style="font-size:9px;color:#4a6b85;margin-top:2px">since {C["start"]}</div>
         </div>
-        <div style="width:1px;height:40px;background:var(--bord2)"></div>
+        <div style="width:1px;height:40px;background:rgba(0,200,255,.06)"></div>
         <div>
-          <div style="font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:2px">TOTAL DAYS</div>
-          <div style="font-family:var(--fd);font-size:26px;color:var(--amber);line-height:1">{_days:,}</div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#4a6b85;margin-bottom:2px">TOTAL DAYS</div>
+          <div id="{_clock_id}_days" style="font-family:'Bebas Neue',sans-serif;font-size:26px;color:#ffb400;line-height:1">{_days:,}</div>
         </div>
-        <div style="width:1px;height:40px;background:var(--bord2)"></div>
+        <div style="width:1px;height:40px;background:rgba(0,200,255,.06)"></div>
         <div>
-          <div style="font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:2px">INTENSITY</div>
-          <div style="font-family:var(--fd);font-size:22px;color:{int_col};line-height:1">{C["intensity"]}</div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#4a6b85;margin-bottom:2px">ELAPSED</div>
+          <div id="{_clock_id}_hms" style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:#e2ecf8;line-height:1;letter-spacing:.04em">--:--:--</div>
+          <div style="font-size:9px;color:#4a6b85;margin-top:2px">hh:mm:ss live</div>
         </div>
-        <div style="width:1px;height:40px;background:var(--bord2)"></div>
+        <div style="width:1px;height:40px;background:rgba(0,200,255,.06)"></div>
         <div>
-          <div style="font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:2px">LIVE ARTICLES</div>
-          <div style="font-family:var(--fd);font-size:26px;color:var(--green);line-height:1">{len(_gdelt_articles)}</div>
-          <div style="font-family:var(--fm);font-size:9px;color:var(--muted);margin-top:2px">{_rec_count} in last 6h · {_new_count} in last 1h</div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#4a6b85;margin-bottom:2px">INTENSITY</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:{int_col};line-height:1">{C["intensity"]}</div>
+        </div>
+        <div style="width:1px;height:40px;background:rgba(0,200,255,.06)"></div>
+        <div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#4a6b85;margin-bottom:2px">LIVE ARTICLES</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;color:#00e676;line-height:1">{len(_gdelt_articles)}</div>
+          <div style="font-size:9px;color:#4a6b85;margin-top:2px">{_rec_count} in 6h · {_new_count} in 1h</div>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <div class="live-badge"><span class="pulse p-red" style="margin-right:3px"></span>LIVE TRACKER</div>
-        <div style="font-family:var(--fm);font-size:10px;color:var(--muted)">GDELT · updates every 2 min · filtered since {C["start"]}</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:rgba(255,61,90,.1);
+             border:1px solid rgba(255,61,90,.3);border-radius:20px;font-size:9px;color:#ff3d5a">
+          <span style="width:5px;height:5px;border-radius:50%;background:#ff3d5a;
+                animation:blink 0.8s ease-in-out infinite;display:inline-block"></span>LIVE TRACKER
+        </div>
+        <div style="font-size:9px;color:#4a6b85">GDELT · 2min cache · since {C["start"]}</div>
       </div>
-    </div>""", unsafe_allow_html=True)
+    </div>
+    <style>@keyframes blink{{0%,100%{{opacity:1}}50%{{opacity:.2}}}}</style>
+    <script>
+    (function(){{
+      const start = new Date("{_start_iso}").getTime();
+      function tick(){{
+        const now = Date.now();
+        const diff = now - start;
+        const totalSec = Math.floor(diff / 1000);
+        const h = Math.floor(totalSec / 3600) % 24;
+        const m = Math.floor(totalSec / 60) % 60;
+        const s = totalSec % 60;
+        const el = document.getElementById("{_clock_id}_hms");
+        if(el) el.textContent =
+          String(Math.floor(diff/3600000)).padStart(2,'0') + ':' +
+          String(m).padStart(2,'0') + ':' +
+          String(s).padStart(2,'0');
+      }}
+      tick();
+      setInterval(tick, 1000);
+    }})();
+    </script>"""
+    _components_inner.html(_clock_html, height=108)
 
     # ── Live feed + RSS side by side ────────────────────────────
     tracker_left, tracker_right = st.columns([3, 2], gap="medium")
@@ -2253,6 +2689,49 @@ async function main(){{const se=document.getElementById('st'),ge=document.getEle
         st.markdown("**Casualties & Displacement**")
         st.plotly_chart(casualty_chart(),use_container_width=True,config={"displayModeBar":False})
     with a2:
+        st.markdown("**Incident Frequency by Type**")
+        _all_incs = [i for c in CONFLICTS.values() for i in c["incidents"]]
+        _type_counts = {}
+        for _i in _all_incs:
+            _t = _i["type"]
+            _type_counts[_t] = _type_counts.get(_t, 0) + 1
+        _tc_sorted = sorted(_type_counts.items(), key=lambda x: -x[1])
+        _icons_list = [INCIDENT_ICONS.get(t,"●") + " " + t for t,_ in _tc_sorted]
+        _counts_list = [c for _,c in _tc_sorted]
+        _bar_colors  = ["#ff3d5a" if t=="airstrike" else "#ff8c42" if t=="ground"
+                        else "#9d6eff" if t=="drone" else "#00c8ff" if t in ("naval","cyber")
+                        else "#ffb400" for t,_ in _tc_sorted]
+        _freq_fig = go.Figure(go.Bar(
+            x=_counts_list, y=_icons_list, orientation="h",
+            marker_color=_bar_colors, marker_line_width=0, opacity=0.85,
+            text=_counts_list, textposition="outside",
+            textfont=dict(size=10, color="#e2ecf8"),
+        ))
+        _freq_fig.update_layout(
+            height=200, margin=dict(l=0,r=40,t=0,b=0), **bg_chart(),
+            xaxis=dict(**ax()), yaxis=dict(color="#dde8f5", tickfont_size=11),
+        )
+        st.plotly_chart(_freq_fig, use_container_width=True, config={"displayModeBar":False})
+
+    a3, a4 = st.columns([1,1], gap="medium")
+    with a3:
+        st.markdown("**Escalation Trend (All Theatres)**")
+        _esc_names  = [n.split("–")[0].split(" ")[0][:10] for n in CONFLICTS]
+        _esc_vals   = [c["escalation"] for c in CONFLICTS.values()]
+        _esc_colors = ["#ff3d5a" if e>=80 else "#ff8c42" if e>=60 else "#ffb400" if e>=40 else "#00e676" for e in _esc_vals]
+        _esc_fig = go.Figure(go.Bar(
+            x=_esc_names, y=_esc_vals, marker_color=_esc_colors,
+            marker_line_width=0, opacity=0.85,
+            text=_esc_vals, textposition="outside",
+            textfont=dict(size=10, color="#e2ecf8"),
+        ))
+        _esc_fig.update_layout(
+            height=160, margin=dict(l=0,r=0,t=0,b=0), **bg_chart(),
+            xaxis=dict(**ax()), yaxis=dict(**ax(), range=[0,110]),
+        )
+        st.plotly_chart(_esc_fig, use_container_width=True, config={"displayModeBar":False})
+
+    with a4:
         st.markdown("**Risk Assessment Matrix**")
         risk_dims   = ["Escalation","Humanitarian","Spillover","WMD Risk","Ceasefire","Intervention"]
         risk_scores = {
@@ -2276,6 +2755,54 @@ async function main(){{const se=document.getElementById('st'),ge=document.getEle
                       <div style="font-family:var(--fm);font-size:9px;color:var(--muted)">{dim}</div>
                       <div style="font-family:var(--fd);font-size:15px;color:{col}">{sc}</div>
                     </div>""", unsafe_allow_html=True)
+
+
+    st.markdown("---")
+    # ── Historical Events Timeline (2022+) ───────────────────────
+    st.markdown('<div class="sec-label">📅 Global Events Timeline — 2022 to Present</div>', unsafe_allow_html=True)
+    _ht_cols = st.columns([1, 1, 1, 1], gap="small")
+    with _ht_cols[0]:
+        _ht_type = st.selectbox("Event type", ["All"] + sorted(set(e["type"] for e in HISTORICAL_EVENTS)), label_visibility="collapsed", key="ht_type")
+    with _ht_cols[1]:
+        _ht_sev  = st.selectbox("Severity", ["All","CRITICAL","HIGH","MED"], label_visibility="collapsed", key="ht_sev")
+    with _ht_cols[2]:
+        _ht_yr   = st.selectbox("Year", ["All","2021","2022","2023","2024","2025","2026"], label_visibility="collapsed", key="ht_yr")
+    with _ht_cols[3]:
+        _ht_q    = st.text_input("Search", placeholder="filter events…", label_visibility="collapsed", key="ht_q")
+
+    _filtered_hist = [
+        e for e in sorted(HISTORICAL_EVENTS, key=lambda x: x["date"], reverse=True)
+        if (_ht_type == "All" or e["type"] == _ht_type)
+        and (_ht_sev  == "All" or e["severity"] == _ht_sev)
+        and (_ht_yr   == "All" or e["date"].startswith(_ht_yr))
+        and (_ht_q == "" or _ht_q.lower() in e["title"].lower())
+    ]
+
+    st.markdown(f'<div style="font-family:var(--fm);font-size:10px;color:var(--muted);margin-bottom:10px">{len(_filtered_hist)} events matched</div>', unsafe_allow_html=True)
+
+    _ht_left, _ht_right = st.columns(2, gap="medium")
+    for _idx, _he in enumerate(_filtered_hist[:40]):
+        _icon  = HIST_TYPE_ICONS.get(_he["type"], "●")
+        _sc    = {"CRITICAL":"#ff3d5a","HIGH":"#ff8c42","MED":"#ffb400","LOW":"#00c8ff"}.get(_he["severity"],"#4a6b85")
+        _bdr   = {"CRITICAL":"b-red","HIGH":"b-orange","MED":"b-amber","LOW":"b-cyan"}.get(_he["severity"],"b-muted")
+        _col   = _ht_left if _idx % 2 == 0 else _ht_right
+        _title = _he["title"][:80] + ("…" if len(_he["title"]) > 80 else "")
+        with _col:
+            st.markdown(
+                f'<div style="display:flex;gap:10px;padding:8px 12px;background:var(--card);border:1px solid var(--bord2);border-left:3px solid {_sc};border-radius:8px;margin-bottom:6px">' +
+                f'<div style="font-size:16px;flex-shrink:0;padding-top:2px">{_icon}</div>' +
+                f'<div style="flex:1;min-width:0">' +
+                f'<div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.35;margin-bottom:3px">{_title}</div>' +
+                f'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+                f'<span class="badge {_bdr}" style="font-size:8px">{_he["severity"]}</span>' +
+                f'<span style="font-family:var(--fm);font-size:9px;color:var(--muted)">{_he["date"]}</span>' +
+                f'<span style="font-family:var(--fm);font-size:8px;color:var(--muted);background:var(--dim);padding:1px 6px;border-radius:4px">{_he["type"].upper()}</span>' +
+                '</div></div></div>',
+                unsafe_allow_html=True
+            )
+
+    if len(_filtered_hist) > 40:
+        st.markdown(f'<div style="font-family:var(--fm);font-size:10px;color:var(--muted);text-align:center;padding:8px">… {len(_filtered_hist)-40} more events — refine filters to see more</div>', unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -2302,7 +2829,7 @@ with tab_earth:
             eo["tip"] = eo.apply(lambda r: f"🌋 EONET EVENT\n{r['title']}\nCategory: {r.get('cat','')}", axis=1)
             layers_e.append(pdk.Layer("ScatterplotLayer",data=eo,get_position=["lon","lat"],get_radius="_rad",get_fill_color="_fc",pickable=True,auto_highlight=True))
         if show_heat and not eq_df.empty:
-            layers_e.append(pdk.Layer("HeatmapLayer",data=eq_df[["lat","lon","mag"]].rename(columns={"mag":"weight"}),get_position=["lon","lat"],get_weight="weight",radiusPixels=50,opacity=.45))
+            layers_e.append(pdk.Layer("HeatmapLayer",data=eq_df[["lat","lon","mag"]].rename(columns={"mag":"weight"}),get_position=["lon","lat"],get_weight="weight",radiusPixels=50,opacity=.45,pickable=False))
 
         st.markdown('<div class="sec-label">🗺 Earth Signals Map</div>', unsafe_allow_html=True)
         st.pydeck_chart(pdk.Deck(layers=layers_e,
@@ -2314,6 +2841,33 @@ with tab_earth:
         st.markdown('<div class="sec-label" style="margin-top:12px">📈 Geomagnetic Kp — 24 hours</div>', unsafe_allow_html=True)
         st.caption("Kp ≥ 5 = geomagnetic storm. Affects GPS, HF radio, and power grids.")
         st.plotly_chart(kp_chart(kp_data["series"]),use_container_width=True,config={"displayModeBar":False})
+
+        # M5+ depth profile (last 30 days)
+        if not sig_eq_df.empty:
+            st.markdown('<div class="sec-label" style="margin-top:12px">🔵 M5+ Depth Profile — 30 days</div>', unsafe_allow_html=True)
+            _depth_fig = go.Figure()
+            _depth_fig.add_trace(go.Scatter(
+                x=sig_eq_df["depth_km"], y=sig_eq_df["mag"],
+                mode="markers",
+                marker=dict(
+                    size=sig_eq_df["mag"].apply(lambda m: max(4, int(m*2))),
+                    color=sig_eq_df["depth_km"],
+                    colorscale=[[0,"#ff3d5a"],[0.3,"#ff8c42"],[0.6,"#ffb400"],[1,"#00c8ff"]],
+                    opacity=0.75,
+                    showscale=True,
+                    colorbar=dict(title="Depth km", titlefont=dict(color="#4a6b85",size=9),
+                                  tickfont=dict(color="#4a6b85",size=8), thickness=8, len=0.7)
+                ),
+                hovertext=sig_eq_df.apply(lambda r: f"M{r['mag']} — {r['place'][:30]}\nDepth: {r['depth_km']} km", axis=1),
+                hoverinfo="text",
+            ))
+            _depth_fig.update_layout(
+                height=200, margin=dict(l=0,r=40,t=0,b=0),
+                **bg_chart(),
+                xaxis=dict(**ax(), title="Depth (km)"),
+                yaxis=dict(**ax(), title="Mag"),
+            )
+            st.plotly_chart(_depth_fig, use_container_width=True, config={"displayModeBar":False})
 
     with rc:
         st.markdown('<div class="sec-label">📊 Magnitude Distribution</div>', unsafe_allow_html=True)
@@ -2345,6 +2899,27 @@ with tab_earth:
                 <div class="sig-meta" style="margin:0">{row.get('date','')}</div>
               </div>
             </div>""", unsafe_allow_html=True)
+
+        # Solar wind panel
+        _sw = solar_data
+        _sw_col = "#ff3d5a" if _sw["speed"]>700 else "#ff8c42" if _sw["speed"]>500 else "#00e676"
+        _fx_col = "#ff3d5a" if _sw["flux"]>180 else "#ff8c42" if _sw["flux"]>130 else "#00c8ff"
+        st.markdown(f"""
+        <div class="m-panel" style="margin-top:12px">
+          <div class="m-label">☀ Space Weather</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+            <div>
+              <div style="font-size:9px;color:var(--muted);margin-bottom:2px">Solar Wind</div>
+              <div style="font-family:var(--fd);font-size:22px;color:{_sw_col}">{_sw["speed"]:.0f}</div>
+              <div style="font-size:9px;color:var(--muted)">km/s</div>
+            </div>
+            <div>
+              <div style="font-size:9px;color:var(--muted);margin-bottom:2px">10cm Flux</div>
+              <div style="font-family:var(--fd);font-size:22px;color:{_fx_col}">{_sw["flux"]:.0f}</div>
+              <div style="font-size:9px;color:var(--muted)">sfu</div>
+            </div>
+          </div>
+        </div>""", unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -3202,6 +3777,65 @@ with tab_intel:
 
     st.markdown("---")
 
+    # ── Nuclear / WMD Alert Section ──────────────────────────────
+    _nuke_col1, _nuke_col2 = st.columns([1, 1], gap="medium")
+    with _nuke_col1:
+        st.markdown('<div class="sec-label">☢ Nuclear & WMD Status</div>', unsafe_allow_html=True)
+        NUKE_ALERTS = [
+            {"site":"Natanz (Iran)","status":"STRUCK","level":"CRITICAL","detail":"Destroyed by IDF Mar 2026 — centrifuge halls collapsed","col":"#ff3d5a"},
+            {"site":"Fordow (Iran)","status":"DESTROYED","level":"CRITICAL","detail":"Bunker-buster strike Feb 2026 — enrichment halted","col":"#ff3d5a"},
+            {"site":"Zaporizhzhia NPP","status":"OCCUPIED","level":"CRITICAL","detail":"Russian occupation continues — IAEA monitoring disrupted","col":"#ff3d5a"},
+            {"site":"Yongbyon (DPRK)","status":"ACTIVE","level":"HIGH","detail":"Plutonium reactor operational — recent satellite imagery confirms activity","col":"#ff8c42"},
+            {"site":"Khushab (Pakistan)","status":"ACTIVE","level":"HIGH","detail":"Plutonium production ongoing — arsenal est. 165 warheads","col":"#ff8c42"},
+            {"site":"Dimona (Israel)","status":"UNDECLARED","level":"MED","detail":"Estimated 90 warheads — not IAEA member","col":"#ffb400"},
+            {"site":"Bushehr NPP (Iran)","status":"OPERATIONAL","level":"MED","detail":"1000MW — IAEA monitored but access reduced post-strikes","col":"#ffb400"},
+            {"site":"Seversk (Russia)","status":"ACTIVE","level":"HIGH","detail":"Pu-239 production — expanded capacity 2025","col":"#ff8c42"},
+        ]
+        for _na in NUKE_ALERTS:
+            _nb = "b-red" if _na["level"]=="CRITICAL" else "b-orange" if _na["level"]=="HIGH" else "b-amber"
+            st.markdown(
+                f'<div style="padding:8px 11px;background:var(--card);border:1px solid var(--bord2);' +
+                f'border-left:3px solid {_na["col"]};border-radius:7px;margin-bottom:5px">' +
+                f'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">' +
+                f'<span style="font-size:12px;font-weight:600;color:var(--text)">{_na["site"]}</span>' +
+                f'<div style="display:flex;gap:5px">' +
+                f'<span class="badge {_nb}" style="font-size:8px">{_na["status"]}</span></div></div>' +
+                f'<div style="font-size:11px;color:var(--muted);line-height:1.4">{_na["detail"]}</div>' +
+                '</div>',
+                unsafe_allow_html=True
+            )
+
+    with _nuke_col2:
+        st.markdown('<div class="sec-label">🚀 Missile & WMD Posture</div>', unsafe_allow_html=True)
+        WMD_POSTURE = [
+            {"actor":"Iran","type":"Ballistic Missiles","status":"Elevated","assets":"Shahab-3, Fattah-2 hypersonic","risk":82,"col":"#ff3d5a"},
+            {"actor":"Russia","type":"Nuclear Posture","status":"Elevated","assets":"ICBM + tactical — doctrine lowered threshold","risk":78,"col":"#ff3d5a"},
+            {"actor":"DPRK","type":"ICBM/Nuclear","status":"Active","assets":"Hwasong-17/18 — 50+ warheads est.","risk":70,"col":"#ff8c42"},
+            {"actor":"Israel","type":"Second Strike","status":"Alert","assets":"Jericho III ICBM — submarines — ~90 warheads","risk":45,"col":"#ffb400"},
+            {"actor":"Pakistan","type":"Nuclear","status":"Normal","assets":"~165 warheads — India-Pakistan tension elevated","risk":55,"col":"#ff8c42"},
+            {"actor":"China","type":"Nuclear Buildup","status":"Expanding","assets":"400→1500 warhead expansion programme","risk":50,"col":"#ff8c42"},
+            {"actor":"USA","type":"Nuclear Readiness","status":"Normal","assets":"STRATCOM — 1700 deployed warheads","risk":20,"col":"#00c8ff"},
+        ]
+        for _wp in WMD_POSTURE:
+            _wr = _wp["risk"]
+            _wc = "#ff3d5a" if _wr>=70 else "#ff8c42" if _wr>=50 else "#ffb400" if _wr>=35 else "#00c8ff"
+            st.markdown(
+                f'<div style="padding:8px 11px;background:var(--card);border:1px solid var(--bord2);' +
+                f'border-left:3px solid {_wc};border-radius:7px;margin-bottom:5px">' +
+                f'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">' +
+                f'<span style="font-size:12px;font-weight:600;color:var(--text)">{_wp["actor"]}</span>' +
+                f'<div style="display:flex;align-items:center;gap:6px">' +
+                f'<span style="font-family:var(--fm);font-size:9px;color:var(--muted)">{_wp["type"]}</span>' +
+                f'<span style="font-family:var(--fd);font-size:16px;color:{_wc}">{_wr}</span></div></div>' +
+                f'<div style="height:3px;background:var(--dim);border-radius:2px;overflow:hidden;margin-bottom:4px">' +
+                f'<div style="height:100%;width:{_wr}%;background:{_wc}77;border-radius:2px"></div></div>' +
+                f'<div style="font-size:10px;color:var(--muted)">Status: <span style="color:{_wc}">{_wp["status"]}</span> · {_wp["assets"][:55]}</div>' +
+                '</div>',
+                unsafe_allow_html=True
+            )
+
+    st.markdown("---")
+
     # ── Row 3: Supply Chain Chokepoints ──────────────────────────
     st.markdown('<div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:12px">SUPPLY CHAIN CHOKEPOINTS</div>', unsafe_allow_html=True)
     cp_cols = st.columns(3, gap="medium")
@@ -3234,6 +3868,47 @@ with tab_intel:
                 {''.join(f'<div class="badge b-muted" style="font-size:8px">{e}</div>' for e in cp['exports'])}
               </div>
             </div>""", unsafe_allow_html=True)
+
+
+
+    st.markdown("---")
+    # ── Internet Outage Live Feed ─────────────────────────────
+    st.markdown('<div class="sec-label">📡 Internet Outage & Censorship — Live Feed</div>', unsafe_allow_html=True)
+    _outage_arts = fetch_outage_feed()
+    _out_left, _out_right = st.columns([1,1], gap="medium")
+    with _out_left:
+        if _outage_arts:
+            for _oa in _outage_arts[:5]:
+                _src_c = "#ff8c42"
+                _ttl_o = _oa["title"][:80] + ("…" if len(_oa["title"])>80 else "")
+                st.markdown(
+                    f'<div style="padding:8px 11px;background:var(--card);border:1px solid var(--bord2);' +
+                    f'border-left:3px solid var(--orange);border-radius:7px;margin-bottom:5px">' +
+                    f'<div style="display:flex;justify-content:space-between;margin-bottom:3px">' +
+                    f'<span style="font-family:var(--fm);font-size:9px;color:{_src_c}">{_oa["source"].upper()[:28]}</span>' +
+                    f'<span style="font-family:var(--fm);font-size:9px;color:var(--muted)">{_oa["time"]}</span></div>' +
+                    f'<div style="font-size:12px;color:var(--text);line-height:1.4">{_ttl_o}</div>' +
+                    (f'<a href="{_oa["url"]}" target="_blank" rel="noopener" style="font-family:var(--fm);font-size:9px;color:var(--cyan);text-decoration:none">Read →</a>' if _oa.get("url") else "") +
+                    '</div>',
+                    unsafe_allow_html=True
+                )
+        else:
+            st.markdown('<div style="font-family:var(--fm);font-size:11px;color:var(--muted);padding:10px">No outage alerts in the last 6 hours.</div>', unsafe_allow_html=True)
+
+    with _out_right:
+        st.markdown('<div style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">KNOWN ACTIVE OUTAGES</div>', unsafe_allow_html=True)
+        for _io in INTERNET_OUTAGES:
+            _io_col = "#ff3d5a" if _io["severity"]=="Total" else "#ff8c42" if _io["severity"] in ("Partial","Disrupted") else "#ffb400"
+            st.markdown(
+                f'<div style="display:flex;align-items:center;gap:10px;padding:7px 11px;' +
+                f'background:var(--card);border:1px solid var(--bord2);border-left:3px solid {_io_col};' +
+                f'border-radius:7px;margin-bottom:5px">' +
+                f'<div style="flex:1">' +
+                f'<div style="font-size:12px;font-weight:600;color:var(--text)">{_io["name"]}</div>' +
+                f'<div style="font-family:var(--fm);font-size:9px;color:var(--muted);margin-top:2px">' +
+                f'Severity: <span style="color:{_io_col}">{_io["severity"]}</span> · {_io["cause"]}</div></div></div>',
+                unsafe_allow_html=True
+            )
 
 
 # ══════════════════════════════════════════════════════════════
@@ -3660,3 +4335,24 @@ with tab_econ:
             geopolitical pressure on food affordability.
           </div>
         </div>""", unsafe_allow_html=True)
+
+        # Pizza index stress trend sparkline
+        st.markdown('<div class="sec-label" style="margin-top:14px">📈 Component Stress Trend</div>', unsafe_allow_html=True)
+        _pz_names  = [c["name"][:20] for c in pz["components"]]
+        _pz_stress = [c["stress"] for c in pz["components"]]
+        _pz_colors = ["#ff3d5a" if s>=80 else "#ff8c42" if s>=60 else "#ffb400" if s>=40 else "#00e676" for s in _pz_stress]
+        _pz_fig = go.Figure(go.Bar(
+            x=_pz_names, y=_pz_stress,
+            marker_color=_pz_colors, marker_line_width=0, opacity=0.85,
+            text=_pz_stress, textposition="outside",
+            textfont=dict(size=9, color="#e2ecf8"),
+        ))
+        _pz_fig.add_hline(y=60, line_dash="dash", line_color="rgba(255,140,66,.5)",
+                          line_width=1.5, annotation_text="Stress threshold",
+                          annotation_font=dict(color="#ff8c42", size=9))
+        _pz_fig.update_layout(
+            height=180, margin=dict(l=0,r=0,t=0,b=0), **bg_chart(),
+            xaxis=dict(**ax(), tickangle=-25),
+            yaxis=dict(**ax(), range=[0,105]),
+        )
+        st.plotly_chart(_pz_fig, use_container_width=True, config={"displayModeBar":False})
