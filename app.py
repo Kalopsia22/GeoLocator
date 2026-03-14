@@ -1,5 +1,5 @@
 """
-OSINT ARENA v6
+THE GEO-LOCATOR v6
 ==============
 Changes from v5:
   - FIXED: YT_CAT_NAMES, CAT_TABS_NEWS, CAT_NAMES_ART were undefined → defined properly
@@ -28,8 +28,8 @@ import plotly.graph_objects as go
 # PAGE CONFIG
 # ─────────────────────────────────────────────
 st.set_page_config(
-    page_title="OSINT ARENA",
-    page_icon="🛰",
+    page_title="The Geo-Locator",
+    page_icon="🌍",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -613,6 +613,92 @@ def fetch_kp():
         return {"kp": float(data[-1][1]), "series": [float(x[1]) for x in data[-24:] if len(x)>1]}
     except:
         return {"kp": 3.7, "series": [1,2,1.5,2.3,3.1,3.7,2.8,2.1,1.8,2.5,3,3.7]*2}
+
+# ── GDELT conflict-scoped fetcher ────────────────────────────
+CONFLICT_QUERIES = {
+    "Ukraine–Russia War":  ["Ukraine Russia war shelling missile", "Ukraine war frontline", "Russia Ukraine attack"],
+    "Gaza Conflict":       ["Gaza Israel war strikes", "Gaza humanitarian IDF Hamas", "Gaza ceasefire"],
+    "Israel–Iran War":     ["Israel Iran war strike nuclear", "Israel Iran missiles IRGC", "Hezbollah Israel attack"],
+    "Sudan Civil War":     ["Sudan RSF SAF war Darfur", "Sudan civil war Khartoum", "Sudan famine conflict"],
+    "Myanmar Civil War":   ["Myanmar junta resistance PDF war", "Myanmar military coup resistance", "Myanmar Tatmadaw"],
+}
+
+@st.cache_data(ttl=120, show_spinner=False)
+def fetch_gdelt_conflict(theatre: str, max_records: int = 30) -> list:
+    """Fetch GDELT Doc 2.0 news for a specific conflict theatre, filtered since conflict start."""
+    queries = CONFLICT_QUERIES.get(theatre, [theatre])
+    start_dates = {
+        "Ukraine–Russia War": "2022-02-24",
+        "Gaza Conflict": "2023-10-07",
+        "Israel–Iran War": "2024-04-13",
+        "Sudan Civil War": "2023-04-15",
+        "Myanmar Civil War": "2021-02-01",
+    }
+    start_date = start_dates.get(theatre, "2020-01-01")
+    all_articles = []
+    seen_urls = set()
+    for query in queries[:2]:  # max 2 queries to avoid rate-limiting
+        try:
+            params = {
+                "query": query,
+                "mode": "artlist",
+                "maxrecords": max_records,
+                "format": "json",
+                "timespan": "7d",
+                "sort": "DateDesc",
+            }
+            r = requests.get(
+                "https://api.gdeltproject.org/api/v2/doc/doc",
+                params=params, timeout=12
+            )
+            r.raise_for_status()
+            articles = r.json().get("articles", [])
+            for a in articles:
+                url = a.get("url","")
+                if url in seen_urls:
+                    continue
+                seen_urls.add(url)
+                raw_dt = str(a.get("seendate",""))
+                try:
+                    dt = datetime.strptime(raw_dt[:14], "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
+                    # Only include articles since conflict start date
+                    conflict_start = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                    if dt < conflict_start:
+                        continue
+                    age    = datetime.now(tz=timezone.utc) - dt
+                    age_h  = age.total_seconds() / 3600
+                    if age_h < 1:
+                        age_s = f"{int(age.total_seconds()//60)}m ago"
+                    elif age_h < 24:
+                        age_s = f"{int(age_h)}h ago"
+                    else:
+                        age_s = f"{int(age_h//24)}d ago"
+                    dt_str = dt.strftime("%Y-%m-%d %H:%Mz")
+                    is_recent = age_h < 6
+                    is_new    = age_h < 1
+                except:
+                    age_s = "recent"; dt_str = ""; is_recent = False; is_new = False
+                all_articles.append({
+                    "title":     a.get("title","")[:140],
+                    "url":       url,
+                    "source":    a.get("domain",""),
+                    "time":      age_s,
+                    "dt_str":    dt_str,
+                    "is_recent": is_recent,
+                    "is_new":    is_new,
+                    "lang":      a.get("language",""),
+                })
+        except:
+            pass
+    # Sort by recency
+    def sort_key(x):
+        try:
+            return datetime.strptime(x["dt_str"], "%Y-%m-%d %H:%Mz") if x["dt_str"] else datetime.min.replace(tzinfo=timezone.utc)
+        except:
+            return datetime.min.replace(tzinfo=timezone.utc)
+    all_articles.sort(key=sort_key, reverse=True)
+    return all_articles[:max_records]
+
 
 def _sq():
     rng = np.random.default_rng(42)
@@ -1445,7 +1531,7 @@ utc_now  = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d  %H:%M UTC")
 # SIDEBAR
 # ─────────────────────────────────────────────
 with st.sidebar:
-    st.markdown('<div class="wordmark" style="margin-bottom:4px">OSINT<em>ARENA</em></div>', unsafe_allow_html=True)
+    st.markdown('<div class="wordmark" style="margin-bottom:4px">THE GEO-<em>LOCATOR</em></div>', unsafe_allow_html=True)
     st.markdown('<p style="font-size:10px;color:var(--muted);letter-spacing:.14em;font-weight:700;margin-bottom:16px">GLOBAL INTELLIGENCE PLATFORM v6</p>', unsafe_allow_html=True)
 
     st.markdown('<div class="sb-div"></div>', unsafe_allow_html=True)
@@ -1534,7 +1620,7 @@ total_cas   = sum(c["casualties_total"] for c in CONFLICTS.values())
 st.markdown(f"""
 <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:4px">
   <div>
-    <div class="wordmark">OSINT<em>ARENA</em></div>
+    <div class="wordmark">THE GEO-<em>LOCATOR</em></div>
     <div style="font-size:11px;letter-spacing:.14em;color:var(--muted);font-weight:600;margin-top:3px">
       GLOBAL INTELLIGENCE OPERATIONS CENTER
     </div>
@@ -1656,108 +1742,254 @@ with tab_conflict:
       <div style="font-size:14px;color:var(--text2);line-height:1.7">{C['description']}</div>
     </div>""", unsafe_allow_html=True)
 
-    # Live theatre news
-    with st.expander(f"📰 Live News — {theatre}", expanded=True):
-        region_src_map = {
-            "Ukraine–Russia War": ["Reuters","BBC World","ISW","Defense One"],
-            "Gaza Conflict":      ["Al Jazeera","Reuters","BBC World","ISW"],
-            "Israel–Iran War":    ["Reuters","Al Jazeera","ISW","BBC World"],
-            "Sudan Civil War":    ["Reuters","Al Jazeera","BBC World","ACLED"],
-            "Myanmar Civil War":  ["Reuters","BBC World","The Diplomat","ACLED"],
-        }
-        preferred = region_src_map.get(theatre, ["Reuters","BBC World","ISW"])
-        theatre_feeds = [s for s in NEWS_SOURCES if s["name"] in preferred][:3]
-        if not theatre_feeds:
-            theatre_feeds = NEWS_SOURCES[:3]
+    # ── LIVE CONFLICT TRACKER ──────────────────────────────────
+    # Computes conflict duration and fetches GDELT news scoped to conflict start date
+    from datetime import date as _date
+    _start_dt   = datetime.strptime(C["start"], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    _now_utc    = datetime.now(tz=timezone.utc)
+    _delta      = _now_utc - _start_dt
+    _days       = _delta.days
+    _years      = _days // 365
+    _rem_days   = _days % 365
+    _months     = _rem_days // 30
+    _rem_d2     = _rem_days % 30
+    if _years > 0:
+        _dur_str = f"{_years}y {_months}m {_rem_d2}d"
+    elif _months > 0:
+        _dur_str = f"{_months}m {_rem_d2}d"
+    else:
+        _dur_str = f"{_days}d"
 
-        tf_js = json.dumps([
-            {"name": s["name"], "rss": s["rss"],
-             "color": NEWS_CAT_COLOR.get(s["cat"],"#4a6b85")}
-            for s in theatre_feeds
-        ])
-        conflict_accent = C.get("factions",[{}])[0].get("color","#ff3d5a") if C.get("factions") else "#ff3d5a"
+    # Fetch GDELT articles scoped to this conflict (cached 2 min)
+    _gdelt_articles = fetch_gdelt_conflict(theatre, max_records=40)
+    _new_count  = sum(1 for a in _gdelt_articles if a.get("is_new"))
+    _rec_count  = sum(1 for a in _gdelt_articles if a.get("is_recent"))
 
-        theatre_news_html = f"""
-<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-*{{margin:0;padding:0;box-sizing:border-box;}}
-body{{background:#02040a;font-family:'DM Sans',system-ui,sans-serif;color:#e2ecf8;padding:8px;}}
-#status{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a6b85;margin-bottom:10px;display:flex;align-items:center;gap:6px;}}
-.dot{{width:5px;height:5px;border-radius:50%;background:#00c8ff;animation:blink 1.2s ease-in-out infinite;flex-shrink:0;}}
-@keyframes blink{{0%,100%{{opacity:1}}50%{{opacity:.2}}}}
-.grid{{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}}
-@media(max-width:700px){{.grid{{grid-template-columns:1fr 1fr;}}}}
-@media(max-width:450px){{.grid{{grid-template-columns:1fr;}}}}
-.card{{background:#0b1524;border:1px solid rgba(0,200,255,.1);border-radius:9px;padding:12px 14px;border-left:3px solid {conflict_accent};transition:border-color .2s;}}
-.card:hover{{border-color:rgba(0,200,255,.28);}}
-.src{{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#4a6b85;margin-bottom:5px;}}
-.hl{{font-size:12px;font-weight:600;color:#e2ecf8;line-height:1.4;margin-bottom:8px;}}
-.foot{{display:flex;align-items:center;justify-content:space-between;}}
-.ts{{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a6b85;}}
-a.r{{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#00c8ff;text-decoration:none;padding:2px 8px;border:1px solid rgba(0,200,255,.25);border-radius:4px;}}
-a.r:hover{{background:rgba(0,200,255,.1);}}
-.err{{color:#ff8c42;font-size:11px;font-family:'IBM Plex Mono',monospace;line-height:1.6;}}
-.srclinks{{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}}
-.srclinks a{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#00c8ff;text-decoration:none;padding:3px 10px;border:1px solid rgba(0,200,255,.25);border-radius:12px;}}
-</style></head><body>
-<div id="status"><div class="dot"></div><span>Loading {theatre} news…</span></div>
-<div id="grid" class="grid"></div>
-<script>
-const FEEDS={tf_js};
-const PROXIES=[
-  u=>`https://api.allorigins.win/get?url=${{encodeURIComponent(u)}}`,
-  u=>`https://corsproxy.io/?${{encodeURIComponent(u)}}`,
-  u=>`https://api.codetabs.com/v1/proxy?quest=${{encodeURIComponent(u)}}`,
-];
-function ta(s){{try{{const d=new Date(s),x=(Date.now()-d)/1000;
-  if(x<60)return Math.round(x)+'s';if(x<3600)return Math.round(x/60)+'m';
-  return Math.round(x/3600)+'h ago';}}catch{{return '';}}}}
-function esc(s){{return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}}
-function parseXML(xml){{
-  try{{const doc=new DOMParser().parseFromString(xml,'text/xml');
-    if(doc.querySelector('parsererror'))return[];
-    return[...doc.querySelectorAll('item')].slice(0,6).map(it=>{{
-      const txt=n=>{{const el=it.querySelector(n);const raw=(el?.textContent||el?.getAttribute('href')||'');return raw.split('<![CDATA[').join('').split(']]>').join('').trim();}};
-      return{{title:txt('title'),link:txt('link'),pub:txt('pubDate')}};
-    }});}}catch{{return[];}}}}
-async function fetchFeed(f){{
-  for(const px of PROXIES){{try{{
-    const r=await fetch(px(f.rss),{{signal:AbortSignal.timeout(9000)}});
-    if(!r.ok)continue;
-    const ct=r.headers.get('content-type')||'';
-    let xml='';
-    if(ct.includes('json')){{const j=await r.json();xml=j.contents||j.data||'';}}
-    else xml=await r.text();
-    const items=parseXML(xml);
-    if(items.length)return{{f,items}};
-  }}catch{{}}}}
-  return{{f,items:[]}};
-}}
-async function main(){{
-  const statusEl=document.getElementById('status');
-  const gridEl=document.getElementById('grid');
-  const res=await Promise.all(FEEDS.map(fetchFeed));
-  const arts=[];let n=0;
-  res.forEach(({{f,items}})=>{{if(items.length){{n++;
-    items.forEach(it=>arts.push({{title:it.title,link:it.link,time:ta(it.pub),src:f.name,col:f.color}}));}}
-  }});
-  if(!arts.length){{
-    statusEl.innerHTML='<span style="color:#ff8c42">⚠ feeds blocked</span>';
-    gridEl.innerHTML='<div class="err">Live feeds could not load in this viewer.<div class="srclinks">'+
-      FEEDS.map(f=>`<a href="https://${{f.name.toLowerCase().replace(/\\s+/g,'')}}.com" target="_blank">${{f.name}}</a>`).join('')+
-      '</div></div>';return;}}
-  statusEl.innerHTML=`<div class="dot" style="background:#00e676"></div><span>${{n}} feed${{n>1?'s':''}} · ${{arts.length}} articles</span>`;
-  gridEl.innerHTML=arts.slice(0,12).map(a=>`
-    <div class="card">
-      <div class="src" style="color:${{a.col}}">${{esc(a.src)}}</div>
-      <div class="hl">${{esc(a.title).slice(0,110)}}</div>
-      <div class="foot">
-        <span class="ts">${{a.time}}</span>
-        ${{a.link?`<a class="r" href="${{a.link}}" target="_blank" rel="noopener">Read →</a>`:''}}
+    conflict_accent = C.get("factions",[{}])[0].get("color","#ff3d5a") if C.get("factions") else "#ff3d5a"
+    int_col = "#ff3d5a" if C["intensity"]=="CRITICAL" else "#ff8c42" if C["intensity"]=="HIGH" else "#ffb400"
+
+    # ── Tracker header bar ─────────────────────────────────────
+    st.markdown(f"""
+    <div style="background:var(--panel);border:1px solid {conflict_accent}33;border-radius:12px;
+                padding:14px 20px;margin-bottom:12px;display:flex;align-items:center;
+                justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:2px">CONFLICT DURATION</div>
+          <div style="font-family:var(--fd);font-size:26px;letter-spacing:.06em;color:{conflict_accent};line-height:1">{_dur_str}</div>
+          <div style="font-family:var(--fm);font-size:9px;color:var(--muted);margin-top:2px">since {C["start"]}</div>
+        </div>
+        <div style="width:1px;height:40px;background:var(--bord2)"></div>
+        <div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:2px">TOTAL DAYS</div>
+          <div style="font-family:var(--fd);font-size:26px;color:var(--amber);line-height:1">{_days:,}</div>
+        </div>
+        <div style="width:1px;height:40px;background:var(--bord2)"></div>
+        <div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:2px">INTENSITY</div>
+          <div style="font-family:var(--fd);font-size:22px;color:{int_col};line-height:1">{C["intensity"]}</div>
+        </div>
+        <div style="width:1px;height:40px;background:var(--bord2)"></div>
+        <div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:2px">LIVE ARTICLES</div>
+          <div style="font-family:var(--fd);font-size:26px;color:var(--green);line-height:1">{len(_gdelt_articles)}</div>
+          <div style="font-family:var(--fm);font-size:9px;color:var(--muted);margin-top:2px">{_rec_count} in last 6h · {_new_count} in last 1h</div>
+        </div>
       </div>
-    </div>`).join('');}}
-main();
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div class="live-badge"><span class="pulse p-red" style="margin-right:3px"></span>LIVE TRACKER</div>
+        <div style="font-family:var(--fm);font-size:10px;color:var(--muted)">GDELT · updates every 2 min · filtered since {C["start"]}</div>
+      </div>
+    </div>""", unsafe_allow_html=True)
+
+    # ── Live feed + RSS side by side ────────────────────────────
+    tracker_left, tracker_right = st.columns([3, 2], gap="medium")
+
+    with tracker_left:
+        st.markdown(f"""
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)">
+            📡 LIVE FEED — {theatre.upper()}
+          </div>
+          <div class="live-badge"><span class="pulse p-red" style="margin-right:2px"></span>GDELT DOC 2.0</div>
+          <div style="font-family:var(--fm);font-size:9px;color:var(--muted)">Since {C["start"]} · {len(_gdelt_articles)} results</div>
+        </div>""", unsafe_allow_html=True)
+
+        if _gdelt_articles:
+            feed_container = st.container()
+            with feed_container:
+                for art in _gdelt_articles:
+                    is_new    = art.get("is_new", False)
+                    is_recent = art.get("is_recent", False)
+                    border_col = conflict_accent if is_new else (f"{conflict_accent}88" if is_recent else "rgba(0,200,255,.08)")
+                    new_badge  = f'<span style="font-family:var(--fm);font-size:8px;background:rgba(0,230,118,.15);color:#00e676;border:1px solid rgba(0,230,118,.3);border-radius:4px;padding:1px 6px;margin-left:6px">NEW</span>' if is_new else ""
+                    src_col = "#ff8c42" if is_new else "#4a6b85"
+                    st.markdown(f"""
+                    <div style="background:var(--card);border:1px solid {border_col};border-left:3px solid {conflict_accent if is_recent else 'var(--bord2)'};
+                                border-radius:8px;padding:10px 14px;margin-bottom:6px;transition:border-color .2s"
+                         onmouseover="this.style.borderColor='rgba(0,200,255,.25)'"
+                         onmouseout="this.style.borderColor='{border_col}'">
+                      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                        <div style="display:flex;align-items:center;gap:6px">
+                          <span style="font-family:var(--fm);font-size:9px;font-weight:600;letter-spacing:.06em;color:{src_col}">{art["source"].upper()[:30]}</span>
+                          {new_badge}
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px">
+                          <span style="font-family:var(--fm);font-size:9px;color:var(--muted)">{art["time"]}</span>
+                          {'<span style="font-family:var(--fm);font-size:8px;background:rgba(255,61,90,.12);color:#ff3d5a;border:1px solid rgba(255,61,90,.3);border-radius:4px;padding:1px 5px">RECENT</span>' if is_recent else ""}
+                        </div>
+                      </div>
+                      <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.45;margin-bottom:5px">{art["title"]}</div>
+                      <div style="display:flex;align-items:center;justify-content:space-between">
+                        <span style="font-family:var(--fm);font-size:9px;color:var(--muted)">{art.get("dt_str","")}</span>
+                        {'<a href="' + art["url"] + '" target="_blank" rel="noopener" style="font-family:var(--fm);font-size:9px;color:var(--cyan);text-decoration:none;padding:2px 8px;border:1px solid rgba(0,200,255,.22);border-radius:4px">Read →</a>' if art.get("url") else ""}
+                      </div>
+                    </div>""", unsafe_allow_html=True)
+        else:
+            # GDELT unavailable — show RSS fallback
+            region_src_map = {
+                "Ukraine–Russia War": ["Reuters","BBC World","ISW","Defense One"],
+                "Gaza Conflict":      ["Al Jazeera","Reuters","BBC World","ISW"],
+                "Israel–Iran War":    ["Reuters","Al Jazeera","ISW","BBC World"],
+                "Sudan Civil War":    ["Reuters","Al Jazeera","BBC World","ACLED"],
+                "Myanmar Civil War":  ["Reuters","BBC World","The Diplomat","ACLED"],
+            }
+            preferred = region_src_map.get(theatre, ["Reuters","BBC World","ISW"])
+            theatre_feeds = [s for s in NEWS_SOURCES if s["name"] in preferred][:3]
+            tf_js = json.dumps([{"name":s["name"],"rss":s["rss"],"color":NEWS_CAT_COLOR.get(s["cat"],"#4a6b85")} for s in theatre_feeds])
+            fallback_html = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+*{{margin:0;padding:0;box-sizing:border-box;}}body{{background:#02040a;font-family:'DM Sans',system-ui,sans-serif;color:#e2ecf8;padding:8px;}}
+#st{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a6b85;margin-bottom:8px;display:flex;align-items:center;gap:6px;}}
+.dot{{width:5px;height:5px;border-radius:50%;background:#ffb400;animation:bl 1.2s ease-in-out infinite;flex-shrink:0;}}
+@keyframes bl{{0%,100%{{opacity:1}}50%{{opacity:.2}}}}
+.g{{display:grid;grid-template-columns:1fr 1fr;gap:8px;}}
+.c{{background:#0b1524;border:1px solid rgba(0,200,255,.1);border-left:3px solid {conflict_accent};border-radius:8px;padding:10px 12px;}}
+.s{{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#4a6b85;margin-bottom:4px;}}
+.h{{font-size:12px;font-weight:600;color:#e2ecf8;line-height:1.4;margin-bottom:6px;}}
+.f{{display:flex;align-items:center;justify-content:space-between;}}
+.t{{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a6b85;}}
+a.r{{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#00c8ff;text-decoration:none;padding:2px 7px;border:1px solid rgba(0,200,255,.22);border-radius:4px;}}
+</style></head><body>
+<div id="st"><div class="dot"></div><span>GDELT unavailable — loading RSS fallback…</span></div>
+<div id="g" class="g"></div>
+<script>
+const F={tf_js};
+const P=[u=>`https://api.allorigins.win/get?url=${{encodeURIComponent(u)}}`,u=>`https://corsproxy.io/?${{encodeURIComponent(u)}}`];
+function ta(s){{try{{const d=new Date(s),x=(Date.now()-d)/1000;if(x<3600)return Math.round(x/60)+'m ago';return Math.round(x/3600)+'h ago';}}catch{{return '';}}}}
+function esc(s){{return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}}
+function px(xml){{try{{const doc=new DOMParser().parseFromString(xml,'text/xml');if(doc.querySelector('parsererror'))return[];return[...doc.querySelectorAll('item')].slice(0,5).map(it=>{{const g=n=>{{const e=it.querySelector(n);return(e?.textContent||'').split('<![CDATA[').join('').split(']]>').join('').trim();}};return{{ti:g('title'),li:g('link'),pu:g('pubDate')}};}}); }}catch{{return[];}}}}
+async function ff(f){{for(const p of P){{try{{const r=await fetch(p(f.rss),{{signal:AbortSignal.timeout(8000)}});if(!r.ok)continue;const ct=r.headers.get('content-type')||'';let xml='';if(ct.includes('json')){{const j=await r.json();xml=j.contents||j.data||'';}}else xml=await r.text();const items=px(xml);if(items.length)return{{f,items}};}}catch{{}}}}return{{f,items:[]}};}}
+async function main(){{const se=document.getElementById('st'),ge=document.getElementById('g');const res=await Promise.all(F.map(ff));const arts=[];res.forEach(({{f,items}})=>{{if(items.length)items.forEach(it=>arts.push({{ti:it.ti,li:it.li,tm:ta(it.pu),sr:f.name,co:f.color}}));}});if(!arts.length){{se.innerHTML='<span style="color:#ff8c42">RSS also unavailable</span>';return;}}se.innerHTML=`<div class="dot" style="background:#00e676"></div><span>RSS fallback · ${{arts.length}} articles</span>`;ge.innerHTML=arts.slice(0,10).map(a=>`<div class="c"><div class="s" style="color:${{a.co}}">${{esc(a.sr)}}</div><div class="h">${{esc(a.ti).slice(0,100)}}</div><div class="f"><span class="t">${{a.tm}}</span>${{a.li?`<a class="r" href="${{a.li}}" target="_blank">Read →</a>`:''}}</div></div>`).join('');}}main();
 </script></body></html>"""
-        components.html(theatre_news_html, height=340, scrolling=False)
+            st.info("GDELT live feed unavailable — loading RSS fallback.")
+            components.html(fallback_html, height=420, scrolling=True)
+
+    with tracker_right:
+        st.markdown(f"""
+        <div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">
+          📊 CONFLICT AT A GLANCE
+        </div>""", unsafe_allow_html=True)
+
+        # Duration breakdown bar
+        total_conflict_days = max(1, _days)
+        year_labels = []
+        _tmp = _start_dt
+        while _tmp < _now_utc:
+            year_labels.append(_tmp.year)
+            _tmp = _tmp.replace(year=_tmp.year + 1)
+        year_labels = sorted(set(year_labels))
+
+        st.markdown(f"""
+        <div style="background:var(--card);border:1px solid var(--bord2);border-radius:10px;padding:14px 16px;margin-bottom:10px">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:8px;font-weight:600;letter-spacing:.1em;text-transform:uppercase">Duration Breakdown</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+            <div style="text-align:center">
+              <div style="font-family:var(--fd);font-size:28px;color:{conflict_accent};line-height:1">{_years if _years>0 else _months}</div>
+              <div style="font-size:9px;color:var(--muted)">{'years' if _years>0 else 'months'}</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-family:var(--fd);font-size:28px;color:var(--amber);line-height:1">{_days:,}</div>
+              <div style="font-size:9px;color:var(--muted)">total days</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-family:var(--fd);font-size:28px;color:var(--cyan);line-height:1">{_days * 24:,}</div>
+              <div style="font-size:9px;color:var(--muted)">hours</div>
+            </div>
+          </div>
+          <div style="height:6px;background:var(--dim);border-radius:3px;overflow:hidden;margin-bottom:6px">
+            <div style="height:100%;width:100%;background:linear-gradient(90deg,{conflict_accent}44,{conflict_accent});border-radius:3px"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-family:var(--fm);font-size:9px;color:var(--muted)">
+            <span>{C["start"]}</span>
+            <span>NOW</span>
+          </div>
+        </div>""", unsafe_allow_html=True)
+
+        # Key stats
+        cas_per_day = round(C["casualties_total"] / max(1, _days))
+        disp_per_day = round(C["displaced"] / max(1, _days))
+        inc_total = len(C["incidents"])
+        crit_inc  = sum(1 for i in C["incidents"] if i["severity"]=="CRITICAL")
+
+        st.markdown(f"""
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <div style="background:var(--card);border:1px solid var(--bord2);border-radius:8px;padding:10px 12px;text-align:center">
+            <div style="font-size:9px;color:var(--muted);margin-bottom:3px">CASUALTIES/DAY</div>
+            <div style="font-family:var(--fd);font-size:22px;color:var(--red)">{cas_per_day:,}</div>
+          </div>
+          <div style="background:var(--card);border:1px solid var(--bord2);border-radius:8px;padding:10px 12px;text-align:center">
+            <div style="font-size:9px;color:var(--muted);margin-bottom:3px">DISPLACED/DAY</div>
+            <div style="font-family:var(--fd);font-size:22px;color:var(--amber)">{disp_per_day:,}</div>
+          </div>
+          <div style="background:var(--card);border:1px solid var(--bord2);border-radius:8px;padding:10px 12px;text-align:center">
+            <div style="font-size:9px;color:var(--muted);margin-bottom:3px">TRACKED INCIDENTS</div>
+            <div style="font-family:var(--fd);font-size:22px;color:var(--cyan)">{inc_total}</div>
+          </div>
+          <div style="background:var(--card);border:1px solid var(--bord2);border-radius:8px;padding:10px 12px;text-align:center">
+            <div style="font-size:9px;color:var(--muted);margin-bottom:3px">CRITICAL EVENTS</div>
+            <div style="font-family:var(--fd);font-size:22px;color:var(--red)">{crit_inc}</div>
+          </div>
+        </div>""", unsafe_allow_html=True)
+
+        # Recent incident pulse
+        st.markdown(f"""
+        <div style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">
+          🔴 MOST RECENT INCIDENTS
+        </div>""", unsafe_allow_html=True)
+
+        sorted_incidents = sorted(C["incidents"], key=lambda x: x.get("date",""), reverse=True)
+        for inc in sorted_incidents[:4]:
+            icon = INCIDENT_ICONS.get(inc["type"],"●")
+            sev  = inc["severity"]
+            sc   = {"CRITICAL":"#ff3d5a","HIGH":"#ff8c42","MED":"#ffb400","LOW":"#00e676"}.get(sev,"#4a6b85")
+            cas_note = f" · {inc['casualties']} cas." if inc["casualties"] > 0 else ""
+            st.markdown(f"""
+            <div style="display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--bord2)">
+              <div style="font-size:14px;flex-shrink:0;padding-top:1px">{icon}</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:11px;font-weight:600;color:var(--text);line-height:1.35">{inc["title"][:70]}{"…" if len(inc["title"])>70 else ""}</div>
+                <div style="font-family:var(--fm);font-size:9px;color:var(--muted);margin-top:2px;display:flex;gap:6px;flex-wrap:wrap">
+                  <span style="color:{sc}">{sev}</span>
+                  <span>{inc["date"]}{cas_note}</span>
+                  <span>{inc["loc"][:28]}</span>
+                </div>
+              </div>
+            </div>""", unsafe_allow_html=True)
+
+        # Live pulse ticker
+        _pulse_items = [art["title"][:80] for art in _gdelt_articles[:10] if art.get("is_recent")]
+        if _pulse_items:
+            _ticker_str = " ◈ ".join(_pulse_items)
+            _ticker_dup = _ticker_str + " ◈ " + _ticker_str
+            st.markdown(f"""
+            <div style="margin-top:10px;background:rgba(255,61,90,.06);border:1px solid rgba(255,61,90,.2);border-radius:8px;overflow:hidden;padding:6px 0">
+              <div style="font-family:var(--fm);font-size:9px;color:var(--red);padding:0 10px;margin-bottom:4px;letter-spacing:.1em">⚡ LIVE UPDATES (last 6h)</div>
+              <div style="overflow:hidden;padding:0 4px">
+                <div style="display:inline-block;white-space:nowrap;animation:ticker-scroll 60s linear infinite;font-family:var(--fm);font-size:9px;color:var(--muted)">
+                  {_ticker_dup}
+                </div>
+              </div>
+            </div>""", unsafe_allow_html=True)
 
     st.markdown("---")
 
