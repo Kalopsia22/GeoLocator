@@ -26,7 +26,7 @@ import plotly.graph_objects as go
 # PAGE CONFIG
 # ─────────────────────────────────────────────
 st.set_page_config(
-    page_title="Geo-Locator",
+    page_title="OSINT ARENA",
     page_icon="🛰",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -1579,235 +1579,355 @@ with tab_civil:
             </div>""", unsafe_allow_html=True)
 
 
+
 # ══════════════════════════════════════════════════════════════
-# TAB 4 — LIVE NEWS
-# Strategy: outbound HTTP is blocked on Streamlit Cloud so
-# requests/GDELT/RSS all fail server-side. Solution:
-#   1. st.components.v1.html — renders a browser-side JS fetch
-#      via rss2json.com (CORS-enabled, free, no key) → real articles
-#   2. Rich curated fallback cards with direct deep-links that
-#      always work regardless of network access
+# TAB 4 — LIVE NEWS  +  LIVE TV STUDIO
 # ══════════════════════════════════════════════════════════════
 with tab_news:
 
-    CAT_TABS  = ["ALL","global","science","geopolitics","conflict","climate","spaceweather"]
-    CAT_NAMES = {"ALL":"All Sources","global":"🌐 Global","science":"🔬 Science",
-                 "geopolitics":"🗺 Geopolitics","conflict":"⚔ Conflict",
-                 "climate":"🌱 Climate","spaceweather":"☀ Space Weather"}
+    # ── YouTube channel registry ────────────────────────────
+    YT_CHANNELS = [
+        {"name":"Al Jazeera English",  "id":"UCNye-wNBqNL5ZzHSJdba7Xg","color":"#00873c","cat":"global",
+         "live_url":"https://www.youtube.com/embed/live_stream?channel=UCNye-wNBqNL5ZzHSJdba7Xg",
+         "desc":"Qatar-based global news, 24/7 English"},
+        {"name":"BBC News",             "id":"UC16niRr50-MSBwiO3YDb3RA","color":"#bb1919","cat":"global",
+         "live_url":"https://www.youtube.com/embed/live_stream?channel=UC16niRr50-MSBwiO3YDb3RA",
+         "desc":"British public broadcaster — world news"},
+        {"name":"CNN",                  "id":"UCupvZG-5ko_eiXAupbDfxWw","color":"#cc0000","cat":"global",
+         "live_url":"https://www.youtube.com/embed/live_stream?channel=UCupvZG-5ko_eiXAupbDfxWw",
+         "desc":"24/7 US & international breaking news"},
+        {"name":"DW News",              "id":"UCknLrEdhRCp1aegoMqRaCZg","color":"#003087","cat":"global",
+         "live_url":"https://www.youtube.com/embed/live_stream?channel=UCknLrEdhRCp1aegoMqRaCZg",
+         "desc":"Deutsche Welle — German international news"},
+        {"name":"France 24 English",   "id":"UCQfwfsi5VrQ8yKZ-UWmAoBw","color":"#002395","cat":"global",
+         "live_url":"https://www.youtube.com/embed/live_stream?channel=UCQfwfsi5VrQ8yKZ-UWmAoBw",
+         "desc":"French international broadcaster"},
+        {"name":"Euronews",             "id":"UCg2JZlAJZIxzxRDat2HVkFw","color":"#006fbf","cat":"global",
+         "live_url":"https://www.youtube.com/embed/live_stream?channel=UCg2JZlAJZIxzxRDat2HVkFw",
+         "desc":"Pan-European news in English"},
+        {"name":"Sky News",             "id":"UCoMdktPbSTixAyNGwb-UYkQ","color":"#004f9f","cat":"conflict",
+         "live_url":"https://www.youtube.com/embed/live_stream?channel=UCoMdktPbSTixAyNGwb-UYkQ",
+         "desc":"UK breaking news & international coverage"},
+        {"name":"WION",                 "id":"UCExCSExkE0M-kDblPqMFjGQ","color":"#e8520a","cat":"conflict",
+         "live_url":"https://www.youtube.com/embed/live_stream?channel=UCExCSExkE0M-kDblPqMFjGQ",
+         "desc":"World Is One News — South Asian perspective"},
+        {"name":"Times Now",            "id":"UC5pM_6w9V_KAOWiC5_A-FUg","color":"#e31837","cat":"conflict",
+         "live_url":"https://www.youtube.com/embed/live_stream?channel=UC5pM_6w9V_KAOWiC5_A-FUg",
+         "desc":"Indian English news, international affairs"},
+        {"name":"TRT World",            "id":"UC7fWeaHhqgM4Ry-RMpM2YYw","color":"#e30a17","cat":"conflict",
+         "live_url":"https://www.youtube.com/embed/live_stream?channel=UC7fWeaHhqgM4Ry-RMpM2YYw",
+         "desc":"Turkish public broadcaster — global news"},
+        {"name":"NASA TV",              "id":"UCLA_DiR1FfKNvjuUpBHmylQ","color":"#0b3d91","cat":"science",
+         "live_url":"https://www.youtube.com/embed/live_stream?channel=UCLA_DiR1FfKNvjuUpBHmylQ",
+         "desc":"NASA official — missions & Earth science"},
+        {"name":"Bloomberg TV",         "id":"UCIALMKvObZNtJ6AmdCLP7Lg","color":"#474747","cat":"global",
+         "live_url":"https://www.youtube.com/embed/live_stream?channel=UCIALMKvObZNtJ6AmdCLP7Lg",
+         "desc":"Global markets, business, finance"},
+        {"name":"CNBC",                 "id":"UCvJJ_dzjViJCoLf5uKUTwoA","color":"#00aaff","cat":"global",
+         "live_url":"https://www.youtube.com/embed/live_stream?channel=UCvJJ_dzjViJCoLf5uKUTwoA",
+         "desc":"Business & markets — US & global"},
+        {"name":"Al Arabiya English",   "id":"UC5xshE6wCNFWnqNu5XhBMEg","color":"#b8860b","cat":"conflict",
+         "live_url":"https://www.youtube.com/embed/live_stream?channel=UC5xshE6wCNFWnqNu5XhBMEg",
+         "desc":"Saudi-owned pan-Arab news in English"},
+    ]
 
-    cat_sel = st.radio("Filter by category:", CAT_TABS,
-                        format_func=lambda x: CAT_NAMES.get(x,x),
-                        horizontal=True, label_visibility="collapsed")
+    YT_CAT_NAMES = {
+        "ALL":"📺 All Channels","global":"🌐 Global Wire",
+        "conflict":"⚔ Conflict / Defence","science":"🔬 Science",
+    }
+    CAT_TABS_NEWS = ["ALL","global","science","geopolitics","conflict","climate","spaceweather"]
+    CAT_NAMES_ART = {
+        "ALL":"All Sources","global":"🌐 Global","science":"🔬 Science",
+        "geopolitics":"🗺 Geopolitics","conflict":"⚔ Conflict",
+        "climate":"🌱 Climate","spaceweather":"☀ Space Weather",
+    }
 
-    vis_src = [s for s in NEWS_SOURCES if cat_sel=="ALL" or s["cat"]==cat_sel]
-
-    # ── RSS feeds via rss2json.com (browser-side JS, bypasses server block) ──
-    # rss2json.com is a free public CORS proxy — the fetch runs in the
-    # user's browser, not the Streamlit server, so cloud network restrictions don't apply.
-    st.markdown('<div class="sec-label">📡 Live Article Feed</div>', unsafe_allow_html=True)
-    st.caption("Fetched live in your browser via rss2json.com — no server network required.")
-
-    # Build JS that fetches up to 3 feeds for the selected category
-    feeds_for_js = vis_src[:3]  # fetch first 3 feeds for the selected category
-    feeds_js_array = json.dumps([
-        {"name": s["name"], "rss": s["rss"],
-         "color": NEWS_CAT_COLOR.get(s["cat"],"#4a6b85"),
-         "cat": s["cat"]}
-        for s in feeds_for_js
+    sub_tv, sub_articles, sub_directory = st.tabs([
+        "📺  Live TV Streams",
+        "📰  Article Feeds",
+        "📋  Source Directory",
     ])
 
-    live_news_html = f"""
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<style>
-  * {{ margin:0; padding:0; box-sizing:border-box; }}
-  body {{ background:#02040a; font-family:'DM Sans',system-ui,sans-serif; color:#e2ecf8; padding:12px; }}
-  #status {{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:#4a6b85;
-             margin-bottom:14px; min-height:18px; display:flex; align-items:center; gap:8px; }}
-  .dot {{ width:6px; height:6px; border-radius:50%; background:#00c8ff;
-          animation:blink 1.2s ease-in-out infinite; flex-shrink:0; }}
-  @keyframes blink {{ 0%,100%{{opacity:1}} 50%{{opacity:.2}} }}
-  .grid {{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }}
-  @media(max-width:580px){{ .grid{{ grid-template-columns:1fr; }} }}
-  .card {{
-    background:#0b1524; border:1px solid rgba(0,200,255,.12); border-radius:10px;
-    padding:14px 16px; position:relative; overflow:hidden;
-    transition:border-color .18s, transform .15s;
-  }}
-  .card:hover {{ border-color:rgba(0,200,255,.3); transform:translateY(-1px); }}
-  .card::after {{ content:''; position:absolute; left:0; top:0; bottom:0; width:3px;
-                  background:linear-gradient(180deg,var(--ac,#00c8ff),transparent); }}
-  .src {{ font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:600;
-          letter-spacing:.07em; text-transform:uppercase; margin-bottom:6px; }}
-  .hl {{ font-size:13px; font-weight:600; color:#e2ecf8; line-height:1.45; margin-bottom:8px; }}
-  .foot {{ display:flex; align-items:center; justify-content:space-between; }}
-  .ts {{ font-family:'IBM Plex Mono',monospace; font-size:10px; color:#4a6b85; }}
-  a.rd {{ font-family:'IBM Plex Mono',monospace; font-size:10px; color:#00c8ff;
-          text-decoration:none; padding:3px 10px; border:1px solid rgba(0,200,255,.28);
-          border-radius:5px; white-space:nowrap; }}
-  a.rd:hover {{ background:rgba(0,200,255,.1); }}
-  .err {{ color:#ff8c42; font-family:'IBM Plex Mono',monospace; font-size:11px;
-          padding:12px; border:1px solid rgba(255,140,66,.25); border-radius:8px;
-          background:rgba(255,140,66,.05); line-height:1.6; }}
-  .srclinks {{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }}
-  .srclinks a {{ font-family:'IBM Plex Mono',monospace; font-size:10px; color:#00c8ff;
-                 text-decoration:none; padding:4px 12px;
-                 border:1px solid rgba(0,200,255,.25); border-radius:20px; }}
-  .srclinks a:hover {{ background:rgba(0,200,255,.1); }}
-</style>
-</head>
-<body>
-<div id="status"><div class="dot"></div><span>Loading feeds…</span></div>
-<div id="grid" class="grid"></div>
+    # ── SUB-TAB A: LIVE TV ───────────────────────────────────
+    with sub_tv:
+        st.markdown("""
+        <div class="helper">
+          <b>Live TV Studio</b> — click any channel to stream it live from YouTube.
+          Channels actively broadcasting will play immediately. Add a free
+          <b>YouTube Data API v3 key</b> below for automatic live-stream detection.
+        </div>""", unsafe_allow_html=True)
 
+        yt_api_key = st.text_input(
+            "YouTube Data API v3 Key (optional)",
+            type="password",
+            placeholder="AIza… — get free key at console.cloud.google.com",
+            help="Free key at console.cloud.google.com → Enable YouTube Data API v3 → Create API Key",
+        )
+
+        yt_cats = list(dict.fromkeys([c["cat"] for c in YT_CHANNELS]))
+        yt_cat_sel = st.radio(
+            "Filter:", ["ALL"] + yt_cats,
+            format_func=lambda x: YT_CAT_NAMES.get(x, x.title()),
+            horizontal=True, label_visibility="collapsed",
+        )
+        vis_ch = [c for c in YT_CHANNELS if yt_cat_sel == "ALL" or c["cat"] == yt_cat_sel]
+
+        yt_js  = json.dumps([{"name":c["name"],"id":c["id"],"color":c["color"],
+                               "cat":c["cat"],"desc":c["desc"],"live_url":c["live_url"]}
+                              for c in vis_ch])
+        yt_key = json.dumps(yt_api_key or "")
+
+        tv_html = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+*{{margin:0;padding:0;box-sizing:border-box;}}
+body{{background:#02040a;font-family:'DM Sans',system-ui,sans-serif;color:#e2ecf8;}}
+#ch-grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px;padding:12px 12px 0;}}
+.ch-btn{{background:#0b1524;border:1px solid rgba(0,200,255,.12);border-radius:8px;
+          padding:10px 12px;cursor:pointer;transition:all .18s;text-align:left;}}
+.ch-btn:hover{{border-color:rgba(0,200,255,.35);background:#0f1e35;}}
+.ch-btn.active{{border-color:var(--col,#00c8ff);background:rgba(0,200,255,.06);}}
+.ch-name{{font-size:12px;font-weight:600;color:#e2ecf8;line-height:1.3;margin-bottom:3px;}}
+.ch-desc{{font-size:10px;color:#4a6b85;line-height:1.3;}}
+.dot-sm{{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:middle;}}
+#pw{{margin:10px 12px 0;background:#000;border-radius:10px;overflow:hidden;
+      border:1px solid rgba(0,200,255,.15);}}
+#pbar{{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;
+        background:#070e1a;border-bottom:1px solid rgba(0,200,255,.1);}}
+#np{{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#e2ecf8;
+      display:flex;align-items:center;gap:8px;}}
+.lpill{{background:#ff3d5a;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;
+         border-radius:20px;letter-spacing:.05em;animation:lp 2s ease-in-out infinite;}}
+@keyframes lp{{0%,100%{{opacity:1}}50%{{opacity:.55}}}}
+#pacts{{display:flex;gap:8px;}}
+.pb{{background:transparent;border:1px solid rgba(0,200,255,.2);color:#00c8ff;
+      font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 10px;
+      border-radius:5px;cursor:pointer;transition:background .15s;}}
+.pb:hover{{background:rgba(0,200,255,.1);}}
+#yf{{width:100%;aspect-ratio:16/9;border:none;display:block;}}
+#sbar{{padding:6px 14px;background:#060d18;font-family:'IBM Plex Mono',monospace;
+        font-size:10px;color:#4a6b85;border-top:1px solid rgba(0,200,255,.08);min-height:26px;}}
+</style></head><body>
+<div id="ch-grid"></div>
+<div id="pw">
+  <div id="pbar">
+    <div id="np"><span class="lpill">● LIVE</span><span id="pname">Select a channel</span></div>
+    <div id="pacts">
+      <button class="pb" onclick="doMute()">🔇 Mute</button>
+      <button class="pb" onclick="doYT()">↗ YouTube</button>
+      <button class="pb" onclick="doFS()">⛶ Fullscreen</button>
+    </div>
+  </div>
+  <iframe id="yf" src="about:blank"
+    allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+    allowfullscreen></iframe>
+  <div id="sbar">Ready — select a channel above</div>
+</div>
 <script>
-const FEEDS = {feeds_js_array};
+const CH={yt_js};
+const AK={yt_key};
+let cur=null,muted=false,curYTUrl='';
 
-// Three independent CORS proxies tried in sequence
-// allorigins wraps URL in a JSON envelope: {{ "contents": "<xml>..." }}
-// corsproxy just forwards the raw response
-// codetabs returns {{ "contents": "..." }}
-const PROXIES = [
-  url => `https://api.allorigins.win/get?url=${{encodeURIComponent(url)}}`,
-  url => `https://corsproxy.io/?${{encodeURIComponent(url)}}`,
-  url => `https://api.codetabs.com/v1/proxy?quest=${{encodeURIComponent(url)}}`,
-];
-
-function ta(s) {{
-  try {{
-    const d = new Date(s), diff = (Date.now() - d) / 1000;
-    if (diff < 60)    return Math.round(diff) + 's ago';
-    if (diff < 3600)  return Math.round(diff/60) + 'm ago';
-    if (diff < 86400) return Math.round(diff/3600) + 'h ago';
-    return d.toLocaleDateString();
-  }} catch {{ return ''; }}
-}}
-
-function esc(s) {{
-  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}}
-
-function parseXML(xmlStr) {{
-  try {{
-    const p = new DOMParser();
-    const doc = p.parseFromString(xmlStr, 'text/xml');
-    if (doc.querySelector('parsererror')) return [];
-    return [...doc.querySelectorAll('item')].slice(0, 7).map(it => ({{
-      title: (it.querySelector('title')?.textContent || '').split('<![CDATA[').join('').split(']]>').join('').trim(),
-      link:  (it.querySelector('link')?.textContent ||
-              it.querySelector('link')?.getAttribute('href') || '').trim(),
-      pub:   it.querySelector('pubDate')?.textContent || '',
-    }}));
-  }} catch {{ return []; }}
-}}
-
-async function fetchWithProxy(rssUrl, proxyFn) {{
-  const proxied = proxyFn(rssUrl);
-  const r = await fetch(proxied, {{ signal: AbortSignal.timeout(9000) }});
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  const ct = r.headers.get('content-type') || '';
-  // allorigins / codetabs return JSON wrapper
-  if (ct.includes('json')) {{
-    const j = await r.json();
-    const xml = j.contents || j.data || '';
-    if (!xml) throw new Error('empty');
-    return parseXML(xml);
-  }}
-  // corsproxy returns raw XML/text
-  const txt = await r.text();
-  return parseXML(txt);
-}}
-
-async function fetchFeedAny(feed) {{
-  for (const proxy of PROXIES) {{
-    try {{
-      const items = await fetchWithProxy(feed.rss, proxy);
-      if (items.length) return {{ feed, items }};
-    }} catch {{ /* try next proxy */ }}
-  }}
-  return {{ feed, items: [] }};
-}}
-
-function renderCards(allArticles) {{
-  if (!allArticles.length) return '';
-  return allArticles.slice(0, 20).map(a => `
-    <div class="card" style="--ac:${{a.color}}">
-      <div class="src" style="color:${{a.color}}">${{esc(a.source)}}</div>
-      <div class="hl">${{esc(a.title).slice(0,120)}}</div>
-      <div class="foot">
-        <span class="ts">${{a.time}}</span>
-        ${{a.link ? `<a class="rd" href="${{a.link}}" target="_blank" rel="noopener">Read →</a>` : ''}}
-      </div>
+function renderGrid(){{
+  document.getElementById('ch-grid').innerHTML=CH.map((c,i)=>`
+    <div class="ch-btn" id="b${{i}}" style="--col:${{c.color}}" onclick="pick(${{i}})">
+      <div class="ch-name"><span class="dot-sm" style="background:${{c.color}}"></span>${{c.name}}</div>
+      <div class="ch-desc">${{c.desc.slice(0,52)}}</div>
     </div>`).join('');
 }}
 
-async function main() {{
-  const statusEl = document.getElementById('status');
-  const gridEl   = document.getElementById('grid');
-
-  // Fetch all feeds concurrently — each tries 3 proxies internally
-  const results = await Promise.all(FEEDS.map(fetchFeedAny));
-
-  const allArticles = [];
-  let loadedCount = 0;
-  results.forEach(({{ feed, items }}) => {{
-    if (items.length) {{
-      loadedCount++;
-      items.forEach(it => allArticles.push({{
-        title:  it.title,
-        link:   it.link,
-        time:   ta(it.pub),
-        source: feed.name,
-        color:  feed.color,
-      }}));
-    }}
-  }});
-
-  if (allArticles.length === 0) {{
-    statusEl.innerHTML = '<span style="color:#ff8c42">⚠ All proxies blocked by this environment</span>';
-    const names = FEEDS.map(f => `<a href="https://${{f.name.toLowerCase().replace(/ /g,'')}}.com" target="_blank">${{f.name}}</a>`);
-    gridEl.innerHTML = `<div class="err">
-      Live RSS feeds could not be loaded. This is a browser security restriction in the embedded viewer.
-      <br><br>Click any source below to read directly:
-      <div class="srclinks">${{FEEDS.map(f=>`<a href="${{f.rss.replace('/rss.xml','').replace('/feed','').replace('/xml/rss/all.xml','').replace('/rss/all/','').split('/').slice(0,3).join('/')}}" target="_blank">${{f.name}}</a>`).join('')}}</div>
-    </div>`;
-    return;
-  }}
-
-  statusEl.innerHTML = `<div class="dot" style="background:#00e676"></div>
-    <span>${{loadedCount}} feed${{loadedCount>1?'s':''}} · ${{allArticles.length}} articles</span>`;
-  gridEl.innerHTML = renderCards(allArticles);
+async function getLive(cid){{
+  if(!AK)return null;
+  try{{
+    const u=`https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${{cid}}&eventType=live&type=video&key=${{AK}}&maxResults=1`;
+    const r=await fetch(u,{{signal:AbortSignal.timeout(6000)}});
+    if(!r.ok)return null;
+    const j=await r.json();
+    return j.items?.[0]?.id?.videoId||null;
+  }}catch{{return null;}}
 }}
 
+async function pick(i){{
+  cur=i;
+  document.querySelectorAll('.ch-btn').forEach((b,j)=>b.classList.toggle('active',j===i));
+  const c=CH[i];
+  document.getElementById('pname').textContent=c.name;
+  document.getElementById('sbar').textContent='Resolving stream for '+c.name+'...';
+  curYTUrl='https://www.youtube.com/channel/'+c.id;
+  const vid=await getLive(c.id);
+  const base=vid?`https://www.youtube.com/embed/${{vid}}`:c.live_url;
+  const url=base+(base.includes('?')?'&':'?')+'autoplay=1&rel=0&modestbranding=1'+(muted?'&mute=1':'');
+  document.getElementById('yf').src=url;
+  document.getElementById('sbar').textContent=vid
+    ?`Live · ${{c.name}} · video: ${{vid}}`
+    :`Channel embed · ${{c.name}}${{AK?' (no live stream active)':' (no API key)'}}`;
+}}
+
+function doMute(){{
+  muted=!muted;
+  document.querySelector('.pb').textContent=muted?'🔊 Unmute':'🔇 Mute';
+  if(cur!==null)pick(cur);
+}}
+function doYT(){{if(curYTUrl)window.open(curYTUrl,'_blank');}}
+function doFS(){{
+  const w=document.getElementById('pw');
+  if(!document.fullscreenElement)w.requestFullscreen?.();
+  else document.exitFullscreen?.();
+}}
+
+renderGrid();
+pick(0);
+</script></body></html>"""
+
+        components.html(tv_html, height=860, scrolling=False)
+
+        with st.expander("📖 How to get a free YouTube Data API key", expanded=False):
+            st.markdown("""
+**3-step setup (free, takes 2 minutes):**
+
+1. Go to **[console.cloud.google.com](https://console.cloud.google.com)**
+2. Create a project → **APIs & Services** → **Enable APIs** → search **YouTube Data API v3** → Enable
+3. **Credentials** → **Create Credentials** → **API Key** → paste above
+
+**Free quota:** 10,000 units/day. Each channel live-check costs ~100 units — enough for 100 channel switches/day.
+
+**Without a key:** The player uses YouTube's `/live` channel URL directly. Most live channels work fine this way, but occasional fallback to recent videos may occur.
+""")
+
+    # ── SUB-TAB B: ARTICLE FEEDS ─────────────────────────────
+    with sub_articles:
+        cat_sel = st.radio(
+            "Category:", CAT_TABS_NEWS,
+            format_func=lambda x: CAT_NAMES_ART.get(x,x),
+            horizontal=True, label_visibility="collapsed",
+        )
+        vis_src = [s for s in NEWS_SOURCES if cat_sel=="ALL" or s["cat"]==cat_sel]
+
+        st.markdown('<div class="sec-label">📡 Live Article Feed</div>', unsafe_allow_html=True)
+        st.caption("Fetched live in your browser — three CORS proxy fallbacks (allorigins → corsproxy → codetabs).")
+
+        feeds_js = json.dumps([
+            {"name":s["name"],"rss":s["rss"],
+             "color":NEWS_CAT_COLOR.get(s["cat"],"#4a6b85"),"cat":s["cat"]}
+            for s in vis_src[:4]
+        ])
+
+        art_html = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+*{{margin:0;padding:0;box-sizing:border-box;}}
+body{{background:#02040a;font-family:'DM Sans',system-ui,sans-serif;color:#e2ecf8;padding:12px;}}
+#st{{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#4a6b85;margin-bottom:14px;
+      display:flex;align-items:center;gap:8px;min-height:18px;}}
+.dot{{width:6px;height:6px;border-radius:50%;background:#00c8ff;animation:bl 1.2s ease-in-out infinite;flex-shrink:0;}}
+@keyframes bl{{0%,100%{{opacity:1}}50%{{opacity:.2}}}}
+.g{{display:grid;grid-template-columns:1fr 1fr;gap:12px;}}
+@media(max-width:560px){{.g{{grid-template-columns:1fr;}}}}
+.c{{background:#0b1524;border:1px solid rgba(0,200,255,.12);border-radius:10px;
+     padding:14px 16px;position:relative;overflow:hidden;transition:border-color .18s,transform .15s;}}
+.c:hover{{border-color:rgba(0,200,255,.3);transform:translateY(-1px);}}
+.c::after{{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+            background:linear-gradient(180deg,var(--ac,#00c8ff),transparent);}}
+.s{{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;margin-bottom:6px;}}
+.h{{font-size:13px;font-weight:600;color:#e2ecf8;line-height:1.45;margin-bottom:8px;}}
+.f{{display:flex;align-items:center;justify-content:space-between;}}
+.t{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a6b85;}}
+a.r{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#00c8ff;text-decoration:none;
+     padding:3px 10px;border:1px solid rgba(0,200,255,.28);border-radius:5px;white-space:nowrap;}}
+a.r:hover{{background:rgba(0,200,255,.1);}}
+.err{{color:#ff8c42;font-family:'IBM Plex Mono',monospace;font-size:11px;padding:12px;
+       border:1px solid rgba(255,140,66,.25);border-radius:8px;background:rgba(255,140,66,.05);line-height:1.6;}}
+.sl{{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}}
+.sl a{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#00c8ff;text-decoration:none;
+        padding:4px 12px;border:1px solid rgba(0,200,255,.25);border-radius:20px;}}
+</style></head><body>
+<div id="st"><div class="dot"></div><span>Loading feeds…</span></div>
+<div id="g" class="g"></div>
+<script>
+const F={feeds_js};
+const P=[
+  u=>`https://api.allorigins.win/get?url=${{encodeURIComponent(u)}}`,
+  u=>`https://corsproxy.io/?${{encodeURIComponent(u)}}`,
+  u=>`https://api.codetabs.com/v1/proxy?quest=${{encodeURIComponent(u)}}`,
+];
+function ta(s){{try{{const d=new Date(s),x=(Date.now()-d)/1000;
+  if(x<60)return Math.round(x)+'s ago';if(x<3600)return Math.round(x/60)+'m ago';
+  return Math.round(x/3600)+'h ago';}}catch{{return '';}}}}
+function esc(s){{return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}}
+function px(xml){{
+  try{{const doc=new DOMParser().parseFromString(xml,'text/xml');
+    if(doc.querySelector('parsererror'))return[];
+    return[...doc.querySelectorAll('item')].slice(0,7).map(it=>{{
+      const g=n=>{{const e=it.querySelector(n);return(e?.textContent||e?.getAttribute('href')||'').split('<![CDATA[').join('').split(']]>').join('').trim();}};
+      return{{ti:g('title'),li:g('link'),pu:g('pubDate')}};
+    }});}}catch{{return[];}}}}
+async function ff(f){{
+  for(const p of P){{try{{
+    const r=await fetch(p(f.rss),{{signal:AbortSignal.timeout(9000)}});
+    if(!r.ok)continue;
+    const ct=r.headers.get('content-type')||'';
+    let xml='';
+    if(ct.includes('json')){{const j=await r.json();xml=j.contents||j.data||'';}}
+    else xml=await r.text();
+    const items=px(xml);
+    if(items.length)return{{f,items}};
+  }}catch{{}}}}
+  return{{f,items:[]}};
+}}
+async function main(){{
+  const se=document.getElementById('st'),ge=document.getElementById('g');
+  const res=await Promise.all(F.map(ff));
+  const arts=[];let n=0;
+  res.forEach(({{f,items}})=>{{if(items.length){{n++;items.forEach(it=>arts.push({{ti:it.ti,li:it.li,tm:ta(it.pu),sr:f.name,co:f.color}}));}}}});
+  if(!arts.length){{
+    se.innerHTML='<span style="color:#ff8c42">All proxies blocked</span>';
+    ge.innerHTML='<div class="err">RSS feeds could not load in this browser context.<div class="sl">'+
+      F.map(f=>`<a href="https://${{f.rss.split('/').slice(0,3).join('/')}}" target="_blank">${{f.name}}</a>`).join('')+
+      '</div></div>';return;}}
+  se.innerHTML=`<div class="dot" style="background:#00e676"></div><span>${{n}} feed${{n>1?'s':''}} · ${{arts.length}} articles</span>`;
+  ge.innerHTML=arts.slice(0,24).map(a=>`
+    <div class="c" style="--ac:${{a.co}}">
+      <div class="s" style="color:${{a.co}}">${{esc(a.sr)}}</div>
+      <div class="h">${{esc(a.ti).slice(0,120)}}</div>
+      <div class="f"><span class="t">${{a.tm}}</span>
+        ${{a.li?`<a class="r" href="${{a.li}}" target="_blank" rel="noopener">Read →</a>`:''}}
+      </div>
+    </div>`).join('');}}
 main();
-</script>
-</body>
-</html>
-"""
-    components.html(live_news_html, height=680, scrolling=True)
+</script></body></html>"""
 
-    st.markdown("---")
+        components.html(art_html, height=680, scrolling=True)
 
-    # ── Source Directory — always visible with direct links ──────
-    st.markdown('<div class="sec-label">📋 Source Directory — ' + str(len(vis_src)) + ' Feeds</div>', unsafe_allow_html=True)
+    # ── SUB-TAB C: SOURCE DIRECTORY ──────────────────────────
+    with sub_directory:
+        st.markdown('<div class="sec-label">📺 YouTube Live Channels</div>', unsafe_allow_html=True)
+        yt_dir_cols = st.columns(4)
+        for i, ch in enumerate(YT_CHANNELS):
+            col = ch["color"]
+            with yt_dir_cols[i % 4]:
+                st.markdown(f"""
+                <div class="src-directory-card" style="border-left:3px solid {col}">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                    <div style="font-family:var(--fm);font-size:11px;font-weight:600;color:{col}">{ch['name']}</div>
+                    <div class="badge" style="color:{col};border-color:{col}44;background:{col}15;font-size:8px">{ch['cat'].upper()}</div>
+                  </div>
+                  <div style="font-size:12px;color:var(--muted);margin-bottom:8px">{ch['desc']}</div>
+                  <a href="https://www.youtube.com/channel/{ch['id']}" target="_blank"
+                     class="news-link" style="font-size:10px">Watch on YouTube →</a>
+                </div>""", unsafe_allow_html=True)
 
-    dir_cols = st.columns(4)
-    for i, s in enumerate(vis_src):
-        col = NEWS_CAT_COLOR.get(s["cat"], "#4a6b85")
-        with dir_cols[i % 4]:
-            st.markdown(f"""
-            <div class="src-directory-card" style="border-left:3px solid {col}">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-                <div style="font-family:var(--fm);font-size:11px;font-weight:600;color:{col}">{s['name']}</div>
-                <div class="badge" style="color:{col};border-color:{col}44;background:{col}15;font-size:8px">{s['cat'].upper()}</div>
-              </div>
-              <div style="font-size:12px;color:var(--muted);margin-bottom:8px">{s.get('desc','')}</div>
-              <a href="https://{s.get('site','#')}" target="_blank" class="news-link" style="font-size:10px">
-                Visit {s.get('site', s['name'])} →
-              </a>
-            </div>""", unsafe_allow_html=True)
+        st.markdown("---")
+        st.markdown('<div class="sec-label">📰 RSS Article Sources</div>', unsafe_allow_html=True)
+        src_dir_cols = st.columns(4)
+        for i, s in enumerate(NEWS_SOURCES):
+            col = NEWS_CAT_COLOR.get(s["cat"],"#4a6b85")
+            with src_dir_cols[i % 4]:
+                st.markdown(f"""
+                <div class="src-directory-card" style="border-left:3px solid {col}">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                    <div style="font-family:var(--fm);font-size:11px;font-weight:600;color:{col}">{s['name']}</div>
+                    <div class="badge" style="color:{col};border-color:{col}44;background:{col}15;font-size:8px">{s['cat'].upper()}</div>
+                  </div>
+                  <div style="font-size:12px;color:var(--muted);margin-bottom:8px">{s.get('desc','')}</div>
+                  <a href="https://{s.get('site','#')}" target="_blank"
+                     class="news-link" style="font-size:10px">Visit {s.get('site',s['name'])} →</a>
+                </div>""", unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════
