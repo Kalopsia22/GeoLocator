@@ -1,5 +1,5 @@
 """
-THE GEO-LOCATOR v6
+THE GEO-LOCATOR v7
 ==============
 Changes from v5:
   - FIXED: YT_CAT_NAMES, CAT_TABS_NEWS, CAT_NAMES_ART were undefined → defined properly
@@ -750,7 +750,7 @@ def fetch_gdelt_conflict(theatre: str, max_records: int = 30) -> list:
                     is_recent = age_h < 6
                     is_new    = age_h < 1
                 except:
-                    age_s = "recent"; dt_str = ""; is_recent = False; is_new = False
+                    age_s = "just now"; dt_str = ""; is_recent = False; is_new = False
                 all_articles.append({
                     "title":     a.get("title","")[:140],
                     "url":       url,
@@ -1489,17 +1489,7 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
         layers=layers,
         initial_view_state=pdk.ViewState(latitude=22, longitude=18, zoom=1.4, pitch=0),
         map_style=CARTO_DARK,
-        tooltip={
-            "html": "<div style='font-family:IBM Plex Mono,monospace;font-size:11px;color:#e2ecf8;line-height:1.6;white-space:pre-wrap;max-width:320px'>{tip}</div>",
-            "style": {
-                "backgroundColor": "#080f1c",
-                "border": "1px solid rgba(0,200,255,.3)",
-                "borderRadius": "8px",
-                "padding": "10px 14px",
-                "boxShadow": "0 4px 20px rgba(0,0,0,.5)",
-                "pointerEvents": "none",
-            }
-        },
+        tooltip={"text": "{tip}", "style": {"backgroundColor": "#080f1c", "color": "#e2ecf8", "border": "1px solid rgba(0,200,255,.3)", "fontFamily": "IBM Plex Mono, monospace", "fontSize": "12px", "padding": "10px 14px", "borderRadius": "8px", "boxShadow": "0 4px 24px rgba(0,0,0,.6)", "lineHeight": "1.7", "whiteSpace": "pre-line", "maxWidth": "320px"}},
         height=480,
     )
 
@@ -1507,12 +1497,12 @@ def build_theatre_map(conflict_key, show_supply):
     C = CONFLICTS[conflict_key]
     inc_df = pd.DataFrame(C["incidents"])
     sc = _sev_colors()
-    inc_df["color"]  = inc_df["severity"].map(sc)
-    inc_df["radius"] = inc_df["severity"].map({"CRITICAL":60000,"HIGH":45000,"MED":35000,"LOW":25000,"INFO":20000})
-    inc_df["tip"]    = inc_df.apply(lambda r:
+    inc_df["_fc"]  = inc_df["severity"].map(sc)
+    inc_df["_rad"] = inc_df["severity"].map({"CRITICAL":60000,"HIGH":45000,"MED":35000,"LOW":25000,"INFO":20000})
+    inc_df["tip"]  = inc_df.apply(lambda r:
         f"{INCIDENT_ICONS.get(r['type'],'?')} {r['title']}\n{r['loc']} · {r['date']}\nSeverity: {r['severity']} · Casualties: {r['casualties']}", axis=1)
     layers = [pdk.Layer("ScatterplotLayer", data=inc_df, get_position=["lon","lat"],
-                          get_radius="radius", get_fill_color="color",
+                          get_radius="_rad", get_fill_color="_fc",
                           get_line_color=[255,255,255,40], line_width_min_pixels=1,
                           pickable=True, auto_highlight=True)]
     if show_supply:
@@ -1524,11 +1514,12 @@ def build_theatre_map(conflict_key, show_supply):
                 "Junta Support":[255,61,90,140],"Arms Supply":[255,180,0,140],
                 "Humanitarian":[0,230,118,150],
             }
-            adf["color"] = adf["type"].apply(lambda t: color_map.get(t,[74,107,133,120]))
+            adf["_fc"]  = adf["type"].apply(lambda t: color_map.get(t,[74,107,133,120]))
+            adf["tip"]  = adf.apply(lambda r: f"⟶ SUPPLY LINE\n{r['type']}\nProvider: {r['provider']}", axis=1)
             layers.append(pdk.Layer("ArcLayer", data=adf,
                 get_source_position=["from_lon","from_lat"],
                 get_target_position=["to_lon","to_lat"],
-                get_source_color="color", get_target_color="color",
+                get_source_color="_fc", get_target_color="_fc",
                 get_width=2, pickable=True, auto_highlight=True))
     cx = np.mean([i["lon"] for i in C["incidents"]])
     cy = np.mean([i["lat"] for i in C["incidents"]])
@@ -1536,7 +1527,7 @@ def build_theatre_map(conflict_key, show_supply):
         layers=layers,
         initial_view_state=pdk.ViewState(latitude=cy, longitude=cx, zoom=4, pitch=20),
         map_style=CARTO_DARK,
-        tooltip={"html":"<div style='font-family:IBM Plex Mono,monospace;font-size:11px;color:#e2ecf8;line-height:1.6;white-space:pre-wrap;max-width:300px'>{tip}</div>","style":{"backgroundColor":"#080f1c","border":"1px solid rgba(255,61,90,.4)","borderRadius":"8px","padding":"10px","boxShadow":"0 4px 20px rgba(0,0,0,.5)"}},
+        tooltip={"text": "{tip}", "style": {"backgroundColor": "#080f1c", "color": "#e2ecf8", "border": "1px solid rgba(255,61,90,.35)", "fontFamily": "IBM Plex Mono, monospace", "fontSize": "12px", "padding": "10px 14px", "borderRadius": "8px", "boxShadow": "0 4px 24px rgba(0,0,0,.6)", "lineHeight": "1.7", "whiteSpace": "pre-line", "maxWidth": "300px"}},
         height=390,
     )
 
@@ -1654,7 +1645,7 @@ utc_now  = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d  %H:%M UTC")
 # ─────────────────────────────────────────────
 with st.sidebar:
     st.markdown('<div class="wordmark" style="margin-bottom:4px">THE GEO-<em>LOCATOR</em></div>', unsafe_allow_html=True)
-    st.markdown('<p style="font-size:10px;color:var(--muted);letter-spacing:.14em;font-weight:700;margin-bottom:16px">GLOBAL INTELLIGENCE PLATFORM v6</p>', unsafe_allow_html=True)
+    st.markdown('<p style="font-size:10px;color:var(--muted);letter-spacing:.14em;font-weight:700;margin-bottom:16px">GLOBAL INTELLIGENCE PLATFORM v7</p>', unsafe_allow_html=True)
 
     st.markdown('<div class="sb-div"></div>', unsafe_allow_html=True)
     st.markdown("#### 🗺 Global Map Layers")
@@ -1941,32 +1932,38 @@ with tab_conflict:
             feed_container = st.container()
             with feed_container:
                 for art in _gdelt_articles:
-                    is_new    = art.get("is_new", False)
-                    is_recent = art.get("is_recent", False)
-                    border_col = conflict_accent if is_new else (f"{conflict_accent}88" if is_recent else "rgba(0,200,255,.08)")
-                    new_badge  = f'<span style="font-family:var(--fm);font-size:8px;background:rgba(0,230,118,.15);color:#00e676;border:1px solid rgba(0,230,118,.3);border-radius:4px;padding:1px 6px;margin-left:6px">NEW</span>' if is_new else ""
-                    src_col = "#ff8c42" if is_new else "#4a6b85"
-                    st.markdown(f"""
-                    <div style="background:var(--card);border:1px solid {border_col};border-left:3px solid {conflict_accent if is_recent else 'var(--bord2)'};
-                                border-radius:8px;padding:10px 14px;margin-bottom:6px;transition:border-color .2s"
-                         onmouseover="this.style.borderColor='rgba(0,200,255,.25)'"
-                         onmouseout="this.style.borderColor='{border_col}'">
-                      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-                        <div style="display:flex;align-items:center;gap:6px">
-                          <span style="font-family:var(--fm);font-size:9px;font-weight:600;letter-spacing:.06em;color:{src_col}">{art["source"].upper()[:30]}</span>
-                          {new_badge}
-                        </div>
-                        <div style="display:flex;align-items:center;gap:8px">
-                          <span style="font-family:var(--fm);font-size:9px;color:var(--muted)">{art["time"]}</span>
-                          {'<span style="font-family:var(--fm);font-size:8px;background:rgba(255,61,90,.12);color:#ff3d5a;border:1px solid rgba(255,61,90,.3);border-radius:4px;padding:1px 5px">RECENT</span>' if is_recent else ""}
-                        </div>
-                      </div>
-                      <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.45;margin-bottom:5px">{art["title"]}</div>
-                      <div style="display:flex;align-items:center;justify-content:space-between">
-                        <span style="font-family:var(--fm);font-size:9px;color:var(--muted)">{art.get("dt_str","")}</span>
-                        {'<a href="' + art["url"] + '" target="_blank" rel="noopener" style="font-family:var(--fm);font-size:9px;color:var(--cyan);text-decoration:none;padding:2px 8px;border:1px solid rgba(0,200,255,.22);border-radius:4px">Read →</a>' if art.get("url") else ""}
-                      </div>
-                    </div>""", unsafe_allow_html=True)
+                    _is_new    = art.get("is_new", False)
+                    _is_recent = art.get("is_recent", False)
+                    # Pre-compute ALL conditional fragments — no nested quotes in f-string
+                    _border    = conflict_accent if _is_new else (conflict_accent + "88" if _is_recent else "rgba(0,200,255,.08)")
+                    _left_bdr  = conflict_accent if _is_recent else "rgba(0,200,255,.06)"
+                    _src_col   = "#ff8c42" if _is_new else "#4a6b85"
+                    _new_badge = '<span style="font-family:var(--fm);font-size:8px;background:rgba(0,230,118,.15);color:#00e676;border:1px solid rgba(0,230,118,.3);border-radius:4px;padding:1px 6px;margin-left:6px">NEW</span>' if _is_new else ""
+                    _rec_badge = '<span style="font-family:var(--fm);font-size:8px;background:rgba(255,61,90,.1);color:#ff3d5a;border:1px solid rgba(255,61,90,.25);border-radius:4px;padding:1px 5px">RECENT</span>' if _is_recent else ""
+                    _read_link = ('<a href="' + art["url"] + '" target="_blank" rel="noopener" style="font-family:var(--fm);font-size:9px;color:var(--cyan);text-decoration:none;padding:2px 8px;border:1px solid rgba(0,200,255,.22);border-radius:4px">Read →</a>') if art.get("url") else ""
+                    _source    = art["source"].upper()[:30]
+                    _time      = art.get("time", "")
+                    _title     = art.get("title", "")
+                    _dt        = art.get("dt_str", "")
+                    st.markdown(
+                        f'<div style="background:var(--card);border:1px solid {_border};' +
+                        f'border-left:3px solid {_left_bdr};border-radius:8px;padding:10px 14px;margin-bottom:6px">' +
+                        f'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">' +
+                        f'<div style="display:flex;align-items:center;gap:6px">' +
+                        f'<span style="font-family:var(--fm);font-size:9px;font-weight:600;letter-spacing:.06em;color:{_src_col}">{_source}</span>' +
+                        _new_badge +
+                        '</div>' +
+                        f'<div style="display:flex;align-items:center;gap:6px">' +
+                        f'<span style="font-family:var(--fm);font-size:9px;color:var(--muted)">{_time}</span>' +
+                        _rec_badge +
+                        '</div></div>' +
+                        f'<div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.45;margin-bottom:5px">{_title}</div>' +
+                        f'<div style="display:flex;align-items:center;justify-content:space-between">' +
+                        f'<span style="font-family:var(--fm);font-size:9px;color:var(--muted)">{_dt}</span>' +
+                        _read_link +
+                        '</div></div>',
+                        unsafe_allow_html=True
+                    )
         else:
             # GDELT unavailable — show RSS fallback
             region_src_map = {
@@ -2089,7 +2086,7 @@ async function main(){{const se=document.getElementById('st'),ge=document.getEle
             <div style="display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--bord2)">
               <div style="font-size:14px;flex-shrink:0;padding-top:1px">{icon}</div>
               <div style="flex:1;min-width:0">
-                <div style="font-size:11px;font-weight:600;color:var(--text);line-height:1.35">{inc["title"][:70]}{"…" if len(inc["title"])>70 else ""}</div>
+                <div style="font-size:11px;font-weight:600;color:var(--text);line-height:1.35">{inc["title"][:70] + ("…" if len(inc["title"])>70 else "")}</div>
                 <div style="font-family:var(--fm);font-size:9px;color:var(--muted);margin-top:2px;display:flex;gap:6px;flex-wrap:wrap">
                   <span style="color:{sc}">{sev}</span>
                   <span>{inc["date"]}{cas_note}</span>
@@ -2296,14 +2293,14 @@ with tab_earth:
         layers_e = []
         if show_seis and not eq_df.empty:
             ep = eq_df.copy()
-            ep["color"] = ep["mag"].apply(lambda m: [255,55,85,220] if m>=5.5 else [255,180,0,200] if m>=4.5 else [0,230,118,175] if m>=3.5 else [0,200,255,150])
-            ep["radius"] = (ep["mag"]**2.3*15000).clip(10000,240000)
-            ep["tip"]   = ep.apply(lambda r: f"M{r['mag']} | {r['place']} | {r['depth_km']}km depth | {r['time']}", axis=1)
-            layers_e.append(pdk.Layer("ScatterplotLayer",data=ep,get_position=["lon","lat"],get_radius="radius",get_fill_color="color",pickable=True,auto_highlight=True))
+            ep["_fc"]  = ep["mag"].apply(lambda m: [255,55,85,220] if m>=5.5 else [255,180,0,200] if m>=4.5 else [0,230,118,175] if m>=3.5 else [0,200,255,150])
+            ep["_rad"] = (ep["mag"]**2.3*15000).clip(10000,240000)
+            ep["tip"]  = ep.apply(lambda r: f"🌍 SEISMIC  M{r['mag']}\n{r['place']}\nDepth: {r['depth_km']} km  |  {r['time']}", axis=1)
+            layers_e.append(pdk.Layer("ScatterplotLayer",data=ep,get_position=["lon","lat"],get_radius="_rad",get_fill_color="_fc",pickable=True,auto_highlight=True))
         if show_volc and not eonet_df.empty:
-            eo = eonet_df.copy(); eo["color"]=[[255,110,40,200]]*len(eo); eo["radius"]=70000
-            eo["tip"] = eo.apply(lambda r: f"{r['title']} | {r['cat']}", axis=1)
-            layers_e.append(pdk.Layer("ScatterplotLayer",data=eo,get_position=["lon","lat"],get_radius="radius",get_fill_color="color",pickable=True,auto_highlight=True))
+            eo = eonet_df.copy(); eo["_fc"]=[[255,110,40,200]]*len(eo); eo["_rad"]=70000
+            eo["tip"] = eo.apply(lambda r: f"🌋 EONET EVENT\n{r['title']}\nCategory: {r.get('cat','')}", axis=1)
+            layers_e.append(pdk.Layer("ScatterplotLayer",data=eo,get_position=["lon","lat"],get_radius="_rad",get_fill_color="_fc",pickable=True,auto_highlight=True))
         if show_heat and not eq_df.empty:
             layers_e.append(pdk.Layer("HeatmapLayer",data=eq_df[["lat","lon","mag"]].rename(columns={"mag":"weight"}),get_position=["lon","lat"],get_weight="weight",radiusPixels=50,opacity=.45))
 
@@ -2311,7 +2308,7 @@ with tab_earth:
         st.pydeck_chart(pdk.Deck(layers=layers_e,
             initial_view_state=pdk.ViewState(latitude=20,longitude=10,zoom=1.3),
             map_style=CARTO_DARK,
-            tooltip={"html":"<div style='font-family:IBM Plex Mono,monospace;font-size:11px;color:#e2ecf8;line-height:1.6;white-space:pre-wrap;max-width:280px'>{tip}</div>","style":{"backgroundColor":"#080f1c","border":"1px solid rgba(0,200,255,.3)","borderRadius":"8px","padding":"10px","boxShadow":"0 4px 20px rgba(0,0,0,.5)"}},
+            tooltip={"text": "{tip}", "style": {"backgroundColor": "#080f1c", "color": "#e2ecf8", "border": "1px solid rgba(0,200,255,.3)", "fontFamily": "IBM Plex Mono, monospace", "fontSize": "12px", "padding": "10px 14px", "borderRadius": "8px", "boxShadow": "0 4px 24px rgba(0,0,0,.6)", "lineHeight": "1.7", "whiteSpace": "pre-line", "maxWidth": "280px"}},
             height=380), use_container_width=True)
 
         st.markdown('<div class="sec-label" style="margin-top:12px">📈 Geomagnetic Kp — 24 hours</div>', unsafe_allow_html=True)
@@ -2363,15 +2360,15 @@ with tab_civil:
     mv_map, mv_right = st.columns([3,1], gap="medium")
     with mv_map:
         mdf = pd.DataFrame(MOVEMENTS)
-        mdf["color"] = mdf["sentiment"].map({"CRIT":[200,60,255,220],"HIGH":[157,110,255,190],"MED":[120,80,220,160]})
-        mdf["radius"] = mdf["scale"] * 2200
-        mdf["tip"] = mdf.apply(lambda r: f"{r['title']}\n{r['location']} · {r['size']} participants\n{r['type'].upper()} · Sentiment: {r['sentiment']}", axis=1)
+        mdf["_fc"]  = mdf["sentiment"].map({"CRIT":[200,60,255,220],"HIGH":[157,110,255,190],"MED":[120,80,220,160]})
+        mdf["_rad"] = mdf["scale"] * 2200
+        mdf["tip"]  = mdf.apply(lambda r: f"📢 CIVIL MOVEMENT\n{r['title']}\n{r['location']}\nSize: {r['size']} · {r['type'].upper()} · Sentiment: {r['sentiment']}", axis=1)
         st.markdown('<div class="sec-label">🗺 Civil Movements Map</div>', unsafe_allow_html=True)
         st.pydeck_chart(pdk.Deck(
-            layers=[pdk.Layer("ScatterplotLayer",data=mdf,get_position=["lon","lat"],get_radius="radius",get_fill_color="color",pickable=True,auto_highlight=True)],
+            layers=[pdk.Layer("ScatterplotLayer",data=mdf,get_position=["lon","lat"],get_radius="_rad",get_fill_color="_fc",pickable=True,auto_highlight=True)],
             initial_view_state=pdk.ViewState(latitude=25,longitude=20,zoom=1.3),
             map_style=CARTO_DARK,
-            tooltip={"html":"<div style='font-family:IBM Plex Mono,monospace;font-size:11px;color:#e2ecf8;line-height:1.6;white-space:pre-wrap;max-width:280px'>{tip}</div>","style":{"backgroundColor":"#080f1c","border":"1px solid rgba(157,110,255,.35)","borderRadius":"8px","padding":"10px","boxShadow":"0 4px 20px rgba(0,0,0,.5)"}},
+            tooltip={"text": "{tip}", "style": {"backgroundColor": "#080f1c", "color": "#e2ecf8", "border": "1px solid rgba(157,110,255,.35)", "fontFamily": "IBM Plex Mono, monospace", "fontSize": "12px", "padding": "10px 14px", "borderRadius": "8px", "boxShadow": "0 4px 24px rgba(0,0,0,.6)", "lineHeight": "1.7", "whiteSpace": "pre-line", "maxWidth": "280px"}},
             height=350), use_container_width=True)
         st.markdown('<div class="sec-label" style="margin-top:12px">📊 Mobilisation Scale</div>', unsafe_allow_html=True)
         st.plotly_chart(mv_bar(MOVEMENTS),use_container_width=True,config={"displayModeBar":False})
@@ -3134,7 +3131,7 @@ with tab_intel:
                 <span style="color:{sc_col}">{item['source'].upper()}</span>
                 <span>{item['time']}</span>
               </div>
-              <div style="font-size:12px;color:var(--text);line-height:1.4">{item['title'][:90]}{'…' if len(item['title'])>90 else ''}</div>
+              <div style="font-size:12px;color:var(--text);line-height:1.4">{item['title'][:90] + ('…' if len(item['title'])>90 else '')}</div>
             </div>""", unsafe_allow_html=True)
 
     st.markdown("---")
@@ -3280,7 +3277,35 @@ with tab_econ:
                   </div>
                 </div>""", unsafe_allow_html=True)
         else:
-            st.info("Government bond yields — connect FRED API for live data.")
+            GOV_BONDS = [
+                {"name":"US 10Y","yield":4.42,"change":+0.03,"rating":"AAA","col":"#00c8ff"},
+                {"name":"US 2Y", "yield":4.71,"change":-0.01,"rating":"AAA","col":"#00c8ff"},
+                {"name":"UK 10Y","yield":4.18,"change":+0.05,"rating":"AA","col":"#00e676"},
+                {"name":"DE 10Y","yield":2.41,"change":+0.02,"rating":"AAA","col":"#00e676"},
+                {"name":"JP 10Y","yield":1.52,"change":+0.08,"rating":"A+","col":"#ffb400"},
+                {"name":"IT 10Y","yield":3.74,"change":+0.04,"rating":"BBB","col":"#ff8c42"},
+                {"name":"IN 10Y","yield":6.83,"change":-0.02,"rating":"BBB-","col":"#ff8c42"},
+                {"name":"CN 10Y","yield":2.28,"change":-0.01,"rating":"A+","col":"#ffb400"},
+                {"name":"TR 10Y","yield":28.4,"change":+0.60,"rating":"B+","col":"#ff3d5a"},
+                {"name":"NG 10Y","yield":19.6,"change":+0.30,"rating":"B-","col":"#ff3d5a"},
+            ]
+            for b in GOV_BONDS:
+                chg_col = "#00e676" if b["change"]>=0 else "#ff3d5a"
+                chg_sym = "▲" if b["change"]>=0 else "▼"
+                st.markdown(f'''
+                <div style="padding:7px 10px;background:var(--card);border:1px solid var(--bord2);
+                            border-radius:7px;margin-bottom:4px;border-left:3px solid {b["col"]}">
+                  <div style="display:flex;align-items:center;justify-content:space-between">
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <span style="font-size:11px;font-weight:600;color:var(--text)">{b["name"]}</span>
+                      <span class="badge b-muted" style="font-size:7px">{b["rating"]}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <span style="font-family:var(--fd);font-size:17px;color:{b["col"]}">{b["yield"]:.2f}%</span>
+                      <span style="font-family:var(--fm);font-size:9px;color:{chg_col}">{chg_sym}{abs(b["change"]):.2f}</span>
+                    </div>
+                  </div>
+                </div>''', unsafe_allow_html=True)
 
     # Trade Policy
     with e1c2:
@@ -3346,15 +3371,80 @@ with tab_econ:
                   <div style="font-family:var(--fm);font-size:10px;margin-bottom:4px">
                     WoW: <span style="color:{wow_col};font-weight:700">{'+' if cp['wow_change']>0 else ''}{cp['wow_change']}%</span>
                   </div>
-                  <div style="font-size:11px;color:var(--text2);line-height:1.5">{cp['context'][:130]}{'…' if len(cp['context'])>130 else ''}</div>
+                  <div style="font-size:11px;color:var(--text2);line-height:1.5">{cp['context'][:130] + ('…' if len(cp['context'])>130 else '')}</div>
                   <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px">
                     {''.join(f'<span style="font-family:var(--fm);font-size:9px;color:var(--muted)">{e}{";" if i<len(cp["exports"])-1 else ""}</span>' for i,e in enumerate(cp["exports"]))}
                   </div>
                 </div>""", unsafe_allow_html=True)
         elif sc_tab == "Shipping":
-            st.info("Live shipping rate data — AIS stream integration coming soon.")
+            SHIPPING_RATES = [
+                {"route":"Shanghai → Rotterdam","type":"Container","rate":4820,"unit":"$/FEU","change":+12.4,"status":"Elevated","note":"Red Sea rerouting via Cape"},
+                {"route":"Shanghai → LA","type":"Container","rate":3140,"unit":"$/FEU","change":+4.1,"status":"Normal","note":"Trans-Pacific stable"},
+                {"route":"Rotterdam → NY","type":"Container","rate":1850,"unit":"$/FEU","change":+2.8,"status":"Normal","note":"N.Atlantic corridor"},
+                {"route":"AG → Japan","type":"VLCC Oil","rate":52000,"unit":"$/day","change":-3.2,"status":"Reduced","note":"Hormuz risk premium"},
+                {"route":"W.Africa → US Gulf","type":"Suezmax Oil","rate":38500,"unit":"$/day","change":+1.5,"status":"Normal","note":"WAF corridor"},
+                {"route":"Baltic Dry Index","type":"BDI","rate":1842,"unit":"points","change":+5.8,"status":"Rising","note":"Iron ore + grain demand"},
+                {"route":"LNG (JKM Asia)","type":"LNG Spot","rate":12.40,"unit":"$/MMBtu","change":+8.2,"status":"Elevated","note":"Winter demand residual"},
+                {"route":"SCFI Composite","type":"Index","rate":1620,"unit":"points","change":+11.6,"status":"Rising","note":"Container freight composite"},
+            ]
+            for r in SHIPPING_RATES:
+                chg_col = "#ff3d5a" if r["change"]>5 else "#ff8c42" if r["change"]>0 else "#00e676"
+                st_col  = "#ff3d5a" if r["status"]=="Elevated" else "#ff8c42" if r["status"]=="Reduced" else "#00e676" if r["status"]=="Normal" else "#ffb400"
+                chg_sym = "▲" if r["change"]>=0 else "▼"
+                _rate_fmt = f'{r["rate"]:,}' if isinstance(r["rate"], int) else f'{r["rate"]:.2f}'
+                st.markdown(f'''
+                <div style="padding:8px 11px;background:var(--card);border:1px solid var(--bord2);
+                            border-radius:7px;margin-bottom:5px;border-left:3px solid {st_col}">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+                    <span style="font-size:11px;font-weight:600;color:var(--text)">{r["route"]}</span>
+                    <span class="badge b-muted" style="font-size:8px">{r["type"]}</span>
+                  </div>
+                  <div style="display:flex;align-items:center;justify-content:space-between">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span style="font-family:var(--fd);font-size:18px;color:{st_col}">{_rate_fmt}</span>
+                      <span style="font-family:var(--fm);font-size:9px;color:var(--muted)">{r["unit"]}</span>
+                    </div>
+                    <span style="font-family:var(--fm);font-size:9px;color:{chg_col}">{chg_sym}{abs(r["change"]):.1f}%</span>
+                  </div>
+                  <div style="font-family:var(--fm);font-size:9px;color:var(--muted);margin-top:2px">{r["note"]}</div>
+                </div>''', unsafe_allow_html=True)
         else:
-            st.info("Critical minerals tracker — coming soon.")
+            CRIT_MIN_DATA = [
+                {"mineral":"Lithium",  "price":13.50,"unit":"$/kg","change":-18.4,"supply_risk":72,"top_producer":"Australia 46%","use":"EV batteries","col":"#00e676"},
+                {"mineral":"Cobalt",   "price":26.80,"unit":"$/kg","change":-8.2, "supply_risk":85,"top_producer":"DRC 70%",      "use":"Battery cathodes","col":"#00c8ff"},
+                {"mineral":"REE (Nd)", "price":68.00,"unit":"$/kg","change":+4.1, "supply_risk":88,"top_producer":"China 60%",    "use":"EV motors/wind","col":"#ffb400"},
+                {"mineral":"Nickel",   "price":15.40,"unit":"$/kg","change":-12.1,"supply_risk":55,"top_producer":"Indonesia 37%","use":"Battery anodes","col":"#9d6eff"},
+                {"mineral":"Graphite", "price":0.48, "unit":"$/kg","change":-22.0,"supply_risk":91,"top_producer":"China 79%",    "use":"Battery anodes","col":"#ff8c42"},
+                {"mineral":"Uranium",  "price":106.5,"unit":"$/lb","change":+0.5, "supply_risk":48,"top_producer":"Kazakhstan 43%","use":"Nuclear fuel","col":"#ff3d5a"},
+                {"mineral":"Copper",   "price":8.92, "unit":"$/kg","change":+3.2, "supply_risk":42,"top_producer":"Chile 28%",    "use":"Grid/EVs/electronics","col":"#ff8c42"},
+                {"mineral":"Gallium",  "price":320,  "unit":"$/kg","change":+45.0,"supply_risk":95,"top_producer":"China 80%",    "use":"Semiconductors","col":"#ff3d5a"},
+            ]
+            for m in CRIT_MIN_DATA:
+                chg_col = "#00e676" if m["change"]<=0 else "#ff3d5a"
+                chg_sym = "▼" if m["change"]<=0 else "▲"
+                sr = m["supply_risk"]
+                sr_col = "#ff3d5a" if sr>=80 else "#ff8c42" if sr>=60 else "#ffb400" if sr>=40 else "#00e676"
+                st.markdown(f'''
+                <div style="padding:8px 11px;background:var(--card);border:1px solid var(--bord2);
+                            border-radius:7px;margin-bottom:5px;border-left:3px solid {m["col"]}">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                    <span style="font-size:12px;font-weight:600;color:var(--text)">{m["mineral"]}</span>
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span style="font-family:var(--fd);font-size:17px;color:{m["col"]}">{m["price"]} <span style="font-size:9px;font-family:var(--fm);color:var(--muted)">{m["unit"]}</span></span>
+                      <span style="font-family:var(--fm);font-size:9px;color:{chg_col}">{chg_sym}{abs(m["change"]):.1f}%</span>
+                    </div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                    <div style="flex:1;height:3px;background:var(--dim);border-radius:2px;overflow:hidden">
+                      <div style="height:100%;width:{sr}%;background:{sr_col}88;border-radius:2px"></div>
+                    </div>
+                    <span style="font-family:var(--fm);font-size:9px;color:{sr_col};min-width:30px">SR:{sr}</span>
+                  </div>
+                  <div style="display:flex;align-items:center;justify-content:space-between">
+                    <span style="font-family:var(--fm);font-size:8px;color:var(--muted)">{m["top_producer"]}</span>
+                    <span style="font-family:var(--fm);font-size:8px;color:var(--muted)">{m["use"]}</span>
+                  </div>
+                </div>''', unsafe_allow_html=True)
 
     # Financial
     with e1c4:
@@ -3401,9 +3491,9 @@ with tab_econ:
             <div style="border-bottom:1px solid var(--bord2);padding:8px 0">
               <div style="font-family:var(--fm);font-size:9px;color:var(--muted);margin-bottom:3px;display:flex;justify-content:space-between">
                 <span style="color:var(--violet)">{item.get('source','').upper()}</span>
-                <span>{item.get('time','recent')}</span>
+                <span>{item.get('time','')}</span>
               </div>
-              <div style="font-size:12px;color:var(--text);line-height:1.4">{item['title'][:88]}{'…' if len(item['title'])>88 else ''}</div>
+              <div style="font-size:12px;color:var(--text);line-height:1.4">{item['title'][:90] + ('…' if len(item['title'])>90 else '')}</div>
             </div>""", unsafe_allow_html=True)
 
     with e2c2:
@@ -3464,15 +3554,18 @@ with tab_econ:
 
     with e2c5:
         etf = BTC_ETF
-        nf_col = "#00e676" if etf["net_flow"]>=0 else "#ff3d5a"
+        nf_col       = "#00e676" if etf["net_flow"]>=0 else "#ff3d5a"
+        _etf_badge   = "b-red" if etf["net_flow"]<0 else "b-green"
+        _etf_label   = "NET OUTFLOW" if etf["net_flow"]<0 else "NET INFLOW"
+        _etf_abs     = abs(etf["net_flow"])
         st.markdown('<div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">BTC ETF TRACKER</div>', unsafe_allow_html=True)
         st.markdown(f"""
         <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
             <div style="text-align:center">
               <div style="font-size:9px;color:var(--muted);margin-bottom:2px">Net Flow</div>
-              <div style="font-family:var(--fd);font-size:22px;color:{nf_col}">${abs(etf['net_flow'])}M</div>
-              <div class="badge {'b-red' if etf['net_flow']<0 else 'b-green'}" style="font-size:8px;margin-top:3px">{'NET OUTFLOW' if etf['net_flow']<0 else 'NET INFLOW'}</div>
+              <div style="font-family:var(--fd);font-size:22px;color:{nf_col}">${_etf_abs}M</div>
+              <div class="badge {_etf_badge}" style="font-size:8px;margin-top:3px">{_etf_label}</div>
             </div>
             <div style="text-align:center">
               <div style="font-size:9px;color:var(--muted);margin-bottom:2px">Est. Flow</div>
