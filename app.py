@@ -1585,153 +1585,87 @@ with tab_civil:
 # ══════════════════════════════════════════════════════════════
 with tab_news:
 
-    # ── YouTube channel registry ────────────────────────────
-    # live_vid: permanent 24/7 live stream video ID (hardcoded as reliable fallback)
-    # These are the well-known always-on streams each channel maintains.
-    # With a YouTube Data API key the JS will re-resolve the current live ID automatically.
-    YT_CHANNELS = [
-        {"name":"Al Jazeera English",  "id":"UCNye-wNBqNL5ZzHSJdba7Xg","color":"#00873c","cat":"global",
-         "live_vid":"XWq5kBlakcQ",
-         "desc":"Qatar-based global news, 24/7 English"},
-        {"name":"BBC News",             "id":"UC16niRr50-MSBwiO3YDb3RA","color":"#bb1919","cat":"global",
-         "live_vid":"w_Ma8oQLmSM",
-         "desc":"British public broadcaster — world news"},
-        {"name":"DW News",              "id":"UCknLrEdhRCp1aegoMqRaCZg","color":"#003087","cat":"global",
-         "live_vid":"F8xTSAtDJpA",
-         "desc":"Deutsche Welle — German international news"},
-        {"name":"France 24 English",   "id":"UCQfwfsi5VrQ8yKZ-UWmAoBw","color":"#002395","cat":"global",
-         "live_vid":"h3MuIUNCCLI",
-         "desc":"French international broadcaster in English"},
-        {"name":"Euronews",             "id":"UCg2JZlAJZIxzxRDat2HVkFw","color":"#006fbf","cat":"global",
-         "live_vid":"RABaBlFrHJ0",
-         "desc":"Pan-European news in English"},
-        {"name":"Sky News",             "id":"UCoMdktPbSTixAyNGwb-UYkQ","color":"#004f9f","cat":"conflict",
-         "live_vid":"9Auq9mYxFEE",
-         "desc":"UK breaking news & international coverage"},
-        {"name":"WION",                 "id":"UCExCSExkE0M-kDblPqMFjGQ","color":"#e8520a","cat":"conflict",
-         "live_vid":"Suj9hMOCCss",
-         "desc":"World Is One News — South Asian perspective"},
-        {"name":"TRT World",            "id":"UC7fWeaHhqgM4Ry-RMpM2YYw","color":"#e30a17","cat":"conflict",
-         "live_vid":"ObfXqfr9tSI",
-         "desc":"Turkish public broadcaster — global news"},
-        {"name":"Times Now",            "id":"UC5pM_6w9V_KAOWiC5_A-FUg","color":"#e31837","cat":"conflict",
-         "live_vid":"AbuWj7nS8k4",
-         "desc":"Indian English news, international affairs"},
-        {"name":"NASA TV",              "id":"UCLA_DiR1FfKNvjuUpBHmylQ","color":"#0b3d91","cat":"science",
-         "live_vid":"21X5lGlDOfg",
-         "desc":"NASA official — missions & Earth science"},
-        {"name":"Al Arabiya English",   "id":"UC5xshE6wCNFWnqNu5XhBMEg","color":"#b8860b","cat":"conflict",
-         "live_vid":"hQq7Q2MsFRg",
-         "desc":"Saudi-owned pan-Arab news in English"},
-        {"name":"Bloomberg TV",         "id":"UCIALMKvObZNtJ6AmdCLP7Lg","color":"#474747","cat":"global",
-         "live_vid":"dp8PhLsUcFE",
-         "desc":"Global markets, business, finance"},
-        {"name":"Euronews (FR)",        "id":"UCDPXq59b4zeqoKlTkfaQYhg","color":"#4a9fd4","cat":"global",
-         "live_vid":"VLGgPJLCvhM",
-         "desc":"Euronews en français — 24/7"},
-        {"name":"Al Jazeera Arabic",    "id":"UCSls-6_NBBBSvowKyMBLEUA","color":"#007a4d","cat":"conflict",
-         "live_vid":"XsOt5SdGMU8",
-         "desc":"Al Jazeera العربية — Arabic news stream"},
-    ]
 
-    YT_CAT_NAMES = {
-        "ALL":"📺 All Channels","global":"🌐 Global Wire",
-        "conflict":"⚔ Conflict / Defence","science":"🔬 Science",
-    }
-    CAT_TABS_NEWS = ["ALL","global","science","geopolitics","conflict","climate","spaceweather"]
-    CAT_NAMES_ART = {
-        "ALL":"All Sources","global":"🌐 Global","science":"🔬 Science",
-        "geopolitics":"🗺 Geopolitics","conflict":"⚔ Conflict",
-        "climate":"🌱 Climate","spaceweather":"☀ Space Weather",
-    }
-
-    sub_tv, sub_articles, sub_directory = st.tabs([
-        "📺  Live TV Streams",
-        "📰  Article Feeds",
-        "📋  Source Directory",
-    ])
-
-    # ── SUB-TAB A: LIVE TV ───────────────────────────────────
-    with sub_tv:
-        st.markdown("""
-        <div class="helper">
-          <b>Live TV Studio</b> — click any channel to stream it live from YouTube.
-          Channels actively broadcasting will play immediately. Add a free
-          <b>YouTube Data API v3 key</b> below for automatic live-stream detection.
-        </div>""", unsafe_allow_html=True)
-
-
-    # ── Channel registry — direct HLS streams (no YouTube embed needed) ──
-    # Official Akamai/CloudFront CDN streams. No embed restrictions.
+    # ── Verified HLS channel registry ──────────────────────
+    # URLs sourced from community-verified IPTV databases (iptv-org, Free-TV, LegalStream)
+    # All streams are publicly broadcast CDN endpoints — no auth needed.
     HLS_CHANNELS = [
+        # ── Global / International ───────────────────────────
         {"name":"Al Jazeera English","color":"#00873c","cat":"global",
          "hls":"https://live-hls-web-aje.getaj.net/AJE/index.m3u8",
          "web":"https://www.aljazeera.com/live",
-         "desc":"Qatar-based global news, 24/7 English"},
+         "desc":"Qatar — 24/7 English, global coverage"},
+        {"name":"Al Jazeera Arabic","color":"#007a4d","cat":"global",
+         "hls":"https://live-hls-web-aja.getaj.net/AJA/index.m3u8",
+         "web":"https://www.aljazeera.net/live",
+         "desc":"الجزيرة — Arabic 24/7 stream"},
         {"name":"DW News","color":"#003087","cat":"global",
-         "hls":"https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/stream01/streamPlaylist.m3u8",
+         "hls":"https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/index.m3u8",
          "web":"https://www.dw.com/en/media-center/live-tv/l-150330",
          "desc":"Deutsche Welle — German public broadcaster"},
         {"name":"France 24 English","color":"#002395","cat":"global",
-         "hls":"https://live.france.tv/france-24-en/index.m3u8",
+         "hls":"https://static.france24.com/live/F24_EN_HI_HLS/live_tv.m3u8",
          "web":"https://www.france24.com/en/live-news",
          "desc":"French international broadcaster in English"},
-        {"name":"TRT World","color":"#e30a17","cat":"conflict",
-         "hls":"https://tv-trtworld.live.trt.com.tr/master.m3u8",
-         "web":"https://www.trtworld.com/live",
-         "desc":"Turkish public broadcaster — global news"},
-        {"name":"Euronews","color":"#006fbf","cat":"global",
-         "hls":"https://euronews-euronews-english-1-eu.rakuten.wurl.tv/playlist.m3u8",
-         "web":"https://www.euronews.com/live",
-         "desc":"Pan-European news in English"},
-        {"name":"NHK World","color":"#003087","cat":"global",
-         "hls":"https://cdn.nhkworld.jp/www11/nhkworld-tv/pre/hlscomp.m3u8",
+        {"name":"France 24 Arabic","color":"#4a9fd4","cat":"global",
+         "hls":"https://static.france24.com/live/F24_AR_HI_HLS/live_tv.m3u8",
+         "web":"https://www.france24.com/ar",
+         "desc":"France 24 عربي — 24/7 Arabic stream"},
+        {"name":"France 24 Français","color":"#1a5276","cat":"global",
+         "hls":"https://static.france24.com/live/F24_FR_HI_HLS/live_tv.m3u8",
+         "web":"https://www.france24.com/fr",
+         "desc":"France 24 en français — flux continu 24h"},
+        {"name":"Bloomberg TV","color":"#474747","cat":"global",
+         "hls":"https://bloomberg-bloombergtv-5-eu.plex.wurl.tv/playlist.m3u8",
+         "web":"https://www.bloomberg.com/live",
+         "desc":"Global markets, business, finance"},
+        {"name":"NHK World Japan","color":"#003087","cat":"global",
+         "hls":"https://nhkwlive-ojp.nhkworld.jp/hls/live/2003459/nhkwlive-ojp-en/index.m3u8",
          "web":"https://www3.nhk.or.jp/nhkworld/en/live",
-         "desc":"Japan Broadcasting Corporation — English"},
+         "desc":"Japan Broadcasting — English international"},
         {"name":"CGTN English","color":"#c00","cat":"global",
          "hls":"https://news.cgtn.com/resource/live/english/cgtn-news.m3u8",
          "web":"https://www.cgtn.com/live",
          "desc":"China Global Television Network"},
+        {"name":"CNN International","color":"#cc0000","cat":"global",
+         "hls":"https://ds2c506obo7m8.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-7zjq3tdqasbg8/index.m3u8",
+         "web":"https://edition.cnn.com/live-tv",
+         "desc":"CNN International 24/7 news stream"},
+        {"name":"ABC News Live","color":"#00008b","cat":"global",
+         "hls":"https://content.uplynk.com/channel/3324f2467c414329b3b0cc5cd987b6be.m3u8",
+         "web":"https://abcnews.go.com/live",
+         "desc":"ABC News USA — 24/7 live stream"},
+        {"name":"CBS News 24/7","color":"#00008b","cat":"global",
+         "hls":"https://cbsn-us.cbsnstream.cbsnews.com/out/v1/55a8648e8f134e82a470f83d562deeca/master.m3u8",
+         "web":"https://www.cbsnews.com/live",
+         "desc":"CBS News — continuous US news stream"},
+        {"name":"Sky News Australia","color":"#005a9c","cat":"conflict",
+         "hls":"https://cdn-apse1-prod.tsv2.amagi.tv/linear/amg00663-skynews-skynewsau-samsungau/playlist.m3u8",
+         "web":"https://www.skynews.com.au/live-channel",
+         "desc":"Sky News Australia — breaking & analysis"},
+        {"name":"Sky News (UK)","color":"#004f9f","cat":"conflict",
+         "hls":"https://d25w9q07b2mtmw.cloudfront.net/live/master.m3u8",
+         "web":"https://news.sky.com/watch-live",
+         "desc":"UK breaking news & international coverage"},
+        # ── Conflict / Middle East ───────────────────────────
+        {"name":"TRT World","color":"#e30a17","cat":"conflict",
+         "hls":"https://trtcanlitv-lh.akamaihd.net/i/TRTWORLD_1@321783/master.m3u8",
+         "web":"https://www.trtworld.com/live",
+         "desc":"Turkish public broadcaster — global news"},
         {"name":"Al Arabiya","color":"#b8860b","cat":"conflict",
          "hls":"https://live.alarabiya.net/alarabiapublish/alarabiya.smil/playlist.m3u8",
          "web":"https://www.alarabiya.net",
          "desc":"Saudi-owned pan-Arab news channel"},
-        {"name":"Al Jazeera Arabic","color":"#007a4d","cat":"conflict",
-         "hls":"https://live-hls-web-ajf.getaj.net/AJF/index.m3u8",
-         "web":"https://www.aljazeera.net/live",
-         "desc":"Al Jazeera العربية — Arabic stream"},
+        {"name":"NDTV 24x7","color":"#e31837","cat":"conflict",
+         "hls":"https://ndtv24x7elemarchana.akamaized.net/hls/live/2003678/ndtv24x7/ndtv24x7master.m3u8",
+         "web":"https://www.ndtv.com/live-tv",
+         "desc":"India — English news, international affairs"},
+        # ── Science ──────────────────────────────────────────
         {"name":"NASA TV","color":"#0b3d91","cat":"science",
          "hls":"https://nasa-i.akamaihd.net/hls/live/253565/NASA-NTV1-HLS/master.m3u8",
          "web":"https://www.nasa.gov/nasatv",
-         "desc":"NASA — missions, Earth science, spacewalks"},
-        {"name":"ABC News Live","color":"#00008b","cat":"global",
-         "hls":"https://abcnewslive-abcnewslive.akamaized.net/hls/live/2028883/abcnewslive/master.m3u8",
-         "web":"https://abcnews.go.com/live",
-         "desc":"ABC News 24/7 live stream — USA"},
-        {"name":"Bloomberg TV","color":"#474747","cat":"global",
-         "hls":"https://cdn-videos.akamaized.net/btv/desktop/akamai/europe/live/primary.m3u8",
-         "web":"https://www.bloomberg.com/live",
-         "desc":"Global markets, business, finance"},
-        {"name":"VOA News","color":"#003478","cat":"global",
-         "hls":"https://voa-ingest.akamaized.net/hls/live/2033874/tvmc06/playlist.m3u8",
-         "web":"https://www.voanews.com",
-         "desc":"Voice of America — US international broadcaster"},
-        {"name":"France 24 Arabic","color":"#4a9fd4","cat":"conflict",
-         "hls":"https://live.france.tv/france-24-ar/index.m3u8",
-         "web":"https://www.france24.com/ar",
-         "desc":"France 24 عربي — 24/7 Arabic stream"},
+         "desc":"NASA — missions, spacewalks, Earth science"},
     ]
-
-    YT_CAT_NAMES = {
-        "ALL":"All Channels","global":"Global Wire",
-        "conflict":"Conflict / Middle East","science":"Science",
-    }
-    CAT_TABS_NEWS = ["ALL","global","science","geopolitics","conflict","climate","spaceweather"]
-    CAT_NAMES_ART = {
-        "ALL":"All Sources","global":"Global","science":"Science",
-        "geopolitics":"Geopolitics","conflict":"Conflict",
-        "climate":"Climate","spaceweather":"Space Weather",
-    }
 
     sub_tv, sub_articles, sub_directory = st.tabs([
         "📺  Live TV Streams",
@@ -1961,9 +1895,9 @@ main();
 
     # ── SUB-TAB C: SOURCE DIRECTORY ──────────────────────────
     with sub_directory:
-        st.markdown('<div class="sec-label">📺 YouTube Live Channels</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sec-label">📺 Live TV Channels (HLS Streams)</div>', unsafe_allow_html=True)
         yt_dir_cols = st.columns(4)
-        for i, ch in enumerate(YT_CHANNELS):
+        for i, ch in enumerate(HLS_CHANNELS):
             col = ch["color"]
             with yt_dir_cols[i % 4]:
                 st.markdown(f"""
@@ -1973,8 +1907,8 @@ main();
                     <div class="badge" style="color:{col};border-color:{col}44;background:{col}15;font-size:8px">{ch['cat'].upper()}</div>
                   </div>
                   <div style="font-size:12px;color:var(--muted);margin-bottom:8px">{ch['desc']}</div>
-                  <a href="https://www.youtube.com/channel/{ch['id']}" target="_blank"
-                     class="news-link" style="font-size:10px">Watch on YouTube →</a>
+                  <a href="{ch['web']}" target="_blank"
+                     class="news-link" style="font-size:10px">Watch live →</a>
                 </div>""", unsafe_allow_html=True)
 
         st.markdown("---")
