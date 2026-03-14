@@ -468,22 +468,22 @@ LEADERBOARD = [
 
 # News sources registry
 NEWS_SOURCES = [
-    {"name":"Reuters",      "cat":"global",      "color":"#ff8c42","rss":"https://feeds.reuters.com/reuters/worldNews",         "site":"reuters.com"},
-    {"name":"BBC World",    "cat":"global",      "color":"#bb1919","rss":"http://feeds.bbci.co.uk/news/world/rss.xml",           "site":"bbc.com"},
-    {"name":"Al Jazeera",   "cat":"global",      "color":"#00873c","rss":"https://www.aljazeera.com/xml/rss/all.xml",           "site":"aljazeera.com"},
-    {"name":"AP News",      "cat":"global",      "color":"#cc0000","rss":"https://apnews.com/rss",                              "site":"apnews.com"},
-    {"name":"NASA JPL",     "cat":"science",     "color":"#0b3d91","rss":"https://www.jpl.nasa.gov/feeds/news",                 "site":"jpl.nasa.gov"},
-    {"name":"USGS",         "cat":"science",     "color":"#4caf50","rss":"https://www.usgs.gov/news/science-news/rss.xml",       "site":"usgs.gov"},
-    {"name":"Phys.org",     "cat":"science",     "color":"#1a7fc1","rss":"https://phys.org/rss-feed/earth-news/",              "site":"phys.org"},
-    {"name":"Foreign Policy","cat":"geopolitics","color":"#8b1a1a","rss":"https://foreignpolicy.com/feed/",                   "site":"foreignpolicy.com"},
-    {"name":"The Diplomat", "cat":"geopolitics", "color":"#1a3a5c","rss":"https://thediplomat.com/feed/",                      "site":"thediplomat.com"},
-    {"name":"Defense One",  "cat":"geopolitics", "color":"#444444","rss":"https://www.defenseone.com/rss/all/",                "site":"defenseone.com"},
-    {"name":"ISW",          "cat":"conflict",    "color":"#800020","rss":"https://understandingwar.org/rss.xml",               "site":"understandingwar.org"},
-    {"name":"ACLED",        "cat":"conflict",    "color":"#cc0000","rss":"https://acleddata.com/feed/",                        "site":"acleddata.com"},
-    {"name":"CSIS",         "cat":"conflict",    "color":"#003366","rss":"https://www.csis.org/rss/analysis",                  "site":"csis.org"},
-    {"name":"Carbon Brief", "cat":"climate",     "color":"#1b5e20","rss":"https://www.carbonbrief.org/feed",                   "site":"carbonbrief.org"},
-    {"name":"SpaceWeather", "cat":"spaceweather","color":"#4a148c","rss":"https://spaceweather.com/index.xml",                 "site":"spaceweather.com"},
-    {"name":"NOAA SWPC",    "cat":"spaceweather","color":"#0d47a1","rss":"https://www.swpc.noaa.gov/news/rss.xml",             "site":"swpc.noaa.gov"},
+    {"name":"Reuters",       "cat":"global",       "color":"#ff8c42", "site":"reuters.com",        "desc":"Global wire service, 170+ countries",          "rss":"https://feeds.reuters.com/reuters/worldNews"},
+    {"name":"BBC World",     "cat":"global",       "color":"#bb1919", "site":"bbc.com",             "desc":"BBC international news",                       "rss":"http://feeds.bbci.co.uk/news/world/rss.xml"},
+    {"name":"Al Jazeera",    "cat":"global",       "color":"#00873c", "site":"aljazeera.com",       "desc":"Middle East & Global South focus",             "rss":"https://www.aljazeera.com/xml/rss/all.xml"},
+    {"name":"AP News",       "cat":"global",       "color":"#cc0000", "site":"apnews.com",          "desc":"Associated Press — breaking world news",       "rss":"https://apnews.com/rss"},
+    {"name":"NASA JPL",      "cat":"science",      "color":"#0b3d91", "site":"jpl.nasa.gov",        "desc":"NASA Jet Propulsion Lab — Earth & space",      "rss":"https://www.jpl.nasa.gov/feeds/news"},
+    {"name":"USGS",          "cat":"science",      "color":"#4caf50", "site":"usgs.gov",            "desc":"Earthquakes, volcanoes, hazards",               "rss":"https://www.usgs.gov/news/science-news/rss.xml"},
+    {"name":"Phys.org",      "cat":"science",      "color":"#1a7fc1", "site":"phys.org",            "desc":"Earth science & geoscience research",          "rss":"https://phys.org/rss-feed/earth-news/"},
+    {"name":"Foreign Policy","cat":"geopolitics",  "color":"#8b1a1a", "site":"foreignpolicy.com",   "desc":"International affairs & strategy",             "rss":"https://foreignpolicy.com/feed/"},
+    {"name":"The Diplomat",  "cat":"geopolitics",  "color":"#1a3a5c", "site":"thediplomat.com",     "desc":"Asia-Pacific geopolitics & security",          "rss":"https://thediplomat.com/feed/"},
+    {"name":"Defense One",   "cat":"geopolitics",  "color":"#444444", "site":"defenseone.com",      "desc":"US & global defence, security, military",      "rss":"https://www.defenseone.com/rss/all/"},
+    {"name":"ISW",           "cat":"conflict",     "color":"#800020", "site":"understandingwar.org","desc":"Institute for the Study of War — daily updates","rss":"https://understandingwar.org/rss.xml"},
+    {"name":"ACLED",         "cat":"conflict",     "color":"#cc0000", "site":"acleddata.com",       "desc":"Armed Conflict Location & Event Data",         "rss":"https://acleddata.com/feed/"},
+    {"name":"CSIS",          "cat":"conflict",     "color":"#003366", "site":"csis.org",            "desc":"Center for Strategic & International Studies",  "rss":"https://www.csis.org/rss/analysis"},
+    {"name":"Carbon Brief",  "cat":"climate",      "color":"#1b5e20", "site":"carbonbrief.org",     "desc":"Climate science & policy analysis",            "rss":"https://www.carbonbrief.org/feed"},
+    {"name":"SpaceWeather",  "cat":"spaceweather", "color":"#4a148c", "site":"spaceweather.com",    "desc":"Solar activity, geomagnetic storms, aurora",   "rss":"https://spaceweather.com/index.xml"},
+    {"name":"NOAA SWPC",     "cat":"spaceweather", "color":"#0d47a1", "site":"swpc.noaa.gov",       "desc":"NOAA Space Weather Prediction Center",         "rss":"https://www.swpc.noaa.gov/news/rss.xml"},
 ]
 NEWS_CAT_COLOR = {
     "global":"#ff8c42","science":"#00c8ff","geopolitics":"#9d6eff",
@@ -1509,8 +1509,8 @@ with tab_news:
                 <div style="font-family:var(--fm);font-size:11px;font-weight:600;color:{col}">{s['name']}</div>
                 <div class="badge" style="color:{col};border-color:{col}44;background:{col}15;font-size:8px">{s['cat'].upper()}</div>
               </div>
-              <div style="font-size:12px;color:var(--muted);margin-bottom:6px">{s['desc']}</div>
-              <a href="https://{s['site']}" target="_blank" class="news-link" style="font-size:10px">Visit {s['site']} →</a>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:6px">{s.get('desc','')}</div>
+              <a href="https://{s.get('site','#')}" target="_blank" class="news-link" style="font-size:10px">Visit {s.get('site',s['name'])} →</a>
             </div>""", unsafe_allow_html=True)
 
     st.markdown("---")
