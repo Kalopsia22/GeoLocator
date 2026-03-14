@@ -1326,7 +1326,21 @@ with tab_arena:
         st.markdown('<div class="sec-label">Challenges</div>',unsafe_allow_html=True)
         for ch in CHALLENGES:
             done=ch["id"] in st.session_state.answered
-            st.markdown(f'<div class="ch-card"><div class="ch-header"><div class="ch-title">{ch["title"]}</div><div style="display:flex;gap:7px;align-items:center"><div class="badge" style="color:{ch["color"]};border-color:{ch["color"]}44;background:{ch["color"]}15">{ch["difficulty"]}</div><div class="badge b-green">+{ch["pts"]} XP</div></div></div><div class="ch-body"><div class="ch-q">{ch["question"]}</div>{"".join(f\'<div class="clue"><span>▸</span>{c}</div>\' for c in ch["clues"])}</div></div>',unsafe_allow_html=True)
+            clues_html = "".join(f'<div class="clue"><span>▸</span>{c}</div>' for c in ch["clues"])
+            st.markdown(
+                f'<div class="ch-card">'
+                f'<div class="ch-header">'
+                f'<div class="ch-title">{ch["title"]}</div>'
+                f'<div style="display:flex;gap:7px;align-items:center">'
+                f'<div class="badge" style="color:{ch["color"]};border-color:{ch["color"]}44;background:{ch["color"]}15">{ch["difficulty"]}</div>'
+                f'<div class="badge b-green">+{ch["pts"]} XP</div>'
+                f'</div></div>'
+                f'<div class="ch-body">'
+                f'<div class="ch-q">{ch["question"]}</div>'
+                f'{clues_html}'
+                f'</div></div>',
+                unsafe_allow_html=True
+            )
             if not done:
                 sel=st.radio(f"a{ch['id']}",ch["options"],index=None,key=f"r_{ch['id']}",label_visibility="collapsed")
                 if st.button("Submit",key=f"b_{ch['id']}",disabled=(sel is None)):
