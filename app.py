@@ -1586,49 +1586,52 @@ with tab_civil:
 with tab_news:
 
     # ── YouTube channel registry ────────────────────────────
+    # live_vid: permanent 24/7 live stream video ID (hardcoded as reliable fallback)
+    # These are the well-known always-on streams each channel maintains.
+    # With a YouTube Data API key the JS will re-resolve the current live ID automatically.
     YT_CHANNELS = [
         {"name":"Al Jazeera English",  "id":"UCNye-wNBqNL5ZzHSJdba7Xg","color":"#00873c","cat":"global",
-         "live_url":"https://www.youtube.com/embed/live_stream?channel=UCNye-wNBqNL5ZzHSJdba7Xg",
+         "live_vid":"XWq5kBlakcQ",
          "desc":"Qatar-based global news, 24/7 English"},
         {"name":"BBC News",             "id":"UC16niRr50-MSBwiO3YDb3RA","color":"#bb1919","cat":"global",
-         "live_url":"https://www.youtube.com/embed/live_stream?channel=UC16niRr50-MSBwiO3YDb3RA",
+         "live_vid":"w_Ma8oQLmSM",
          "desc":"British public broadcaster — world news"},
-        {"name":"CNN",                  "id":"UCupvZG-5ko_eiXAupbDfxWw","color":"#cc0000","cat":"global",
-         "live_url":"https://www.youtube.com/embed/live_stream?channel=UCupvZG-5ko_eiXAupbDfxWw",
-         "desc":"24/7 US & international breaking news"},
         {"name":"DW News",              "id":"UCknLrEdhRCp1aegoMqRaCZg","color":"#003087","cat":"global",
-         "live_url":"https://www.youtube.com/embed/live_stream?channel=UCknLrEdhRCp1aegoMqRaCZg",
+         "live_vid":"F8xTSAtDJpA",
          "desc":"Deutsche Welle — German international news"},
         {"name":"France 24 English",   "id":"UCQfwfsi5VrQ8yKZ-UWmAoBw","color":"#002395","cat":"global",
-         "live_url":"https://www.youtube.com/embed/live_stream?channel=UCQfwfsi5VrQ8yKZ-UWmAoBw",
-         "desc":"French international broadcaster"},
+         "live_vid":"h3MuIUNCCLI",
+         "desc":"French international broadcaster in English"},
         {"name":"Euronews",             "id":"UCg2JZlAJZIxzxRDat2HVkFw","color":"#006fbf","cat":"global",
-         "live_url":"https://www.youtube.com/embed/live_stream?channel=UCg2JZlAJZIxzxRDat2HVkFw",
+         "live_vid":"RABaBlFrHJ0",
          "desc":"Pan-European news in English"},
         {"name":"Sky News",             "id":"UCoMdktPbSTixAyNGwb-UYkQ","color":"#004f9f","cat":"conflict",
-         "live_url":"https://www.youtube.com/embed/live_stream?channel=UCoMdktPbSTixAyNGwb-UYkQ",
+         "live_vid":"9Auq9mYxFEE",
          "desc":"UK breaking news & international coverage"},
         {"name":"WION",                 "id":"UCExCSExkE0M-kDblPqMFjGQ","color":"#e8520a","cat":"conflict",
-         "live_url":"https://www.youtube.com/embed/live_stream?channel=UCExCSExkE0M-kDblPqMFjGQ",
+         "live_vid":"Suj9hMOCCss",
          "desc":"World Is One News — South Asian perspective"},
-        {"name":"Times Now",            "id":"UC5pM_6w9V_KAOWiC5_A-FUg","color":"#e31837","cat":"conflict",
-         "live_url":"https://www.youtube.com/embed/live_stream?channel=UC5pM_6w9V_KAOWiC5_A-FUg",
-         "desc":"Indian English news, international affairs"},
         {"name":"TRT World",            "id":"UC7fWeaHhqgM4Ry-RMpM2YYw","color":"#e30a17","cat":"conflict",
-         "live_url":"https://www.youtube.com/embed/live_stream?channel=UC7fWeaHhqgM4Ry-RMpM2YYw",
+         "live_vid":"ObfXqfr9tSI",
          "desc":"Turkish public broadcaster — global news"},
+        {"name":"Times Now",            "id":"UC5pM_6w9V_KAOWiC5_A-FUg","color":"#e31837","cat":"conflict",
+         "live_vid":"AbuWj7nS8k4",
+         "desc":"Indian English news, international affairs"},
         {"name":"NASA TV",              "id":"UCLA_DiR1FfKNvjuUpBHmylQ","color":"#0b3d91","cat":"science",
-         "live_url":"https://www.youtube.com/embed/live_stream?channel=UCLA_DiR1FfKNvjuUpBHmylQ",
+         "live_vid":"21X5lGlDOfg",
          "desc":"NASA official — missions & Earth science"},
-        {"name":"Bloomberg TV",         "id":"UCIALMKvObZNtJ6AmdCLP7Lg","color":"#474747","cat":"global",
-         "live_url":"https://www.youtube.com/embed/live_stream?channel=UCIALMKvObZNtJ6AmdCLP7Lg",
-         "desc":"Global markets, business, finance"},
-        {"name":"CNBC",                 "id":"UCvJJ_dzjViJCoLf5uKUTwoA","color":"#00aaff","cat":"global",
-         "live_url":"https://www.youtube.com/embed/live_stream?channel=UCvJJ_dzjViJCoLf5uKUTwoA",
-         "desc":"Business & markets — US & global"},
         {"name":"Al Arabiya English",   "id":"UC5xshE6wCNFWnqNu5XhBMEg","color":"#b8860b","cat":"conflict",
-         "live_url":"https://www.youtube.com/embed/live_stream?channel=UC5xshE6wCNFWnqNu5XhBMEg",
+         "live_vid":"hQq7Q2MsFRg",
          "desc":"Saudi-owned pan-Arab news in English"},
+        {"name":"Bloomberg TV",         "id":"UCIALMKvObZNtJ6AmdCLP7Lg","color":"#474747","cat":"global",
+         "live_vid":"dp8PhLsUcFE",
+         "desc":"Global markets, business, finance"},
+        {"name":"Euronews (FR)",        "id":"UCDPXq59b4zeqoKlTkfaQYhg","color":"#4a9fd4","cat":"global",
+         "live_vid":"VLGgPJLCvhM",
+         "desc":"Euronews en français — 24/7"},
+        {"name":"Al Jazeera Arabic",    "id":"UCSls-6_NBBBSvowKyMBLEUA","color":"#007a4d","cat":"conflict",
+         "live_vid":"XsOt5SdGMU8",
+         "desc":"Al Jazeera العربية — Arabic news stream"},
     ]
 
     YT_CAT_NAMES = {
@@ -1673,7 +1676,7 @@ with tab_news:
         vis_ch = [c for c in YT_CHANNELS if yt_cat_sel == "ALL" or c["cat"] == yt_cat_sel]
 
         yt_js  = json.dumps([{"name":c["name"],"id":c["id"],"color":c["color"],
-                               "cat":c["cat"],"desc":c["desc"],"live_url":c["live_url"]}
+                               "cat":c["cat"],"desc":c["desc"],"live_vid":c["live_vid"]}
                               for c in vis_ch])
         yt_key = json.dumps(yt_api_key or "")
 
@@ -1750,15 +1753,19 @@ async function pick(i){{
   document.querySelectorAll('.ch-btn').forEach((b,j)=>b.classList.toggle('active',j===i));
   const c=CH[i];
   document.getElementById('pname').textContent=c.name;
-  document.getElementById('sbar').textContent='Resolving stream for '+c.name+'...';
+  document.getElementById('sbar').textContent='Loading '+c.name+'...';
   curYTUrl='https://www.youtube.com/channel/'+c.id;
-  const vid=await getLive(c.id);
-  const base=vid?`https://www.youtube.com/embed/${{vid}}`:c.live_url;
-  const url=base+(base.includes('?')?'&':'?')+'autoplay=1&rel=0&modestbranding=1'+(muted?'&mute=1':'');
-  document.getElementById('yf').src=url;
-  document.getElementById('sbar').textContent=vid
-    ?`Live · ${{c.name}} · video: ${{vid}}`
-    :`Channel embed · ${{c.name}}${{AK?' (no live stream active)':' (no API key)'}}`;
+
+  // Priority: 1) YouTube API live search  2) hardcoded live_vid
+  let vid=await getLive(c.id);
+  if(!vid) vid=c.live_vid;
+
+  const params='autoplay=1&rel=0&modestbranding=1&playsinline=1'+(muted?'&mute=1':'');
+  document.getElementById('yf').src=`https://www.youtube.com/embed/${{vid}}?${{params}}`;
+  document.getElementById('sbar').textContent=
+    (await getLive(c.id)===vid&&AK)
+      ?`● LIVE · ${{c.name}} · detected via API`
+      :`● Stream · ${{c.name}}${{AK?' (API: no live active, showing broadcast)':' (hardcoded stream ID)'}}`;
 }}
 
 function doMute(){{
