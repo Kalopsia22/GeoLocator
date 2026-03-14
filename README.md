@@ -6,7 +6,7 @@
 </p>
 
 <h1 align="center">
-  <br/>OSINT ARENA
+  <br/>Geo-Locator
   <br/><sub><sup>Global Intelligence Operations Center</sup></sub>
 </h1>
 
