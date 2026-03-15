@@ -118,6 +118,28 @@ COUNTRY_INSTABILITY = [
 ]
 # Build a fast lookup dict
 _CI_LOOKUP = {c["country"].lower(): c for c in COUNTRY_INSTABILITY}
+GOV_BONDS = [
+    {"name":"US 10Y","yield":4.42,"change":+0.03,"rating":"AAA","col":"#38bdf8"},
+    {"name":"US 2Y", "yield":4.71,"change":-0.01,"rating":"AAA","col":"#38bdf8"},
+    {"name":"UK 10Y","yield":4.18,"change":+0.05,"rating":"AA", "col":"#34d399"},
+    {"name":"DE 10Y","yield":2.41,"change":+0.02,"rating":"AAA","col":"#34d399"},
+    {"name":"JP 10Y","yield":1.52,"change":+0.08,"rating":"A+", "col":"#fbbf24"},
+    {"name":"IT 10Y","yield":3.74,"change":+0.04,"rating":"BBB","col":"#fb923c"},
+    {"name":"IN 10Y","yield":6.83,"change":-0.02,"rating":"BBB-","col":"#fb923c"},
+    {"name":"CN 10Y","yield":2.28,"change":-0.01,"rating":"A+", "col":"#fbbf24"},
+    {"name":"TR 10Y","yield":28.4, "change":+0.60,"rating":"B+", "col":"#f87171"},
+    {"name":"NG 10Y","yield":19.6, "change":+0.30,"rating":"B-", "col":"#f87171"},
+]
+
+
+import streamlit as st
+import streamlit.components.v1 as components
+import pandas as pd
+import numpy as np
+import json, requests, re, html as html_lib, time
+from datetime import datetime, timezone, timedelta
+
+
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_live_instability(country: str, baseline: dict) -> dict:
     """Fetch live instability signal from GDELT and blend with baseline.
@@ -191,26 +213,6 @@ def get_instability_for_country(country: str) -> dict | None:
 
 
 
-GOV_BONDS = [
-    {"name":"US 10Y","yield":4.42,"change":+0.03,"rating":"AAA","col":"#38bdf8"},
-    {"name":"US 2Y", "yield":4.71,"change":-0.01,"rating":"AAA","col":"#38bdf8"},
-    {"name":"UK 10Y","yield":4.18,"change":+0.05,"rating":"AA", "col":"#34d399"},
-    {"name":"DE 10Y","yield":2.41,"change":+0.02,"rating":"AAA","col":"#34d399"},
-    {"name":"JP 10Y","yield":1.52,"change":+0.08,"rating":"A+", "col":"#fbbf24"},
-    {"name":"IT 10Y","yield":3.74,"change":+0.04,"rating":"BBB","col":"#fb923c"},
-    {"name":"IN 10Y","yield":6.83,"change":-0.02,"rating":"BBB-","col":"#fb923c"},
-    {"name":"CN 10Y","yield":2.28,"change":-0.01,"rating":"A+", "col":"#fbbf24"},
-    {"name":"TR 10Y","yield":28.4, "change":+0.60,"rating":"B+", "col":"#f87171"},
-    {"name":"NG 10Y","yield":19.6, "change":+0.30,"rating":"B-", "col":"#f87171"},
-]
-
-
-import streamlit as st
-import streamlit.components.v1 as components
-import pandas as pd
-import numpy as np
-import json, requests, re, html as html_lib, time
-from datetime import datetime, timezone, timedelta
 import pydeck as pdk
 import plotly.graph_objects as go
 
