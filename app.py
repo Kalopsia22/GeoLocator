@@ -59,6 +59,27 @@ WMD_POSTURE = [
     {"actor":"USA","type":"Nuclear Readiness","status":"Normal","assets":"STRATCOM — 1700 deployed warheads","risk":20,"col":"#00c8ff"},
 ]
 
+# ── Country Instability (also defined here so it is available early) ──
+COUNTRY_INSTABILITY = [
+    {"country":"Sudan","score":89,"trend":"↑","U":28,"C":22,"S":20,"I":19,"region":"Africa"},
+    {"country":"Myanmar","score":84,"trend":"→","U":26,"C":21,"S":19,"I":18,"region":"Asia"},
+    {"country":"Haiti","score":83,"trend":"↑","U":27,"C":20,"S":18,"I":18,"region":"Americas"},
+    {"country":"Yemen","score":82,"trend":"→","U":25,"C":22,"S":17,"I":18,"region":"Middle East"},
+    {"country":"Syria","score":80,"trend":"↓","U":24,"C":20,"S":19,"I":17,"region":"Middle East"},
+    {"country":"Somalia","score":78,"trend":"→","U":24,"C":19,"S":18,"I":17,"region":"Africa"},
+    {"country":"DR Congo","score":77,"trend":"↑","U":23,"C":20,"S":17,"I":17,"region":"Africa"},
+    {"country":"Libya","score":74,"trend":"→","U":22,"C":19,"S":17,"I":16,"region":"Africa"},
+    {"country":"Ethiopia","score":71,"trend":"↑","U":21,"C":18,"S":17,"I":15,"region":"Africa"},
+    {"country":"Mali","score":70,"trend":"↑","U":22,"C":18,"S":15,"I":15,"region":"Africa"},
+    {"country":"Afghanistan","score":69,"trend":"→","U":21,"C":18,"S":15,"I":15,"region":"Asia"},
+    {"country":"Iraq","score":62,"trend":"↓","U":19,"C":16,"S":14,"I":13,"region":"Middle East"},
+    {"country":"Venezuela","score":61,"trend":"→","U":18,"C":16,"S":14,"I":13,"region":"Americas"},
+    {"country":"Pakistan","score":58,"trend":"↑","U":17,"C":15,"S":13,"I":13,"region":"Asia"},
+    {"country":"New Caledonia","score":44,"trend":"→","U":13,"C":11,"S":10,"I":10,"region":"Pacific"},
+    {"country":"Palau","score":38,"trend":"→","U":10,"C":10,"S":9,"I":9,"region":"Pacific"},
+]
+
+
 GOV_BONDS = [
     {"name":"US 10Y","yield":4.42,"change":+0.03,"rating":"AAA","col":"#38bdf8"},
     {"name":"US 2Y", "yield":4.71,"change":-0.01,"rating":"AAA","col":"#38bdf8"},
