@@ -4436,7 +4436,7 @@ function econPanel() {{
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
           <div style="font-size:13px;font-weight:600;color:var(--ink)">${{esc(e.name)}}</div>
-          <div class="mono" style="font-size:9px;color:var(--ink3);margin-top:2px">${{{e.ticker}}} · ${{e.date}}</div>
+          <div class="mono" style="font-size:9px;color:var(--ink3);margin-top:2px">${{e.ticker}} · ${{e.date}}</div>
         </div>
         <div style="text-align:right">
           <div class="disp" style="font-size:24px;color:var(--sky)">${{esc(e.val)}}</div>
