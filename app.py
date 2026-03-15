@@ -1556,21 +1556,25 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
                       show_protests=False, show_aviation=False):
     layers = []
 
-    def _scatter(data_list, col, radius, id_field="name"):
+    _layer_id_counter = [0]
+
+    def _scatter(data_list, col, radius, id_field="name", layer_id=None):
         if not data_list: return
         df = pd.DataFrame(data_list)
         if "lat" not in df.columns or "lon" not in df.columns: return
         df["_color"]  = [col]*len(df)
         df["_radius"] = radius
-        # Preserve existing "tip" from source data; fall back to "name" field
         if "tip" not in df.columns:
             df["tip"] = df.get(id_field, pd.Series([""] * len(df))).astype(str)
-        layers.append(pdk.Layer("ScatterplotLayer", data=df, get_position=["lon","lat"],
+        _layer_id_counter[0] += 1
+        lid = layer_id or f"scatter_{_layer_id_counter[0]}"
+        layers.append(pdk.Layer("ScatterplotLayer", data=df, id=lid,
+                                 get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color",
                                  get_line_color=[255,255,255,20], line_width_min_pixels=1,
                                  pickable=True, auto_highlight=True))
 
-    def _icon_scatter(data_list, col, radius):
+    def _icon_scatter(data_list, col, radius, layer_id=None):
         if not data_list: return
         df = pd.DataFrame(data_list)
         if "lat" not in df.columns or "lon" not in df.columns: return
@@ -1578,17 +1582,22 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
         df["_radius"] = radius
         if "tip" not in df.columns:
             df["tip"] = df.get("name", pd.Series([""] * len(df))).astype(str)
-        layers.append(pdk.Layer("ScatterplotLayer", data=df, get_position=["lon","lat"],
+        _layer_id_counter[0] += 1
+        lid = layer_id or f"icon_{_layer_id_counter[0]}"
+        layers.append(pdk.Layer("ScatterplotLayer", data=df, id=lid,
+                                 get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color",
                                  pickable=True, auto_highlight=True))
 
-    def _arc(data_list, color, width=2):
+    def _arc(data_list, color, width=2, layer_id=None):
         if not data_list: return
         df = pd.DataFrame(data_list)
         df["_color"] = [color]*len(df)
         if "tip" not in df.columns:
             df["tip"] = df.get("name", pd.Series([""] * len(df))).astype(str)
-        layers.append(pdk.Layer("ArcLayer", data=df,
+        _layer_id_counter[0] += 1
+        lid = layer_id or f"arc_{_layer_id_counter[0]}"
+        layers.append(pdk.Layer("ArcLayer", data=df, id=lid,
                                  get_source_position=["from_lon","from_lat"],
                                  get_target_position=["to_lon","to_lat"],
                                  get_source_color="_color", get_target_color="_color",
@@ -1600,7 +1609,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
         ep["_color"]  = ep["mag"].apply(lambda m: [255,55,85,220] if m>=5.5 else [255,180,0,200] if m>=4.5 else [0,230,118,175] if m>=3.5 else [0,200,255,150])
         ep["_radius"] = (ep["mag"]**2.3 * 15000).clip(10000, 240000)
         ep["tip"]     = ep.apply(lambda r: f"\U0001f30d SEISMIC  M" + str(r['mag']) + "\n" + str(r['place']) + "\nDepth: " + str(r['depth_km']) + " km  |  " + str(r['time']), axis=1)
-        layers.append(pdk.Layer("ScatterplotLayer", data=ep, get_position=["lon","lat"],
+        layers.append(pdk.Layer("ScatterplotLayer", data=ep, id="seismic",
+                                 get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color",
                                  get_line_color=[255,255,255,30], line_width_min_pixels=1,
                                  pickable=True, auto_highlight=True))
@@ -1608,7 +1618,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
     if show_volc and not eonet_df.empty:
         eo = eonet_df.copy(); eo["_color"] = [[255,110,40,200]]*len(eo); eo["_radius"] = 70000
         eo["tip"] = eo.apply(lambda r: f"🌋 EONET EVENT\n{r['title']}\nCategory: {r.get('cat','')}", axis=1)
-        layers.append(pdk.Layer("ScatterplotLayer", data=eo, get_position=["lon","lat"],
+        layers.append(pdk.Layer("ScatterplotLayer", data=eo, id="eonet",
+                                 get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
     if show_conf:
@@ -1620,7 +1631,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
             cdf["_color"]  = cdf["severity"].map(sc)
             cdf["_radius"] = cdf["severity"].map({"CRITICAL":100000,"HIGH":75000,"MED":55000,"LOW":40000,"INFO":30000})
             cdf["tip"]     = cdf.apply(lambda r: f"{r['conflict']}\n{INCIDENT_ICONS.get(r['type'],'●')} {r['title']}\n{r['loc']} · {r['date']}\nSeverity: {r['severity']} · Casualties: {r['casualties']}", axis=1)
-            layers.append(pdk.Layer("ScatterplotLayer", data=cdf, get_position=["lon","lat"],
+            layers.append(pdk.Layer("ScatterplotLayer", data=cdf, id="conflicts",
+                                     get_position=["lon","lat"],
                                      get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
     if show_mvmt:
@@ -1628,7 +1640,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
         mdf["_color"]  = mdf["sentiment"].map({"CRIT":[200,60,255,200],"HIGH":[157,110,255,185],"MED":[120,80,220,165]})
         mdf["_radius"] = mdf["scale"] * 1800
         mdf["tip"]     = mdf.apply(lambda r: f"📢 CIVIL MOVEMENT\n{r['title']}\n{r['location']}\nSize: {r['size']} · Sentiment: {r['sentiment']}", axis=1)
-        layers.append(pdk.Layer("ScatterplotLayer", data=mdf, get_position=["lon","lat"],
+        layers.append(pdk.Layer("ScatterplotLayer", data=mdf, id="movements",
+                                 get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
     if show_supply:
@@ -1659,7 +1672,7 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
         hdf = pd.DataFrame(HISTORICAL_EVENTS)
         hdf["_color"] = hdf["severity"].apply(lambda s: HIST_SEV_COLORS.get(s, [157,110,255,170]))
         hdf["_radius"] = hdf["severity"].apply(lambda s: 90000 if s=="CRITICAL" else 70000 if s=="HIGH" else 55000 if s=="MED" else 40000)
-        layers.append(pdk.Layer("ScatterplotLayer", data=hdf,
+        layers.append(pdk.Layer("ScatterplotLayer", data=hdf, id="historical",
                                  get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color",
                                  get_line_color=[255,255,255,30], line_width_min_pixels=1,
@@ -1688,7 +1701,7 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
                     "_radius": 60000,
                 })
             live_df = pd.DataFrame(live_pts)
-            layers.append(pdk.Layer("ScatterplotLayer", data=live_df,
+            layers.append(pdk.Layer("ScatterplotLayer", data=live_df, id="live_events",
                                      get_position=["lon","lat"],
                                      get_radius="_radius", get_fill_color="_color",
                                      get_line_color=[0,255,200,80], line_width_min_pixels=1,
@@ -2556,29 +2569,56 @@ _map_selection = st.pydeck_chart(
 st.markdown('</div>', unsafe_allow_html=True)
 
 # ── Click-to-Analyse Panel ────────────────────────────────────────────────────
+# Parse the selected object from the map click
 _clicked_obj = None
 try:
-    _sel = _map_selection.selection if _map_selection else None
-    if _sel:
-        _objs = _sel.get("objects", {})
-        for _layer_id, _items in _objs.items():
-            if _items:
-                _clicked_obj = _items[0]
-                break
+    if _map_selection and hasattr(_map_selection, "selection"):
+        _sel = _map_selection.selection
+        # _sel.objects is a dict: {layer_id: [list of data row dicts]}
+        if _sel and hasattr(_sel, "objects"):
+            for _layer_id, _items in _sel.objects.items():
+                if _items:
+                    _clicked_obj = dict(_items[0])
+                    break
+        elif isinstance(_sel, dict):
+            for _layer_id, _items in _sel.get("objects", {}).items():
+                if _items:
+                    _clicked_obj = dict(_items[0])
+                    break
 except Exception:
     _clicked_obj = None
 
+# Persist last click in session state so panel stays visible after reruns
 if _clicked_obj:
-    _tip     = str(_clicked_obj.get("tip", ""))
-    _name    = str(_clicked_obj.get("name", _clicked_obj.get("title", "")))
+    st.session_state["_last_clicked"] = _clicked_obj
+elif "_last_clicked" not in st.session_state:
+    st.session_state["_last_clicked"] = None
+
+# Show "click a point" hint if nothing selected yet
+if not st.session_state.get("_last_clicked"):
+    st.markdown(
+        '<div style="text-align:center;padding:10px;font-family:var(--fm);font-size:11px;color:var(--muted);' +
+        'background:var(--card);border:1px solid var(--bord2);border-radius:10px;margin-bottom:16px">' +
+        '📍 Click any marker on the map to open its Intelligence Profile' +
+        '</div>',
+        unsafe_allow_html=True
+    )
+else:
+    _co = st.session_state["_last_clicked"]
+    _tip     = str(_co.get("tip", ""))
+    _name    = str(_co.get("name", _co.get("title", _co.get("place", ""))))
     _country = get_country_from_tip(_tip)
     if not _country:
-        # Try extracting from name field
         for c in COUNTRY_INTEL:
-            if c.lower() in _name.lower():
+            if c.lower() in _name.lower() or c.lower() in _tip.lower():
                 _country = c
                 break
-    _render_intelligence_panel(_tip, _name, _country, _clicked_obj)
+    _col1, _col2 = st.columns([9, 1])
+    with _col2:
+        if st.button("✕ Clear", key="clear_intel"):
+            st.session_state["_last_clicked"] = None
+            st.rerun()
+    _render_intelligence_panel(_tip, _name, _country, _co)
 
 # ── LIVE EVENTS TRACKER (below global map, always visible) ────────────────
 _live_events = fetch_live_global_events(max_records=15)
