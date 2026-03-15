@@ -60,24 +60,135 @@ WMD_POSTURE = [
 ]
 
 # ── Country Instability (also defined here so it is available early) ──
+# Country Instability Index — 50 countries, 4-component model (U=Unrest, C=Conflict, S=Security, I=Information)
+# Scores 0-100. Components are already on 0-100 scale. Baseline March 2026.
 COUNTRY_INSTABILITY = [
-    {"country":"Sudan","score":89,"trend":"↑","U":28,"C":22,"S":20,"I":19,"region":"Africa"},
-    {"country":"Myanmar","score":84,"trend":"→","U":26,"C":21,"S":19,"I":18,"region":"Asia"},
-    {"country":"Haiti","score":83,"trend":"↑","U":27,"C":20,"S":18,"I":18,"region":"Americas"},
-    {"country":"Yemen","score":82,"trend":"→","U":25,"C":22,"S":17,"I":18,"region":"Middle East"},
-    {"country":"Syria","score":80,"trend":"↓","U":24,"C":20,"S":19,"I":17,"region":"Middle East"},
-    {"country":"Somalia","score":78,"trend":"→","U":24,"C":19,"S":18,"I":17,"region":"Africa"},
-    {"country":"DR Congo","score":77,"trend":"↑","U":23,"C":20,"S":17,"I":17,"region":"Africa"},
-    {"country":"Libya","score":74,"trend":"→","U":22,"C":19,"S":17,"I":16,"region":"Africa"},
-    {"country":"Ethiopia","score":71,"trend":"↑","U":21,"C":18,"S":17,"I":15,"region":"Africa"},
-    {"country":"Mali","score":70,"trend":"↑","U":22,"C":18,"S":15,"I":15,"region":"Africa"},
-    {"country":"Afghanistan","score":69,"trend":"→","U":21,"C":18,"S":15,"I":15,"region":"Asia"},
-    {"country":"Iraq","score":62,"trend":"↓","U":19,"C":16,"S":14,"I":13,"region":"Middle East"},
-    {"country":"Venezuela","score":61,"trend":"→","U":18,"C":16,"S":14,"I":13,"region":"Americas"},
-    {"country":"Pakistan","score":58,"trend":"↑","U":17,"C":15,"S":13,"I":13,"region":"Asia"},
-    {"country":"New Caledonia","score":44,"trend":"→","U":13,"C":11,"S":10,"I":10,"region":"Pacific"},
-    {"country":"Palau","score":38,"trend":"→","U":10,"C":10,"S":9,"I":9,"region":"Pacific"},
+    # Active war zones
+    {"country":"Sudan",        "score":91,"trend":"↑","U":92,"C":88,"S":82,"I":76,"region":"Africa"},
+    {"country":"Gaza",         "score":98,"trend":"↑","U":99,"C":99,"S":95,"I":80,"region":"Middle East"},
+    {"country":"Myanmar",      "score":85,"trend":"→","U":82,"C":88,"S":78,"I":74,"region":"Asia"},
+    {"country":"Yemen",        "score":83,"trend":"→","U":80,"C":88,"S":70,"I":72,"region":"Middle East"},
+    {"country":"Haiti",        "score":84,"trend":"↑","U":88,"C":80,"S":74,"I":72,"region":"Americas"},
+    {"country":"Somalia",      "score":79,"trend":"→","U":76,"C":82,"S":72,"I":66,"region":"Africa"},
+    {"country":"DR Congo",     "score":78,"trend":"↑","U":74,"C":84,"S":68,"I":64,"region":"Africa"},
+    {"country":"Libya",        "score":76,"trend":"→","U":70,"C":78,"S":70,"I":68,"region":"Africa"},
+    {"country":"Ethiopia",     "score":72,"trend":"↑","U":68,"C":76,"S":66,"I":60,"region":"Africa"},
+    {"country":"Mali",         "score":71,"trend":"↑","U":72,"C":72,"S":60,"I":60,"region":"Africa"},
+    {"country":"Afghanistan",  "score":70,"trend":"→","U":68,"C":72,"S":60,"I":62,"region":"Asia"},
+    {"country":"Syria",        "score":74,"trend":"↓","U":64,"C":72,"S":76,"I":70,"region":"Middle East"},
+    # Active conflict participants
+    {"country":"Ukraine",      "score":88,"trend":"→","U":70,"C":98,"S":84,"I":72,"region":"Europe"},
+    {"country":"Russia",       "score":76,"trend":"↑","U":62,"C":90,"S":72,"I":88,"region":"Europe/Asia"},
+    {"country":"Israel",       "score":78,"trend":"↑","U":66,"C":94,"S":76,"I":68,"region":"Middle East"},
+    {"country":"Iran",         "score":80,"trend":"↑","U":72,"C":82,"S":78,"I":90,"region":"Middle East"},
+    {"country":"Lebanon",      "score":72,"trend":"↑","U":68,"C":76,"S":66,"I":62,"region":"Middle East"},
+    {"country":"Iraq",         "score":63,"trend":"↓","U":58,"C":64,"S":56,"I":54,"region":"Middle East"},
+    # High-tension states
+    {"country":"North Korea",  "score":74,"trend":"→","U":40,"C":64,"S":82,"I":98,"region":"Asia"},
+    {"country":"Venezuela",    "score":62,"trend":"→","U":66,"C":54,"S":58,"I":68,"region":"Americas"},
+    {"country":"Pakistan",     "score":64,"trend":"↑","U":62,"C":68,"S":58,"I":54,"region":"Asia"},
+    {"country":"China",        "score":55,"trend":"→","U":52,"C":38,"S":58,"I":80,"region":"Asia"},
+    {"country":"Turkey",       "score":54,"trend":"→","U":54,"C":56,"S":48,"I":60,"region":"Middle East/Europe"},
+    {"country":"Saudi Arabia", "score":48,"trend":"→","U":42,"C":50,"S":44,"I":64,"region":"Middle East"},
+    {"country":"Egypt",        "score":52,"trend":"→","U":54,"C":44,"S":48,"I":68,"region":"Africa"},
+    {"country":"Nigeria",      "score":66,"trend":"↑","U":64,"C":72,"S":60,"I":52,"region":"Africa"},
+    {"country":"Kenya",        "score":48,"trend":"→","U":48,"C":42,"S":44,"I":42,"region":"Africa"},
+    {"country":"Indonesia",    "score":38,"trend":"→","U":38,"C":28,"S":36,"I":44,"region":"Asia"},
+    {"country":"Philippines",  "score":44,"trend":"→","U":46,"C":44,"S":40,"I":42,"region":"Asia"},
+    {"country":"India",        "score":46,"trend":"→","U":48,"C":42,"S":42,"I":54,"region":"Asia"},
+    {"country":"Bangladesh",   "score":55,"trend":"↑","U":58,"C":44,"S":52,"I":60,"region":"Asia"},
+    {"country":"Thailand",     "score":44,"trend":"→","U":44,"C":36,"S":42,"I":50,"region":"Asia"},
+    # Elevated instability
+    {"country":"Brazil",       "score":46,"trend":"↑","U":50,"C":46,"S":46,"I":40,"region":"Americas"},
+    {"country":"Mexico",       "score":56,"trend":"→","U":52,"C":62,"S":54,"I":44,"region":"Americas"},
+    {"country":"Colombia",     "score":50,"trend":"↓","U":46,"C":56,"S":48,"I":42,"region":"Americas"},
+    {"country":"Ecuador",      "score":54,"trend":"↑","U":52,"C":58,"S":52,"I":44,"region":"Americas"},
+    {"country":"Peru",         "score":48,"trend":"→","U":50,"C":42,"S":44,"I":44,"region":"Americas"},
+    # Relatively stable but monitored
+    {"country":"USA",          "score":38,"trend":"↑","U":46,"C":18,"S":36,"I":42,"region":"Americas"},
+    {"country":"UK",           "score":32,"trend":"→","U":34,"C":14,"S":30,"I":36,"region":"Europe"},
+    {"country":"France",       "score":34,"trend":"↑","U":42,"C":14,"S":28,"I":36,"region":"Europe"},
+    {"country":"Germany",      "score":28,"trend":"→","U":30,"C":10,"S":26,"I":30,"region":"Europe"},
+    {"country":"Japan",        "score":24,"trend":"→","U":20,"C":12,"S":28,"I":24,"region":"Asia"},
+    {"country":"South Korea",  "score":36,"trend":"↑","U":36,"C":28,"S":34,"I":40,"region":"Asia"},
+    {"country":"Australia",    "score":18,"trend":"→","U":18,"C":6, "S":20,"I":20,"region":"Pacific"},
+    {"country":"Canada",       "score":22,"trend":"↑","U":24,"C":8, "S":20,"I":24,"region":"Americas"},
+    {"country":"Singapore",    "score":16,"trend":"→","U":14,"C":8, "S":18,"I":22,"region":"Asia"},
+    {"country":"New Zealand",  "score":14,"trend":"→","U":14,"C":4, "S":16,"I":16,"region":"Pacific"},
 ]
+# Build a fast lookup dict
+_CI_LOOKUP = {c["country"].lower(): c for c in COUNTRY_INSTABILITY}
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_live_instability(country: str, baseline: dict) -> dict:
+    """Fetch live instability signal from GDELT and blend with baseline.
+    
+    GDELT GKG tone is negative = conflict/instability, positive = calm.
+    We map tone to a 0-100 instability delta and blend with baseline score.
+    """
+    try:
+        # GDELT Doc API — search last 24h for country name, get tone
+        r = requests.get(
+            "https://api.gdeltproject.org/api/v2/doc/doc",
+            params={
+                "query":      f"{country} conflict protest crisis war",
+                "mode":       "tonechart",
+                "timespan":   "1d",
+                "format":     "json",
+            },
+            timeout=12,
+            headers={"User-Agent": "Mozilla/5.0"},
+        )
+        if r.status_code != 200:
+            return baseline
+
+        data = r.json()
+        # tone array: list of {date, tone, pos, neg, ...}
+        tone_data = data.get("tonechart", [])
+        if not tone_data:
+            return baseline
+
+        # Average tone over available data points (tone is -100 to +100)
+        avg_tone = sum(float(t.get("tone", 0)) for t in tone_data) / len(tone_data)
+
+        # Map tone to instability delta: very negative tone = higher instability
+        # avg_tone typically ranges -10 to +5 for conflict countries
+        # We map: -15 → +15 delta, 0 → 0, +5 → -5 delta
+        tone_delta = max(-20, min(20, int(-avg_tone * 1.2)))
+
+        # Blend: 70% baseline, 30% live signal
+        live_score = int(baseline["score"] * 0.7 + (baseline["score"] + tone_delta) * 0.3)
+        live_score = max(0, min(100, live_score))
+
+        # Determine live trend from direction of tone delta
+        if tone_delta > 3:
+            live_trend = "↑"
+        elif tone_delta < -3:
+            live_trend = "↓"
+        else:
+            live_trend = baseline.get("trend", "→")
+
+        return {**baseline, "score": live_score, "trend": live_trend, "_live": True}
+
+    except Exception:
+        return baseline
+
+
+def get_instability_for_country(country: str) -> dict | None:
+    """Get instability data for a country, with live GDELT blending."""
+    c_lower = country.lower()
+    baseline = _CI_LOOKUP.get(c_lower)
+    if not baseline:
+        # fuzzy match
+        for key, val in _CI_LOOKUP.items():
+            if c_lower in key or key in c_lower:
+                baseline = val
+                break
+    if not baseline:
+        return None
+    # Try to get live data (cached 1h)
+    return fetch_live_instability(country, baseline)
+
+
 
 
 GOV_BONDS = [
@@ -1275,11 +1386,8 @@ def get_all_signals_for_country(country: str) -> dict:
             signals["historical_events"].append(e)
             if len(signals["historical_events"]) >= 5:
                 break
-    # Instability index
-    for ci in COUNTRY_INSTABILITY:
-        if c_lower in ci["country"].lower():
-            signals["instability"] = ci
-            break
+    # Instability index — uses live GDELT-blended data
+    signals["instability"] = get_instability_for_country(country)
     # Nuke alerts
     for na in NUKE_ALERTS:
         if c_lower in na["site"].lower():
@@ -2338,7 +2446,8 @@ def _render_intelligence_panel(tip: str, name: str, country: str, obj: dict):
     brief_lines = []
     if ci:
         trend_word = "rising" if ci_trend == "↑" else "declining" if ci_trend == "↓" else "stable"
-        brief_lines.append(f"Instability Index {ci_score}/100 and {trend_word}. Primary drivers: Unrest ({ci_U*4}/100), Information control ({ci_I*5}/100).")
+        live_tag = " (live-updated)" if ci.get("_live") else ""
+        brief_lines.append(f"Instability Index {ci_score}/100{live_tag} and {trend_word}. Primary drivers: Unrest ({ci_U}/100), Conflict ({ci_C}/100), Security ({ci_S}/100), Information ({ci_I}/100).")
     if conflicts:
         brief_lines.append(f"Active in {len(conflicts)} tracked conflict theatre(s): {', '.join(conflicts[:2])}.")
     if wmd:
@@ -2388,10 +2497,10 @@ def _render_intelligence_panel(tip: str, name: str, country: str, obj: dict):
     # Instability bars
     inst_bars = ""
     for label, val, bar_col in [
-        ("Unrest",      ci_U*4, "#ff3d5a"),
-        ("Conflict",    ci_C*4, "#ff8c42"),
-        ("Security",    ci_S*4, "#ffb400"),
-        ("Information", ci_I*5, "#9d6eff"),
+        ("Unrest",      ci_U, "#ff3d5a"),
+        ("Conflict",    ci_C, "#ff8c42"),
+        ("Security",    ci_S, "#ffb400"),
+        ("Information", ci_I, "#9d6eff"),
     ]:
         inst_bars += (
             f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">' +
@@ -2458,6 +2567,7 @@ body{{background:#02040a;font-family:'DM Sans',system-ui,sans-serif;color:#e2ecf
       <span class="score" style="color:{ci_col}">{ci_score}</span>
       <span style="font-family:monospace;font-size:14px;color:#4a6b85">/100</span>
       <span class="trend">{ci_trend} {"rising" if ci_trend=="↑" else "declining" if ci_trend=="↓" else "stable"}</span>
+      {"<span style=\"font-family:monospace;font-size:9px;color:#00e676;margin-left:8px;padding:1px 6px;background:rgba(0,230,118,.1);border:1px solid rgba(0,230,118,.2);border-radius:4px\">⚡ LIVE</span>" if ci and ci.get("_live") else ""}
     </div>
     {inst_bars if ci else '<div style="font-family:monospace;font-size:10px;color:#4a6b85">No instability index available</div>'}
   </div>
@@ -4075,24 +4185,64 @@ main();
 # ══════════════════════════════════════════════════════════════
 
 # ── Country Instability Index (ICRG-style scores, 0–100) ─────
+# Country Instability Index — 50 countries, 4-component model (U=Unrest, C=Conflict, S=Security, I=Information)
+# Scores 0-100. Components are already on 0-100 scale. Baseline March 2026.
 COUNTRY_INSTABILITY = [
-    {"country":"Sudan","score":89,"trend":"↑","U":28,"C":22,"S":20,"I":19,"region":"Africa"},
-    {"country":"Myanmar","score":84,"trend":"→","U":26,"C":21,"S":19,"I":18,"region":"Asia"},
-    {"country":"Haiti","score":83,"trend":"↑","U":27,"C":20,"S":18,"I":18,"region":"Americas"},
-    {"country":"Yemen","score":82,"trend":"→","U":25,"C":22,"S":17,"I":18,"region":"Middle East"},
-    {"country":"Syria","score":80,"trend":"↓","U":24,"C":20,"S":19,"I":17,"region":"Middle East"},
-    {"country":"Somalia","score":78,"trend":"→","U":24,"C":19,"S":18,"I":17,"region":"Africa"},
-    {"country":"DR Congo","score":77,"trend":"↑","U":23,"C":20,"S":17,"I":17,"region":"Africa"},
-    {"country":"Libya","score":74,"trend":"→","U":22,"C":19,"S":17,"I":16,"region":"Africa"},
-    {"country":"Ethiopia","score":71,"trend":"↑","U":21,"C":18,"S":17,"I":15,"region":"Africa"},
-    {"country":"Mali","score":70,"trend":"↑","U":22,"C":18,"S":15,"I":15,"region":"Africa"},
-    {"country":"Afghanistan","score":69,"trend":"→","U":21,"C":18,"S":15,"I":15,"region":"Asia"},
-    {"country":"Iraq","score":62,"trend":"↓","U":19,"C":16,"S":14,"I":13,"region":"Middle East"},
-    {"country":"Venezuela","score":61,"trend":"→","U":18,"C":16,"S":14,"I":13,"region":"Americas"},
-    {"country":"Pakistan","score":58,"trend":"↑","U":17,"C":15,"S":13,"I":13,"region":"Asia"},
-    {"country":"New Caledonia","score":44,"trend":"→","U":13,"C":11,"S":10,"I":10,"region":"Pacific"},
-    {"country":"Palau","score":38,"trend":"→","U":10,"C":10,"S":9,"I":9,"region":"Pacific"},
+    # Active war zones
+    {"country":"Sudan",        "score":91,"trend":"↑","U":92,"C":88,"S":82,"I":76,"region":"Africa"},
+    {"country":"Gaza",         "score":98,"trend":"↑","U":99,"C":99,"S":95,"I":80,"region":"Middle East"},
+    {"country":"Myanmar",      "score":85,"trend":"→","U":82,"C":88,"S":78,"I":74,"region":"Asia"},
+    {"country":"Yemen",        "score":83,"trend":"→","U":80,"C":88,"S":70,"I":72,"region":"Middle East"},
+    {"country":"Haiti",        "score":84,"trend":"↑","U":88,"C":80,"S":74,"I":72,"region":"Americas"},
+    {"country":"Somalia",      "score":79,"trend":"→","U":76,"C":82,"S":72,"I":66,"region":"Africa"},
+    {"country":"DR Congo",     "score":78,"trend":"↑","U":74,"C":84,"S":68,"I":64,"region":"Africa"},
+    {"country":"Libya",        "score":76,"trend":"→","U":70,"C":78,"S":70,"I":68,"region":"Africa"},
+    {"country":"Ethiopia",     "score":72,"trend":"↑","U":68,"C":76,"S":66,"I":60,"region":"Africa"},
+    {"country":"Mali",         "score":71,"trend":"↑","U":72,"C":72,"S":60,"I":60,"region":"Africa"},
+    {"country":"Afghanistan",  "score":70,"trend":"→","U":68,"C":72,"S":60,"I":62,"region":"Asia"},
+    {"country":"Syria",        "score":74,"trend":"↓","U":64,"C":72,"S":76,"I":70,"region":"Middle East"},
+    # Active conflict participants
+    {"country":"Ukraine",      "score":88,"trend":"→","U":70,"C":98,"S":84,"I":72,"region":"Europe"},
+    {"country":"Russia",       "score":76,"trend":"↑","U":62,"C":90,"S":72,"I":88,"region":"Europe/Asia"},
+    {"country":"Israel",       "score":78,"trend":"↑","U":66,"C":94,"S":76,"I":68,"region":"Middle East"},
+    {"country":"Iran",         "score":80,"trend":"↑","U":72,"C":82,"S":78,"I":90,"region":"Middle East"},
+    {"country":"Lebanon",      "score":72,"trend":"↑","U":68,"C":76,"S":66,"I":62,"region":"Middle East"},
+    {"country":"Iraq",         "score":63,"trend":"↓","U":58,"C":64,"S":56,"I":54,"region":"Middle East"},
+    # High-tension states
+    {"country":"North Korea",  "score":74,"trend":"→","U":40,"C":64,"S":82,"I":98,"region":"Asia"},
+    {"country":"Venezuela",    "score":62,"trend":"→","U":66,"C":54,"S":58,"I":68,"region":"Americas"},
+    {"country":"Pakistan",     "score":64,"trend":"↑","U":62,"C":68,"S":58,"I":54,"region":"Asia"},
+    {"country":"China",        "score":55,"trend":"→","U":52,"C":38,"S":58,"I":80,"region":"Asia"},
+    {"country":"Turkey",       "score":54,"trend":"→","U":54,"C":56,"S":48,"I":60,"region":"Middle East/Europe"},
+    {"country":"Saudi Arabia", "score":48,"trend":"→","U":42,"C":50,"S":44,"I":64,"region":"Middle East"},
+    {"country":"Egypt",        "score":52,"trend":"→","U":54,"C":44,"S":48,"I":68,"region":"Africa"},
+    {"country":"Nigeria",      "score":66,"trend":"↑","U":64,"C":72,"S":60,"I":52,"region":"Africa"},
+    {"country":"Kenya",        "score":48,"trend":"→","U":48,"C":42,"S":44,"I":42,"region":"Africa"},
+    {"country":"Indonesia",    "score":38,"trend":"→","U":38,"C":28,"S":36,"I":44,"region":"Asia"},
+    {"country":"Philippines",  "score":44,"trend":"→","U":46,"C":44,"S":40,"I":42,"region":"Asia"},
+    {"country":"India",        "score":46,"trend":"→","U":48,"C":42,"S":42,"I":54,"region":"Asia"},
+    {"country":"Bangladesh",   "score":55,"trend":"↑","U":58,"C":44,"S":52,"I":60,"region":"Asia"},
+    {"country":"Thailand",     "score":44,"trend":"→","U":44,"C":36,"S":42,"I":50,"region":"Asia"},
+    # Elevated instability
+    {"country":"Brazil",       "score":46,"trend":"↑","U":50,"C":46,"S":46,"I":40,"region":"Americas"},
+    {"country":"Mexico",       "score":56,"trend":"→","U":52,"C":62,"S":54,"I":44,"region":"Americas"},
+    {"country":"Colombia",     "score":50,"trend":"↓","U":46,"C":56,"S":48,"I":42,"region":"Americas"},
+    {"country":"Ecuador",      "score":54,"trend":"↑","U":52,"C":58,"S":52,"I":44,"region":"Americas"},
+    {"country":"Peru",         "score":48,"trend":"→","U":50,"C":42,"S":44,"I":44,"region":"Americas"},
+    # Relatively stable but monitored
+    {"country":"USA",          "score":38,"trend":"↑","U":46,"C":18,"S":36,"I":42,"region":"Americas"},
+    {"country":"UK",           "score":32,"trend":"→","U":34,"C":14,"S":30,"I":36,"region":"Europe"},
+    {"country":"France",       "score":34,"trend":"↑","U":42,"C":14,"S":28,"I":36,"region":"Europe"},
+    {"country":"Germany",      "score":28,"trend":"→","U":30,"C":10,"S":26,"I":30,"region":"Europe"},
+    {"country":"Japan",        "score":24,"trend":"→","U":20,"C":12,"S":28,"I":24,"region":"Asia"},
+    {"country":"South Korea",  "score":36,"trend":"↑","U":36,"C":28,"S":34,"I":40,"region":"Asia"},
+    {"country":"Australia",    "score":18,"trend":"→","U":18,"C":6, "S":20,"I":20,"region":"Pacific"},
+    {"country":"Canada",       "score":22,"trend":"↑","U":24,"C":8, "S":20,"I":24,"region":"Americas"},
+    {"country":"Singapore",    "score":16,"trend":"→","U":14,"C":8, "S":18,"I":22,"region":"Asia"},
+    {"country":"New Zealand",  "score":14,"trend":"→","U":14,"C":4, "S":16,"I":16,"region":"Pacific"},
 ]
+# Build a fast lookup dict
+_CI_LOOKUP = {c["country"].lower(): c for c in COUNTRY_INSTABILITY}
 
 # ── Strategic Risk ────────────────────────────────────────────
 STRATEGIC_RISK = {
