@@ -4645,298 +4645,473 @@ MARKET_RADAR = {"label":"CASH","posture":"2/7 bullish","flow":"PASSIVE GAP","liq
 # ══════════════════════════════════════════════════════════════
 
 with tab_intel:
-    st.markdown("""
-    <div class="helper">
-      <b>Intel Dashboard</b> — Country instability indices, strategic risk overview,
-      infrastructure cascade, force posture, supply chain chokepoints, and live intelligence feeds.
-    </div>""", unsafe_allow_html=True)
+    import json as _ij
+    import streamlit.components.v1 as _ic
 
-    # ── Row 1: Country Instability | Strategic Risk | Intel Feed | Live Intel ──
-    r1c1, r1c2, r1c3, r1c4 = st.columns([1.2, 1.2, 1.4, 1.2], gap="small")
-
-    # Country Instability
-    with r1c1:
-        st.markdown("""
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)">COUNTRY INSTABILITY</div>
-        </div>""", unsafe_allow_html=True)
-        region_filter = st.selectbox("Region", ["All","Africa","Middle East","Asia","Americas","Pacific"], label_visibility="collapsed", key="ci_reg")
-        filtered = [c for c in COUNTRY_INSTABILITY if region_filter=="All" or c["region"]==region_filter]
-        for c in filtered[:12]:
-            sc = c["score"]
-            col = "#ff3d5a" if sc>=75 else "#ff8c42" if sc>=60 else "#ffb400" if sc>=45 else "#00c8ff"
-            trend_col = "#ff3d5a" if c["trend"]=="↑" else "#00e676" if c["trend"]=="↓" else "#4a6b85"
-            st.markdown(f"""
-            <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--card);border:1px solid var(--bord2);border-radius:8px;margin-bottom:5px;border-left:3px solid {col}">
-              <div style="flex:1">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-                  <span style="font-size:12px;font-weight:600;color:var(--text)">{c['country']}</span>
-                  <span style="font-family:var(--fm);font-size:13px;font-weight:700;color:{col}">{sc}
-                    <span style="font-size:11px;color:{trend_col}">{c['trend']}</span>
-                  </span>
-                </div>
-                <div style="height:3px;background:var(--dim);border-radius:2px;overflow:hidden;margin-bottom:4px">
-                  <div style="height:100%;width:{sc}%;background:{col}88;border-radius:2px"></div>
-                </div>
-                <div style="font-family:var(--fm);font-size:9px;color:var(--muted)">
-                  U:{c['U']} C:{c['C']} S:{c['S']} I:{c['I']}
-                </div>
-              </div>
-            </div>""", unsafe_allow_html=True)
-
-    # Strategic Risk Overview
-    with r1c2:
-        st.markdown('<div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">STRATEGIC RISK OVERVIEW</div>', unsafe_allow_html=True)
-        sr = STRATEGIC_RISK
-        gauge_fig = go.Figure(go.Indicator(
-            mode="gauge+number", value=sr["score"],
-            gauge=dict(
-                axis=dict(range=[0,100], tickcolor="#4a6b85", tickfont=dict(size=8, color="#4a6b85")),
-                bar=dict(color=sr["color"], thickness=.3),
-                bgcolor="rgba(0,0,0,0)", borderwidth=0,
-                steps=[
-                    dict(range=[0,30], color="rgba(0,230,118,.06)"),
-                    dict(range=[30,55], color="rgba(255,180,0,.06)"),
-                    dict(range=[55,75], color="rgba(255,140,66,.06)"),
-                    dict(range=[75,100], color="rgba(255,61,90,.07)"),
-                ],
-            ),
-            number=dict(font=dict(family="Bebas Neue", size=52, color=sr["color"])),
-            title=dict(text=sr["label"], font=dict(family="IBM Plex Mono", size=11, color=sr["color"])),
-        ))
-        gauge_fig.update_layout(height=200, margin=dict(l=10,r=10,t=20,b=0), **bg_chart())
-        st.plotly_chart(gauge_fig, use_container_width=True, config={"displayModeBar": False})
-        st.markdown(f'<div style="text-align:center;font-family:var(--fm);font-size:11px;color:var(--muted);margin-bottom:10px">TREND &nbsp;<span style="color:var(--text2);font-size:13px">⟶ {sr["trend"]}</span></div>', unsafe_allow_html=True)
-        for comp in sr["components"]:
-            st.markdown(f"""
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
-              <div style="font-size:11px;color:var(--text2);width:148px;flex-shrink:0">{comp['name']}</div>
-              <div style="flex:1;height:4px;background:var(--dim);border-radius:2px;overflow:hidden">
-                <div style="height:100%;width:{comp['val']}%;background:{comp['col']};border-radius:2px"></div>
-              </div>
-              <div style="font-family:var(--fm);font-size:10px;color:{comp['col']};width:28px;text-align:right">{comp['val']}</div>
-            </div>""", unsafe_allow_html=True)
-
-    # Intel Feed
-    with r1c3:
-        st.markdown('<div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">INTEL FEED <span class="live-badge" style="margin-left:8px">● LIVE</span></div>', unsafe_allow_html=True)
-        cat_colors = {"ALERT":"b-red","REPORT":"b-amber","BRIEF":"b-cyan"}
-        tag_colors = {"MILITARY":"b-orange","CONFLICT":"b-red","UKRAINE":"b-cyan","IRAN":"b-amber","NUCLEAR":"b-violet","OSINT":"b-green","CYBER":"b-violet"}
-        for item in INTEL_FEED_SOURCES:
-            cc = cat_colors.get(item["cat"],"b-muted")
-            tc = tag_colors.get(item["tag"],"b-muted")
-            st.markdown(f"""
-            <div style="background:var(--card);border:1px solid var(--bord2);border-radius:8px;padding:10px 12px;margin-bottom:7px;transition:border-color .2s"
-                 onmouseover="this.style.borderColor='rgba(0,200,255,.22)'" onmouseout="this.style.borderColor='rgba(0,200,255,.06)'">
-              <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-                <span style="font-family:var(--fm);font-size:9px;font-weight:700;letter-spacing:.08em;color:var(--muted)">{item['source'].upper()}</span>
-                <div class="badge {cc}" style="font-size:8px">{item['cat']}</div>
-                <div class="badge {tc}" style="font-size:8px">{item['tag']}</div>
-              </div>
-              <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.45;margin-bottom:5px">{item['title']}</div>
-              <div style="font-family:var(--fm);font-size:9px;color:var(--muted)">{item['time']}</div>
-            </div>""", unsafe_allow_html=True)
-
-    # Live Intelligence (tabbed: Military | Cyber)
-    with r1c4:
-        st.markdown('<div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">LIVE INTELLIGENCE</div>', unsafe_allow_html=True)
-        intel_tab = st.radio("Intel type:", ["Military Activity","Cyber Threats"], horizontal=True, label_visibility="collapsed", key="intel_type")
-        feed = INTEL_FEED_SOURCES if intel_tab == "Military Activity" else CYBER_FEED
-        for item in (CYBER_FEED if intel_tab=="Cyber Threats" else INTEL_FEED_SOURCES[:6]):
-            sector = item.get("sector","INTEL")
-            sc_col = "#9d6eff" if sector=="Cyber" else "#ff8c42" if sector=="Military" else "#00c8ff"
-            st.markdown(f"""
-            <div style="border-bottom:1px solid var(--bord2);padding:9px 0">
-              <div style="font-family:var(--fm);font-size:9px;color:var(--muted);margin-bottom:3px;display:flex;justify-content:space-between">
-                <span style="color:{sc_col}">{item['source'].upper()}</span>
-                <span>{item['time']}</span>
-              </div>
-              <div style="font-size:12px;color:var(--text);line-height:1.4">{item['title'][:90] + ('…' if len(item['title'])>90 else '')}</div>
-            </div>""", unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    # ── Row 2: Infrastructure Cascade | Force Posture ──────────
-    r2c1, r2c2 = st.columns([1.6, 1.4], gap="medium")
-
-    with r2c1:
-        st.markdown('<div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:12px">INFRASTRUCTURE CASCADE</div>', unsafe_allow_html=True)
-        ic_tabs = st.tabs(["🔌 Cables","🔴 Pipelines","⚓ Ports","🏭 Chokepoints","⚡ Power Grids"])
-        ic_map = {"🔌 Cables":"cables","🔴 Pipelines":"pipelines","⚓ Ports":"ports","🏭 Chokepoints":"chokepoints","⚡ Power Grids":"power_grids"}
-        for ic_tab, ic_key in zip(ic_tabs, ic_map.values()):
-            with ic_tab:
-                d = INFRA_CASCADE[ic_key]
-                st.markdown(f"""
-                <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap">
-                  <div class="m-panel" style="padding:10px 14px;flex:1;min-width:80px;text-align:center">
-                    <div class="m-label">Total</div>
-                    <div class="m-val m-cyan" style="font-size:24px">{d['count']}</div>
-                  </div>
-                  <div class="m-panel" style="padding:10px 14px;flex:1;min-width:80px;text-align:center">
-                    <div class="m-label">At Risk</div>
-                    <div class="m-val m-red" style="font-size:24px">{d['at_risk']}</div>
-                  </div>
-                  <div class="m-panel" style="padding:10px 14px;flex:1;min-width:80px;text-align:center">
-                    <div class="m-label">Risk %</div>
-                    <div class="m-val m-amber" style="font-size:24px">{round(d['at_risk']/d['count']*100)}%</div>
-                  </div>
-                </div>""", unsafe_allow_html=True)
-                for item in d["items"]:
-                    r = item["risk"]
-                    rc = "#ff3d5a" if r>=75 else "#ff8c42" if r>=55 else "#ffb400" if r>=35 else "#00e676"
-                    sc_map = {"Cut":"b-red","Sabotaged":"b-red","Threatened":"b-red","Blockaded":"b-red","Contested":"b-amber","Degraded":"b-amber","Suspended":"b-amber","Reduced":"b-amber","At Risk":"b-amber","Active":"b-green"}
-                    sb = sc_map.get(item.get("status",""),"b-muted")
-                    extra = f'· {item.get("traffic_pct","")}% global trade' if item.get("traffic_pct") else f'· {item.get("region","")}' if item.get("region") else ""
-                    st.markdown(f"""
-                    <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--card);border:1px solid var(--bord2);border-radius:8px;margin-bottom:5px;border-left:3px solid {rc}">
-                      <div style="flex:1">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-                          <span style="font-size:12px;font-weight:600;color:var(--text)">{item['name']}</span>
-                          <div style="display:flex;gap:5px;align-items:center">
-                            <div class="badge {sb}" style="font-size:8px">{item.get('status','')}</div>
-                            <span style="font-family:var(--fm);font-size:11px;font-weight:700;color:{rc}">{r}</span>
-                          </div>
-                        </div>
-                        <div style="height:3px;background:var(--dim);border-radius:2px;overflow:hidden;margin-bottom:3px">
-                          <div style="height:100%;width:{r}%;background:{rc}77"></div>
-                        </div>
-                        <div style="font-family:var(--fm);font-size:9px;color:var(--muted)">{extra}</div>
-                      </div>
-                    </div>""", unsafe_allow_html=True)
-
-    with r2c2:
-        st.markdown('<div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:12px">FORCE POSTURE</div>', unsafe_allow_html=True)
-        for fp in FORCE_POSTURE:
-            r = fp["risk"]
-            rc = "#ff3d5a" if r>=70 else "#ff8c42" if r>=50 else "#ffb400" if r>=35 else "#00c8ff"
-            st.markdown(f"""
-            <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--card);border:1px solid var(--bord2);border-radius:8px;margin-bottom:5px">
-              <div style="width:34px;height:34px;border-radius:50%;background:{rc}22;border:2px solid {rc}55;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                <span style="font-family:var(--fd);font-size:14px;color:{rc}">{r}</span>
-              </div>
-              <div style="flex:1;min-width:0">
-                <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px">{fp['activity']} – {fp['actors']}</div>
-                <div style="font-family:var(--fm);font-size:10px;color:var(--muted)">{fp['signals']:,} signals →</div>
-              </div>
-            </div>""", unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    # ── Nuclear / WMD Alert Section ──────────────────────────────
-    _nuke_col1, _nuke_col2 = st.columns([1, 1], gap="medium")
-    with _nuke_col1:
-        st.markdown('<div class="sec-label">☢ Nuclear & WMD Status</div>', unsafe_allow_html=True)
-        NUKE_ALERTS = NUKE_ALERTS  # defined at module level
-        for _na in NUKE_ALERTS:
-            _nb = "b-red" if _na["level"]=="CRITICAL" else "b-orange" if _na["level"]=="HIGH" else "b-amber"
-            st.markdown(
-                f'<div style="padding:8px 11px;background:var(--card);border:1px solid var(--bord2);' +
-                f'border-left:3px solid {_na["col"]};border-radius:7px;margin-bottom:5px">' +
-                f'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">' +
-                f'<span style="font-size:12px;font-weight:600;color:var(--text)">{_na["site"]}</span>' +
-                f'<div style="display:flex;gap:5px">' +
-                f'<span class="badge {_nb}" style="font-size:8px">{_na["status"]}</span></div></div>' +
-                f'<div style="font-size:11px;color:var(--muted);line-height:1.4">{_na["detail"]}</div>' +
-                '</div>',
-                unsafe_allow_html=True
-            )
-
-    with _nuke_col2:
-        st.markdown('<div class="sec-label">🚀 Missile & WMD Posture</div>', unsafe_allow_html=True)
-        WMD_POSTURE = WMD_POSTURE  # defined at module level
-        for _wp in WMD_POSTURE:
-            _wr = _wp["risk"]
-            _wc = "#ff3d5a" if _wr>=70 else "#ff8c42" if _wr>=50 else "#ffb400" if _wr>=35 else "#00c8ff"
-            st.markdown(
-                f'<div style="padding:8px 11px;background:var(--card);border:1px solid var(--bord2);' +
-                f'border-left:3px solid {_wc};border-radius:7px;margin-bottom:5px">' +
-                f'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">' +
-                f'<span style="font-size:12px;font-weight:600;color:var(--text)">{_wp["actor"]}</span>' +
-                f'<div style="display:flex;align-items:center;gap:6px">' +
-                f'<span style="font-family:var(--fm);font-size:9px;color:var(--muted)">{_wp["type"]}</span>' +
-                f'<span style="font-family:var(--fd);font-size:16px;color:{_wc}">{_wr}</span></div></div>' +
-                f'<div style="height:3px;background:var(--dim);border-radius:2px;overflow:hidden;margin-bottom:4px">' +
-                f'<div style="height:100%;width:{_wr}%;background:{_wc}77;border-radius:2px"></div></div>' +
-                f'<div style="font-size:10px;color:var(--muted)">Status: <span style="color:{_wc}">{_wp["status"]}</span> · {_wp["assets"][:55]}</div>' +
-                '</div>',
-                unsafe_allow_html=True
-            )
-
-    st.markdown("---")
-
-    # ── Row 3: Supply Chain Chokepoints ──────────────────────────
-    st.markdown('<div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:12px">SUPPLY CHAIN CHOKEPOINTS</div>', unsafe_allow_html=True)
-    cp_cols = st.columns(3, gap="medium")
-    for idx, cp in enumerate(CHOKEPOINTS):
-        status_cls = "b-red" if cp["status"]=="red" else "b-amber" if cp["status"]=="amber" else "b-green"
-        status_col = "#ff3d5a" if cp["status"]=="red" else "#ffb400" if cp["status"]=="amber" else "#00e676"
-        wow_col    = "#ff3d5a" if cp["wow_change"]<0 else "#00e676"
-        with cp_cols[idx % 3]:
-            st.markdown(f"""
-            <div style="background:var(--card);border:1px solid var(--bord2);border-left:3px solid {status_col};border-radius:10px;padding:14px 16px;margin-bottom:12px">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                <div style="font-family:var(--fd);font-size:15px;letter-spacing:.06em;color:var(--text)">{cp['name']}</div>
-                <div class="badge {status_cls}">{cp['risk']}/100</div>
-              </div>
-              <div style="display:flex;gap:10px;margin-bottom:8px;font-family:var(--fm);font-size:10px;flex-wrap:wrap">
-                <span style="color:var(--muted)">{cp['warnings']} warning(s)</span>
-                <span style="color:var(--muted)">·</span>
-                <span style="color:var(--muted)">{cp['ais_disruptions']} AIS disruption(s)</span>
-                <span style="color:var(--muted)">·</span>
-                <span style="color:var(--muted)">{cp['flow']}</span>
-              </div>
-              <div style="height:4px;background:var(--dim);border-radius:2px;overflow:hidden;margin-bottom:8px">
-                <div style="height:100%;width:{cp['risk']}%;background:{status_col}88"></div>
-              </div>
-              <div style="font-family:var(--fm);font-size:10px;margin-bottom:6px">
-                WoW change: <span style="color:{wow_col};font-weight:700">{'+' if cp['wow_change']>0 else ''}{cp['wow_change']}%</span>
-              </div>
-              <div style="font-size:11px;color:var(--text2);line-height:1.55;margin-bottom:8px">{cp['context'][:180]}</div>
-              <div style="display:flex;gap:4px;flex-wrap:wrap">
-                {''.join(f'<div class="badge b-muted" style="font-size:8px">{e}</div>' for e in cp['exports'])}
-              </div>
-            </div>""", unsafe_allow_html=True)
-
-
-
-    st.markdown("---")
-    # ── Internet Outage Live Feed ─────────────────────────────
-    st.markdown('<div class="sec-label">📡 Internet Outage & Censorship — Live Feed</div>', unsafe_allow_html=True)
+    # Fetch live outage feed
     _outage_arts = fetch_outage_feed()
-    _out_left, _out_right = st.columns([1,1], gap="medium")
-    with _out_left:
-        if _outage_arts:
-            for _oa in _outage_arts[:5]:
-                _src_c = "#ff8c42"
-                _ttl_o = _oa["title"][:80] + ("…" if len(_oa["title"])>80 else "")
-                st.markdown(
-                    f'<div style="padding:8px 11px;background:var(--card);border:1px solid var(--bord2);' +
-                    f'border-left:3px solid var(--orange);border-radius:7px;margin-bottom:5px">' +
-                    f'<div style="display:flex;justify-content:space-between;margin-bottom:3px">' +
-                    f'<span style="font-family:var(--fm);font-size:9px;color:{_src_c}">{_oa["source"].upper()[:28]}</span>' +
-                    f'<span style="font-family:var(--fm);font-size:9px;color:var(--muted)">{_oa["time"]}</span></div>' +
-                    f'<div style="font-size:12px;color:var(--text);line-height:1.4">{_ttl_o}</div>' +
-                    (f'<a href="{_oa["url"]}" target="_blank" rel="noopener" style="font-family:var(--fm);font-size:9px;color:var(--cyan);text-decoration:none">Read →</a>' if _oa.get("url") else "") +
-                    '</div>',
-                    unsafe_allow_html=True
-                )
-        else:
-            st.markdown('<div style="font-family:var(--fm);font-size:11px;color:var(--muted);padding:10px">No outage alerts in the last 6 hours.</div>', unsafe_allow_html=True)
 
-    with _out_right:
-        st.markdown('<div style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">KNOWN ACTIVE OUTAGES</div>', unsafe_allow_html=True)
-        for _io in INTERNET_OUTAGES:
-            _io_col = "#ff3d5a" if _io["severity"]=="Total" else "#ff8c42" if _io["severity"] in ("Partial","Disrupted") else "#ffb400"
-            st.markdown(
-                f'<div style="display:flex;align-items:center;gap:10px;padding:7px 11px;' +
-                f'background:var(--card);border:1px solid var(--bord2);border-left:3px solid {_io_col};' +
-                f'border-radius:7px;margin-bottom:5px">' +
-                f'<div style="flex:1">' +
-                f'<div style="font-size:12px;font-weight:600;color:var(--text)">{_io["name"]}</div>' +
-                f'<div style="font-family:var(--fm);font-size:9px;color:var(--muted);margin-top:2px">' +
-                f'Severity: <span style="color:{_io_col}">{_io["severity"]}</span> · {_io["cause"]}</div></div></div>',
-                unsafe_allow_html=True
-            )
+    # Assemble payload
+    _intel_payload = _ij.dumps({
+        "instability":   COUNTRY_INSTABILITY,
+        "strategic":     STRATEGIC_RISK,
+        "intel_feed":    INTEL_FEED_SOURCES,
+        "cyber_feed":    CYBER_FEED,
+        "infra":         INFRA_CASCADE,
+        "force_posture": FORCE_POSTURE,
+        "nuke_alerts":   NUKE_ALERTS,
+        "wmd_posture":   WMD_POSTURE,
+        "chokepoints":   CHOKEPOINTS,
+        "outage_live":   _outage_arts[:8],
+        "outage_known":  INTERNET_OUTAGES,
+    })
+
+    _intel_html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{{margin:0;padding:0;box-sizing:border-box;}}
+html{{scroll-behavior:smooth;}}
+body{{
+  background:#030609;
+  background-image:
+    radial-gradient(ellipse 70% 35% at 50% 0%,rgba(0,200,255,.04) 0%,transparent 70%),
+    radial-gradient(ellipse 30% 40% at 85% 50%,rgba(157,110,255,.03) 0%,transparent 60%);
+  font-family:'Inter',system-ui,sans-serif;
+  color:#dce8f5;
+  padding:20px 18px 48px;
+}}
+/* ── Typography ── */
+.fd{{font-family:'Bebas Neue',sans-serif;letter-spacing:.01em;line-height:1;}}
+.fm{{font-family:'IBM Plex Mono',monospace;}}
+.overline{{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:#3d5a73;}}
+.sec{{
+  display:flex;align-items:center;gap:12px;
+  font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;
+  letter-spacing:.22em;text-transform:uppercase;color:#3d5a73;
+  margin-bottom:18px;
+}}
+.sec::after{{content:'';flex:1;height:1px;background:rgba(61,90,115,.25);}}
+/* ── Layout ── */
+.row{{display:grid;gap:16px;margin-bottom:24px;}}
+.row-3{{grid-template-columns:1fr 1fr 1fr;}}
+.row-2{{grid-template-columns:1fr 1fr;}}
+.row-4{{grid-template-columns:1fr 1fr 1fr 1fr;}}
+.row-25{{grid-template-columns:2fr 3fr;}}
+@media(max-width:1100px){{.row-3,.row-4{{grid-template-columns:1fr 1fr;}}}}
+@media(max-width:700px){{.row-3,.row-4,.row-2,.row-25{{grid-template-columns:1fr;}}}}
+/* ── Panels ── */
+.panel{{
+  background:#070d16;border:1px solid rgba(0,200,255,.07);
+  border-radius:14px;padding:20px 22px;position:relative;overflow:hidden;
+}}
+.panel::before{{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,200,255,.08),transparent);
+}}
+/* ── Pill tabs ── */
+.pill-wrap{{display:flex;gap:5px;margin-bottom:14px;flex-wrap:wrap;}}
+.pill{{
+  padding:4px 12px;border-radius:20px;font-size:10px;font-weight:500;cursor:pointer;
+  background:#0c1a28;border:1px solid rgba(61,90,115,.35);color:#3d5a73;
+  transition:all .14s;
+}}
+.pill:hover{{color:#7fb3cc;border-color:rgba(0,200,255,.2);}}
+.pill.on{{background:rgba(0,200,255,.08);border-color:rgba(0,200,255,.28);color:#00c8ff;}}
+.pane{{display:none;}}.pane.on{{display:block;}}
+/* ── Card rows ── */
+.cr{{
+  border-left:2px solid;border-radius:8px;padding:10px 14px;margin-bottom:8px;
+  background:#070d16;border-top:1px solid rgba(255,255,255,.03);
+  border-right:1px solid rgba(255,255,255,.02);border-bottom:1px solid rgba(255,255,255,.02);
+  transition:background .15s;
+}}
+.cr:last-child{{margin-bottom:0;}}
+.cr:hover{{background:#0b1726;}}
+/* ── Scroll ── */
+.scroll{{max-height:380px;overflow-y:auto;padding-right:4px;}}
+.scroll::-webkit-scrollbar{{width:3px;}}
+.scroll::-webkit-scrollbar-thumb{{background:rgba(0,200,255,.12);border-radius:2px;}}
+/* ── Bar ── */
+.bar-track{{height:3px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden;margin:5px 0;}}
+.bar-fill{{height:100%;border-radius:2px;}}
+/* ── Badges ── */
+.badge{{
+  display:inline-flex;align-items:center;
+  padding:2px 7px;border-radius:4px;
+  font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:500;
+  letter-spacing:.05em;border:1px solid;
+}}
+.b-red{{color:#ff3d5a;border-color:rgba(255,61,90,.3);background:rgba(255,61,90,.07);}}
+.b-amber{{color:#ffb400;border-color:rgba(255,180,0,.3);background:rgba(255,180,0,.07);}}
+.b-orange{{color:#ff8c42;border-color:rgba(255,140,66,.3);background:rgba(255,140,66,.07);}}
+.b-cyan{{color:#00c8ff;border-color:rgba(0,200,255,.3);background:rgba(0,200,255,.07);}}
+.b-green{{color:#00e676;border-color:rgba(0,230,118,.3);background:rgba(0,230,118,.07);}}
+.b-violet{{color:#9d6eff;border-color:rgba(157,110,255,.3);background:rgba(157,110,255,.07);}}
+.b-muted{{color:#3d5a73;border-color:rgba(61,90,115,.3);background:rgba(61,90,115,.06);}}
+/* ── Dot pulse ── */
+.pulse{{width:6px;height:6px;border-radius:50%;display:inline-block;animation:bl 1.4s ease-in-out infinite;}}
+@keyframes bl{{0%,100%{{opacity:1;transform:scale(1)}}50%{{opacity:.25;transform:scale(.65)}}}}
+/* ── Big number ── */
+.bignum{{font-family:'Bebas Neue',sans-serif;letter-spacing:-.01em;line-height:.9;}}
+/* ── Score ring ── */
+.ring-wrap{{position:relative;width:90px;height:90px;flex-shrink:0;}}
+.ring-svg{{width:90px;height:90px;transform:rotate(-90deg);}}
+.ring-label{{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;}}
+/* ── KPI strip ── */
+.kpi-strip{{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}}
+.kpi-card{{
+  background:#070d16;border:1px solid rgba(0,200,255,.07);
+  border-radius:12px;padding:16px 18px;
+  position:relative;overflow:hidden;
+}}
+.kpi-top{{position:absolute;top:0;left:0;right:0;height:2px;}}
+/* ── Sector grid ── */
+.sec-grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}}
+.sec-cell{{border-radius:8px;padding:8px 10px;text-align:center;transition:transform .14s;cursor:default;}}
+.sec-cell:hover{{transform:translateY(-2px);}}
+@media(max-width:700px){{.kpi-strip{{grid-template-columns:1fr 1fr;}}}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const D = {_intel_payload};
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const bar = (pct,col) => `<div class="bar-track"><div class="bar-fill" style="width:${{Math.min(pct,100)}}%;background:${{col}}"></div></div>`;
+const badge = (t,cls) => `<span class="badge ${{cls}}">${{esc(t)}}</span>`;
+const rcol = s => s>=75?'#ff3d5a':s>=55?'#ff8c42':s>=38?'#ffb400':'#00c8ff';
+const trendCol = t => t==='↑'?'#ff8c42':t==='↓'?'#00e676':'#3d5a73';
+
+function sw(g,id,el){{
+  el.closest('.panel').querySelectorAll('.pill').forEach(p=>p.classList.remove('on'));
+  el.classList.add('on');
+  el.closest('.panel').querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
+  el.closest('.panel').querySelector('#'+g+id).classList.add('on');
+}}
+
+/* ── KPI Summary Strip ────────────────────────────────────────── */
+function kpiStrip(){{
+  const ci = D.instability;
+  const highRisk = ci.filter(c=>c.score>=70).length;
+  const avgScore = Math.round(ci.reduce((s,c)=>s+c.score,0)/ci.length);
+  const sr = D.strategic;
+  const fp = D.force_posture;
+  const highFP = fp.filter(f=>f.risk>=60).length;
+  const nukeAlert = D.nuke_alerts.filter(n=>n.level==='CRITICAL').length;
+  const kpis = [
+    {{n:highRisk, lbl:'High-Risk Nations',  sub:'Instability ≥ 70',    col:'#ff3d5a', top:'linear-gradient(90deg,#ff3d5a,#ff8c4200)'}},
+    {{n:sr.score, lbl:'Global Risk Score',  sub:sr.label,              col:sr.color,  top:`linear-gradient(90deg,${{sr.color}},${{sr.color}}00)`}},
+    {{n:highFP,   lbl:'Elevated Postures',  sub:'Force posture risk ≥ 60', col:'#ff8c42', top:'linear-gradient(90deg,#ff8c42,#ff8c4200)'}},
+    {{n:nukeAlert,lbl:'Nuclear CRITICAL',   sub:'Sites at CRITICAL level', col:'#9d6eff', top:'linear-gradient(90deg,#9d6eff,#9d6eff00)'}},
+  ];
+  return `<div class="kpi-strip">${{kpis.map(k=>`
+    <div class="kpi-card">
+      <div class="kpi-top" style="background:${{k.top}}"></div>
+      <div class="overline" style="margin-bottom:8px">${{k.lbl}}</div>
+      <div class="bignum" style="font-size:52px;color:${{k.col}};margin-bottom:4px">${{k.n}}</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3d5a73">${{esc(k.sub)}}</div>
+    </div>`).join('')}}</div>`;
+}}
+
+/* ── Country Instability Panel ──────────────────────────────── */
+function panelInstability(){{
+  const regions = ['All',...new Set(D.instability.map(c=>c.region))];
+  const panes = regions.map((reg,i)=>{{
+    const items = reg==='All'?D.instability:D.instability.filter(c=>c.region===reg);
+    const rows = items.map(c=>{{
+      const col = rcol(c.score);
+      const tc  = trendCol(c.trend);
+      return `<div class="cr" style="border-left-color:${{col}}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+          <span style="font-size:13px;font-weight:600;color:#dce8f5">${{esc(c.country)}}</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3d5a73">
+              U${{c.U}} C${{c.C}} S${{c.S}} I${{c.I}}
+            </span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:${{tc}}">${{c.trend}}</span>
+            <span class="bignum" style="font-size:26px;color:${{col}}">${{c.score}}</span>
+          </div>
+        </div>
+        ${{bar(c.score, col)}}
+      </div>`;
+    }}).join('');
+    return `<div id="ci${{i}}" class="pane ${{i===0?'on':''}}">${{rows}}</div>`;
+  }});
+  const pills = regions.map((r,i)=>`<div class="pill ${{i===0?'on':''}}" onclick="sw('ci','${{i}}',this)">${{r}}</div>`).join('');
+  return `<div class="panel">
+    <div class="sec">Country Instability Index</div>
+    <div class="pill-wrap">${{pills}}</div>
+    <div class="scroll">${{panes.join('')}}</div>
+  </div>`;
+}}
+
+/* ── Strategic Risk Panel ───────────────────────────────────── */
+function panelStrategic(){{
+  const sr = D.strategic;
+  const col = sr.color||'#ff8c42';
+  const r = sr.score;
+  const circ = 2*Math.PI*38;
+  const dash = circ*(1-r/100);
+  const compRows = sr.components.map(c=>`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
+      <div style="font-size:11px;color:#7fb3cc;min-width:140px">${{esc(c.name)}}</div>
+      <div style="flex:1;height:4px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden">
+        <div style="height:100%;width:${{c.val}}%;background:${{c.col}};border-radius:2px"></div>
+      </div>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:${{c.col}};min-width:26px;text-align:right">${{c.val}}</span>
+    </div>`).join('');
+  return `<div class="panel">
+    <div class="sec">Strategic Risk Overview</div>
+    <div style="display:flex;align-items:center;gap:20px;margin-bottom:18px">
+      <div class="ring-wrap">
+        <svg class="ring-svg" viewBox="0 0 90 90">
+          <circle cx="45" cy="45" r="38" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="7"/>
+          <circle cx="45" cy="45" r="38" fill="none" stroke="${{col}}" stroke-width="7"
+            stroke-dasharray="${{circ}}" stroke-dashoffset="${{dash}}" stroke-linecap="round"/>
+        </svg>
+        <div class="ring-label">
+          <div class="bignum" style="font-size:30px;color:${{col}}">${{r}}</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#3d5a73">/ 100</div>
+        </div>
+      </div>
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;color:${{col}};margin-bottom:4px">${{esc(sr.label)}}</div>
+        <div style="font-size:11px;color:#3d5a73">Trend &nbsp;<span style="color:#7fb3cc;font-size:13px">${{esc(sr.trend)}}</span></div>
+      </div>
+    </div>
+    ${{compRows}}
+  </div>`;
+}}
+
+/* ── Intel Feed Panel ───────────────────────────────────────── */
+function panelIntelFeed(){{
+  const catCol = {{ALERT:'#ff3d5a',REPORT:'#ffb400',BRIEF:'#00c8ff'}};
+  const tagCol = {{MILITARY:'#ff8c42',CONFLICT:'#ff3d5a',UKRAINE:'#00c8ff',IRAN:'#ffb400',NUCLEAR:'#9d6eff',OSINT:'#00e676',CYBER:'#9d6eff',Cyber:'#9d6eff',Military:'#ff8c42',Diplomatic:'#00c8ff'}};
+  function feedRows(items){{
+    return items.map(item=>{{
+      const cc = catCol[item.cat||'']||'#3d5a73';
+      const tc = tagCol[item.tag||item.sector||'']||'#3d5a73';
+      const hasCat = !!item.cat;
+      return `<div class="cr" style="border-left-color:${{cc}}">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;color:#3d5a73">${{esc((item.source||'').toUpperCase())}}</span>
+          ${{hasCat?`<span class="badge" style="color:${{cc}};border-color:${{cc}}40;background:${{cc}}0f">${{esc(item.cat)}}</span>`:''}}<span class="badge" style="color:${{tc}};border-color:${{tc}}40;background:${{tc}}0f">${{esc(item.tag||item.sector||'')}}</span>
+        </div>
+        <div style="font-size:12px;font-weight:600;color:#dce8f5;line-height:1.5;margin-bottom:5px">${{esc(item.title)}}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3d5a73">${{esc(item.time)}}</div>
+      </div>`;
+    }}).join('');
+  }}
+  return `<div class="panel">
+    <div class="sec"><span class="pulse" style="background:#ff3d5a;margin-right:4px"></span>Intelligence Feed</div>
+    <div class="pill-wrap">
+      <div class="pill on" onclick="sw('if','0',this)">Military / Conflict</div>
+      <div class="pill" onclick="sw('if','1',this)">Cyber / OSINT</div>
+    </div>
+    <div class="scroll">
+      <div id="if0" class="pane on">${{feedRows(D.intel_feed)}}</div>
+      <div id="if1" class="pane">${{feedRows(D.cyber_feed)}}</div>
+    </div>
+  </div>`;
+}}
+
+/* ── Force Posture Panel ────────────────────────────────────── */
+function panelForcePosture(){{
+  const rows = D.force_posture.map(fp=>{{
+    const col = rcol(fp.risk);
+    return `<div class="cr" style="border-left-color:${{col}}">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:600;color:#dce8f5;margin-bottom:3px">
+            ${{esc(fp.activity)}}
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3d5a73;margin-bottom:4px">
+            ${{esc(fp.actors)}} &nbsp;·&nbsp; ${{(fp.signals||0).toLocaleString()}} signals
+          </div>
+          ${{bar(fp.risk, col)}}
+        </div>
+        <div class="bignum" style="font-size:30px;color:${{col}};flex-shrink:0">${{fp.risk}}</div>
+      </div>
+    </div>`;
+  }}).join('');
+  return `<div class="panel">
+    <div class="sec">Force Posture Monitor</div>
+    <div class="scroll">${{rows}}</div>
+  </div>`;
+}}
+
+/* ── Infrastructure Cascade Panel ──────────────────────────── */
+function panelInfra(){{
+  const keys = ['cables','pipelines','ports','chokepoints','power_grids'];
+  const labels = ['Cables','Pipelines','Ports','Chokepoints','Power Grids'];
+  const statusCol = {{Cut:'#ff3d5a',Sabotaged:'#ff3d5a',Threatened:'#ff3d5a',Blockaded:'#ff3d5a',Contested:'#ffb400',Degraded:'#ffb400',Suspended:'#ffb400',Reduced:'#ffb400','At Risk':'#ffb400',Active:'#00e676'}};
+  const panes = keys.map((k,i)=>{{
+    const d = D.infra[k]||{{}};
+    const items = d.items||[];
+    const riskPct = d.count?Math.round(d.at_risk/d.count*100):0;
+    const header = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+      ${{[['Total',d.count,'#00c8ff'],['At Risk',d.at_risk,'#ff3d5a'],['Risk %',riskPct+'%','#ffb400']].map(([l,v,c])=>`
+        <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.04);border-radius:8px;padding:10px;text-align:center">
+          <div class="overline" style="margin-bottom:5px">${{l}}</div>
+          <div class="bignum" style="font-size:28px;color:${{c}}">${{v}}</div>
+        </div>`).join('')}}
+    </div>`;
+    const rows = items.map(item=>{{
+      const r = item.risk||0, col = rcol(r);
+      const sc = statusCol[item.status||'']||'#3d5a73';
+      const extra = item.traffic_pct?`${{item.traffic_pct}}% global trade`:item.region||'';
+      return `<div class="cr" style="border-left-color:${{col}}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:12px;font-weight:600;color:#dce8f5">${{esc(item.name)}}</span>
+          <div style="display:flex;align-items:center;gap:7px">
+            <span class="badge" style="color:${{sc}};border-color:${{sc}}40;background:${{sc}}0f">${{esc(item.status||'')}}</span>
+            <span class="bignum" style="font-size:20px;color:${{col}}">${{r}}</span>
+          </div>
+        </div>
+        ${{bar(r, col)}}
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3d5a73;margin-top:3px">${{esc(extra)}}</div>
+      </div>`;
+    }}).join('');
+    return `<div id="ic${{i}}" class="pane ${{i===0?'on':''}}">${{header}}<div class="scroll">${{rows}}</div></div>`;
+  }});
+  const pills = labels.map((l,i)=>`<div class="pill ${{i===0?'on':''}}" onclick="sw('ic','${{i}}',this)">${{l}}</div>`).join('');
+  return `<div class="panel">
+    <div class="sec">Infrastructure Cascade</div>
+    <div class="pill-wrap">${{pills}}</div>
+    ${{panes.join('')}}
+  </div>`;
+}}
+
+/* ── Nuclear / WMD Panel ────────────────────────────────────── */
+function panelNuclear(){{
+  const nukeRows = D.nuke_alerts.map(n=>{{
+    const lvlCol = n.level==='CRITICAL'?'#ff3d5a':n.level==='HIGH'?'#ff8c42':'#ffb400';
+    return `<div class="cr" style="border-left-color:${{n.col||lvlCol}}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">
+        <span style="font-size:12px;font-weight:600;color:#dce8f5">${{esc(n.site)}}</span>
+        <div style="display:flex;gap:5px;flex-shrink:0;margin-left:8px">
+          <span class="badge" style="color:${{lvlCol}};border-color:${{lvlCol}}40;background:${{lvlCol}}0f">${{esc(n.status)}}</span>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#7fb3cc;line-height:1.55">${{esc(n.detail)}}</div>
+    </div>`;
+  }}).join('');
+  const wmdRows = D.wmd_posture.map(w=>{{
+    const col = rcol(w.risk);
+    return `<div class="cr" style="border-left-color:${{col}}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+        <div>
+          <span style="font-size:13px;font-weight:600;color:#dce8f5">${{esc(w.actor)}}</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3d5a73;margin-left:8px">${{esc(w.type)}}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:${{col}}">${{esc(w.status)}}</span>
+          <span class="bignum" style="font-size:24px;color:${{col}}">${{w.risk}}</span>
+        </div>
+      </div>
+      ${{bar(w.risk, col)}}
+      <div style="font-size:10px;color:#3d5a73;margin-top:4px">${{esc((w.assets||'').slice(0,70))}}</div>
+    </div>`;
+  }}).join('');
+  return `<div class="panel">
+    <div class="sec">Nuclear &amp; WMD Status</div>
+    <div class="pill-wrap">
+      <div class="pill on" onclick="sw('nw','0',this)">Nuclear Sites</div>
+      <div class="pill" onclick="sw('nw','1',this)">Missile Posture</div>
+    </div>
+    <div class="scroll">
+      <div id="nw0" class="pane on">${{nukeRows}}</div>
+      <div id="nw1" class="pane">${{wmdRows}}</div>
+    </div>
+  </div>`;
+}}
+
+/* ── Supply Chain Chokepoints Panel ─────────────────────────── */
+function panelChokepoints(){{
+  const rows = D.chokepoints.map(cp=>{{
+    const col = cp.status==='red'?'#ff3d5a':cp.status==='amber'?'#ffb400':'#00e676';
+    const wowCol = cp.wow_change<0?'#ff3d5a':'#00e676';
+    const exports = (cp.exports||[]).map(e=>`<span class="badge b-muted" style="font-size:8px">${{esc(e)}}</span>`).join(' ');
+    return `<div class="cr" style="border-left-color:${{col}}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:7px">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#dce8f5;margin-bottom:3px">${{esc(cp.name)}}</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3d5a73">
+            ${{cp.warnings}} warnings &nbsp;·&nbsp; ${{cp.ais_disruptions}} AIS &nbsp;·&nbsp; ${{cp.flow}}
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-left:12px">
+          <div class="bignum" style="font-size:32px;color:${{col}}">${{cp.risk}}</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:${{wowCol}}">
+            WoW ${{cp.wow_change>0?'+':''}}${{cp.wow_change}}%
+          </div>
+        </div>
+      </div>
+      ${{bar(cp.risk,col)}}
+      <div style="font-size:11px;color:#7fb3cc;line-height:1.6;margin:8px 0 8px">
+        ${{esc((cp.context||'').slice(0,160))}}${{(cp.context||'').length>160?'…':''}}
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">${{exports}}</div>
+    </div>`;
+  }}).join('');
+  return `<div class="panel">
+    <div class="sec">Supply Chain Chokepoints</div>
+    <div class="scroll">${{rows}}</div>
+  </div>`;
+}}
+
+/* ── Internet Outage Panel ──────────────────────────────────── */
+function panelOutages(){{
+  const liveRows = (D.outage_live||[]).length
+    ? (D.outage_live||[]).map(o=>`<div class="cr" style="border-left-color:#ff8c42">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;color:#ff8c42">${{esc((o.source||'').toUpperCase().slice(0,28))}}</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3d5a73">${{esc(o.time||'')}}</span>
+        </div>
+        <div style="font-size:12px;color:#dce8f5;line-height:1.45;margin-bottom:4px">${{esc((o.title||'').slice(0,90))}}${{(o.title||'').length>90?'…':''}}</div>
+        ${{o.url?`<a href="${{esc(o.url)}}" target="_blank" rel="noopener" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#00c8ff;text-decoration:none">Read →</a>`:''}}</div>`).join('')
+    : '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:#3d5a73;padding:12px 0">No outage alerts in the last 6 hours.</div>';
+  const knownRows = (D.outage_known||[]).map(io=>{{
+    const ioCol = io.severity==='Total'?'#ff3d5a':io.severity==='Partial'||io.severity==='Disrupted'?'#ff8c42':'#ffb400';
+    return `<div class="cr" style="border-left-color:${{ioCol}}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+        <span style="font-size:12px;font-weight:600;color:#dce8f5">${{esc(io.name)}}</span>
+        <span class="badge" style="color:${{ioCol}};border-color:${{ioCol}}40;background:${{ioCol}}0f">${{esc(io.severity)}}</span>
+      </div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3d5a73">${{esc(io.cause||'')}}</div>
+    </div>`;
+  }}).join('');
+  return `<div class="panel">
+    <div class="sec"><span class="pulse" style="background:#ff8c42;margin-right:4px"></span>Internet Outages &amp; Censorship</div>
+    <div class="pill-wrap">
+      <div class="pill on" onclick="sw('io','0',this)">Live Feed</div>
+      <div class="pill" onclick="sw('io','1',this)">Known Outages</div>
+    </div>
+    <div class="scroll">
+      <div id="io0" class="pane on">${{liveRows}}</div>
+      <div id="io1" class="pane">${{knownRows}}</div>
+    </div>
+  </div>`;
+}}
+
+/* ── RENDER ─────────────────────────────────────────────────── */
+document.getElementById('root').innerHTML =
+  kpiStrip() +
+  '<div class="row row-4">' +
+    panelInstability() + panelStrategic() + panelIntelFeed() + panelForcePosture() +
+  '</div>' +
+  '<div class="row row-25">' +
+    panelInfra() + panelNuclear() +
+  '</div>' +
+  '<div class="row row-2">' +
+    panelChokepoints() + panelOutages() +
+  '</div>';
+
+</script>
+</body></html>"""
+
+    _ic.html(_intel_html, height=3200, scrolling=True)
 
 
 # ══════════════════════════════════════════════════════════════
