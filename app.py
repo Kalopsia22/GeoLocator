@@ -4080,444 +4080,699 @@ with tab_intel:
 # TAB 6 — ECONOMIC & MARKETS
 # ══════════════════════════════════════════════════════════════
 with tab_econ:
-    st.markdown("""
-    <div class="helper">
-      <b>Economic & Markets</b> — Economic indicators, trade policy, supply chain, financial data,
-      fires tracker, layoffs, BTC ETF flows, market radar, and the <b>Pizza Index</b>.
-    </div>""", unsafe_allow_html=True)
+    import json as _ej
+    import streamlit.components.v1 as _ec
 
-    # ── Row 1: Econ Indicators | Trade Policy | Supply Chain | Financial ──
-    e1c1, e1c2, e1c3, e1c4 = st.columns([1,1.2,1.4,1], gap="small")
+    _econ_payload = _ej.dumps({
+        "indicators": ECON_INDICATORS,
+        "oil":  OIL_DATA,
+        "bonds": [
+            {"name":"US 10Y","yield":4.42,"change":+0.03,"rating":"AAA","col":"#38bdf8"},
+            {"name":"US 2Y", "yield":4.71,"change":-0.01,"rating":"AAA","col":"#38bdf8"},
+            {"name":"UK 10Y","yield":4.18,"change":+0.05,"rating":"AA", "col":"#34d399"},
+            {"name":"DE 10Y","yield":2.41,"change":+0.02,"rating":"AAA","col":"#34d399"},
+            {"name":"JP 10Y","yield":1.52,"change":+0.08,"rating":"A+", "col":"#fbbf24"},
+            {"name":"IT 10Y","yield":3.74,"change":+0.04,"rating":"BBB","col":"#fb923c"},
+            {"name":"IN 10Y","yield":6.83,"change":-0.02,"rating":"BBB-","col":"#fb923c"},
+            {"name":"CN 10Y","yield":2.28,"change":-0.01,"rating":"A+", "col":"#fbbf24"},
+            {"name":"TR 10Y","yield":28.4, "change":+0.60,"rating":"B+", "col":"#f87171"},
+            {"name":"NG 10Y","yield":19.6, "change":+0.30,"rating":"B-", "col":"#f87171"},
+        ],
+        "restrictions": TRADE_RESTRICTIONS,
+        "tariffs":      TARIFFS,
+        "chokepoints":  CHOKEPOINTS,
+        "shipping":     SHIPPING_RATES,
+        "minerals":     CRIT_MIN_DATA,
+        "crypto":       CRYPTO_DATA,
+        "sectors":      SECTOR_HEATMAP,
+        "layoffs":      LAYOFFS,
+        "fires":        FIRES_DATA,
+        "market":       MARKET_RADAR,
+        "btc_etf":      BTC_ETF,
+        "pizza":        PIZZA_INDEX,
+    })
 
-    # Economic Indicators
-    with e1c1:
-        st.markdown('<div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">ECONOMIC INDICATORS</div>', unsafe_allow_html=True)
-        ind_tab_sel = st.radio("", ["Indicators","Oil","Gov"], horizontal=True, label_visibility="collapsed", key="econ_tab")
-        if ind_tab_sel == "Indicators":
-            for e in ECON_INDICATORS:
-                chg_col = "#00e676" if e["up"] else "#ff3d5a"
-                st.markdown(f"""
-                <div style="padding:8px 10px;background:var(--card);border:1px solid var(--bord2);border-radius:8px;margin-bottom:5px">
-                  <div style="font-size:10px;color:var(--muted);margin-bottom:2px">{e['name']}</div>
-                  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px">
-                    <div style="font-family:var(--fd);font-size:20px;color:var(--cyan)">{e['val']}</div>
-                    <div style="font-family:var(--fm);font-size:10px;color:{chg_col}">{e['change']}</div>
-                  </div>
-                  <div style="font-family:var(--fm);font-size:9px;color:var(--muted);margin-top:2px">{e['ticker']} · {e['date']}</div>
-                </div>""", unsafe_allow_html=True)
-        elif ind_tab_sel == "Oil":
-            for o in OIL_DATA:
-                chg_col = "#00e676" if o["change"]>=0 else "#ff3d5a"
-                st.markdown(f"""
-                <div style="padding:8px 10px;background:var(--card);border:1px solid var(--bord2);border-radius:8px;margin-bottom:5px">
-                  <div style="font-size:10px;color:var(--muted);margin-bottom:2px">{o['name']}</div>
-                  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px">
-                    <div style="font-family:var(--fd);font-size:20px;color:var(--amber)">{o['val']:.2f} <span style="font-size:11px">{o['unit']}</span></div>
-                    <div style="font-family:var(--fm);font-size:10px;color:{chg_col}">{'+' if o['change']>=0 else ''}{o['change']:.2f}</div>
-                  </div>
-                </div>""", unsafe_allow_html=True)
-        else:
-            GOV_BONDS = [
-                {"name":"US 10Y","yield":4.42,"change":+0.03,"rating":"AAA","col":"#00c8ff"},
-                {"name":"US 2Y", "yield":4.71,"change":-0.01,"rating":"AAA","col":"#00c8ff"},
-                {"name":"UK 10Y","yield":4.18,"change":+0.05,"rating":"AA","col":"#00e676"},
-                {"name":"DE 10Y","yield":2.41,"change":+0.02,"rating":"AAA","col":"#00e676"},
-                {"name":"JP 10Y","yield":1.52,"change":+0.08,"rating":"A+","col":"#ffb400"},
-                {"name":"IT 10Y","yield":3.74,"change":+0.04,"rating":"BBB","col":"#ff8c42"},
-                {"name":"IN 10Y","yield":6.83,"change":-0.02,"rating":"BBB-","col":"#ff8c42"},
-                {"name":"CN 10Y","yield":2.28,"change":-0.01,"rating":"A+","col":"#ffb400"},
-                {"name":"TR 10Y","yield":28.4,"change":+0.60,"rating":"B+","col":"#ff3d5a"},
-                {"name":"NG 10Y","yield":19.6,"change":+0.30,"rating":"B-","col":"#ff3d5a"},
-            ]
-            for b in GOV_BONDS:
-                chg_col = "#00e676" if b["change"]>=0 else "#ff3d5a"
-                chg_sym = "▲" if b["change"]>=0 else "▼"
-                st.markdown(f'''
-                <div style="padding:7px 10px;background:var(--card);border:1px solid var(--bord2);
-                            border-radius:7px;margin-bottom:4px;border-left:3px solid {b["col"]}">
-                  <div style="display:flex;align-items:center;justify-content:space-between">
-                    <div style="display:flex;align-items:center;gap:8px">
-                      <span style="font-size:11px;font-weight:600;color:var(--text)">{b["name"]}</span>
-                      <span class="badge b-muted" style="font-size:7px">{b["rating"]}</span>
-                    </div>
-                    <div style="display:flex;align-items:center;gap:8px">
-                      <span style="font-family:var(--fd);font-size:17px;color:{b["col"]}">{b["yield"]:.2f}%</span>
-                      <span style="font-family:var(--fm);font-size:9px;color:{chg_col}">{chg_sym}{abs(b["change"]):.2f}</span>
-                    </div>
-                  </div>
-                </div>''', unsafe_allow_html=True)
+    _econ_html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {{
+  --void: #04060d;
+  --surface: #080d18;
+  --raised: #0d1626;
+  --lift: #112033;
+  --edge: rgba(148,163,184,.08);
+  --edge2: rgba(148,163,184,.04);
+  --glow: rgba(56,189,248,.06);
+  --sky: #38bdf8;
+  --mint: #34d399;
+  --gold: #fbbf24;
+  --coral: #fb923c;
+  --rose: #f87171;
+  --violet: #a78bfa;
+  --ink: #f0f6ff;
+  --ink2: #94a3b8;
+  --ink3: #475569;
+  --fd: 'Syne', sans-serif;
+  --fb: 'Inter', system-ui, sans-serif;
+  --fm: 'JetBrains Mono', monospace;
+}}
+*, *::before, *::after {{ margin:0; padding:0; box-sizing:border-box; }}
+html {{ scroll-behavior:smooth; }}
+body {{
+  background: var(--void);
+  background-image:
+    radial-gradient(ellipse 80% 40% at 50% -10%, rgba(56,189,248,.07) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 30% at 90% 60%, rgba(167,139,250,.05) 0%, transparent 60%);
+  font-family: var(--fb);
+  color: var(--ink);
+  padding: 20px 16px 40px;
+  min-height: 100vh;
+}}
 
-    # Trade Policy
-    with e1c2:
-        st.markdown('<div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">TRADE POLICY</div>', unsafe_allow_html=True)
-        tp_tab = st.radio("", ["Restrictions","Tariffs"], horizontal=True, label_visibility="collapsed", key="tp_tab")
-        if tp_tab == "Restrictions":
-            for t in TRADE_RESTRICTIONS:
-                ic = "b-red" if t["impact"]=="Critical" else "b-orange" if t["impact"]=="High" else "b-amber"
-                st.markdown(f"""
-                <div style="padding:9px 12px;background:var(--card);border:1px solid var(--bord2);border-radius:8px;margin-bottom:6px">
-                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-                    <span style="font-size:13px;font-weight:600;color:var(--text)">{t['country']}</span>
-                    <span class="badge b-muted" style="font-size:8px">{t['type']}</span>
-                  </div>
-                  <div style="font-size:11px;color:var(--text2);margin-bottom:3px">{t['coverage']}</div>
-                  <div style="display:flex;align-items:center;justify-content:space-between">
-                    <div style="font-family:var(--fm);font-size:10px;color:var(--muted)">Avg tariff: {t['avg_rate']}%&nbsp;&nbsp;{t['year']}</div>
-                    <div class="badge {ic}" style="font-size:8px">{t['impact']}</div>
-                  </div>
-                  <div style="font-family:var(--fm);font-size:9px;color:var(--muted);margin-top:3px">Source: WTO</div>
-                </div>""", unsafe_allow_html=True)
-        else:
-            for t in TARIFFS:
-                ic = "b-red" if t["impact"]=="Critical" else "b-orange" if t["impact"]=="High" else "b-amber" if t["impact"]=="Med" else "b-green"
-                st.markdown(f"""
-                <div style="padding:9px 12px;background:var(--card);border:1px solid var(--bord2);border-radius:8px;margin-bottom:6px">
-                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
-                    <span style="font-size:13px;font-weight:600;color:var(--text)">{t['route']}</span>
-                    <span class="badge {ic}" style="font-size:8px">{t['impact']}</span>
-                  </div>
-                  <div style="display:flex;align-items:center;gap:10px">
-                    <span style="font-family:var(--fd);font-size:22px;color:var(--red)">{t['rate']}%</span>
-                    <span style="font-family:var(--fm);font-size:10px;color:var(--orange)">{t['change']}</span>
-                  </div>
-                  <div style="font-size:10px;color:var(--muted)">{t['sector']}</div>
-                </div>""", unsafe_allow_html=True)
+/* ── TYPOGRAPHY ── */
+.disp {{ font-family: var(--fd); letter-spacing: -.01em; line-height: 1; }}
+.mono {{ font-family: var(--fm); }}
+.overline {{ font-family: var(--fm); font-size: 9px; font-weight: 500; letter-spacing: .18em;
+             text-transform: uppercase; color: var(--ink3); }}
+.section-title {{
+  font-family: var(--fm); font-size: 9px; font-weight: 500;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--ink3);
+  display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+}}
+.section-title::after {{ content:''; flex:1; height:1px; background:var(--edge2); }}
 
-    # Supply Chain
-    with e1c3:
-        st.markdown('<div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">SUPPLY CHAIN</div>', unsafe_allow_html=True)
-        sc_tab = st.radio("", ["Chokepoints","Shipping","Critical Min"], horizontal=True, label_visibility="collapsed", key="sc_tab")
-        if sc_tab == "Chokepoints":
-            for cp in CHOKEPOINTS:
-                sc = cp["status"]
-                sc_col = "#ff3d5a" if sc=="red" else "#ffb400" if sc=="amber" else "#00e676"
-                sb = "b-red" if sc=="red" else "b-amber" if sc=="amber" else "b-green"
-                wow_col = "#ff3d5a" if cp["wow_change"]<0 else "#00e676"
-                st.markdown(f"""
-                <div style="padding:10px 12px;background:var(--card);border:1px solid var(--bord2);border-left:3px solid {sc_col};border-radius:8px;margin-bottom:7px">
-                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-                    <span style="font-size:13px;font-weight:700;color:var(--text)">{cp['name']}</span>
-                    <div style="display:flex;gap:5px;align-items:center">
-                      <div class="badge {sb}" style="width:10px;height:10px;border-radius:50%;padding:0;border:none;background:{sc_col}"></div>
-                      <span class="badge {sb}" style="font-size:9px">{cp['risk']}/100</span>
-                    </div>
-                  </div>
-                  <div style="font-family:var(--fm);font-size:9px;color:var(--muted);margin-bottom:4px">
-                    {cp['warnings']} warning(s) · {cp['ais_disruptions']} AIS disruption(s) · {cp['flow']}
-                  </div>
-                  <div style="height:3px;background:var(--dim);border-radius:2px;overflow:hidden;margin-bottom:5px">
-                    <div style="height:100%;width:{cp['risk']}%;background:{sc_col}88"></div>
-                  </div>
-                  <div style="font-family:var(--fm);font-size:10px;margin-bottom:4px">
-                    WoW: <span style="color:{wow_col};font-weight:700">{'+' if cp['wow_change']>0 else ''}{cp['wow_change']}%</span>
-                  </div>
-                  <div style="font-size:11px;color:var(--text2);line-height:1.5">{cp['context'][:130] + ('…' if len(cp['context'])>130 else '')}</div>
-                  <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px">
-                    {''.join(f'<span style="font-family:var(--fm);font-size:9px;color:var(--muted)">{e}{";" if i<len(cp["exports"])-1 else ""}</span>' for i,e in enumerate(cp["exports"]))}
-                  </div>
-                </div>""", unsafe_allow_html=True)
-        elif sc_tab == "Shipping":
-            SHIPPING_RATES = [
-                {"route":"Shanghai → Rotterdam","type":"Container","rate":4820,"unit":"$/FEU","change":+12.4,"status":"Elevated","note":"Red Sea rerouting via Cape"},
-                {"route":"Shanghai → LA","type":"Container","rate":3140,"unit":"$/FEU","change":+4.1,"status":"Normal","note":"Trans-Pacific stable"},
-                {"route":"Rotterdam → NY","type":"Container","rate":1850,"unit":"$/FEU","change":+2.8,"status":"Normal","note":"N.Atlantic corridor"},
-                {"route":"AG → Japan","type":"VLCC Oil","rate":52000,"unit":"$/day","change":-3.2,"status":"Reduced","note":"Hormuz risk premium"},
-                {"route":"W.Africa → US Gulf","type":"Suezmax Oil","rate":38500,"unit":"$/day","change":+1.5,"status":"Normal","note":"WAF corridor"},
-                {"route":"Baltic Dry Index","type":"BDI","rate":1842,"unit":"points","change":+5.8,"status":"Rising","note":"Iron ore + grain demand"},
-                {"route":"LNG (JKM Asia)","type":"LNG Spot","rate":12.40,"unit":"$/MMBtu","change":+8.2,"status":"Elevated","note":"Winter demand residual"},
-                {"route":"SCFI Composite","type":"Index","rate":1620,"unit":"points","change":+11.6,"status":"Rising","note":"Container freight composite"},
-            ]
-            for r in SHIPPING_RATES:
-                chg_col = "#ff3d5a" if r["change"]>5 else "#ff8c42" if r["change"]>0 else "#00e676"
-                st_col  = "#ff3d5a" if r["status"]=="Elevated" else "#ff8c42" if r["status"]=="Reduced" else "#00e676" if r["status"]=="Normal" else "#ffb400"
-                chg_sym = "▲" if r["change"]>=0 else "▼"
-                _rate_fmt = f'{r["rate"]:,}' if isinstance(r["rate"], int) else f'{r["rate"]:.2f}'
-                st.markdown(f'''
-                <div style="padding:8px 11px;background:var(--card);border:1px solid var(--bord2);
-                            border-radius:7px;margin-bottom:5px;border-left:3px solid {st_col}">
-                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
-                    <span style="font-size:11px;font-weight:600;color:var(--text)">{r["route"]}</span>
-                    <span class="badge b-muted" style="font-size:8px">{r["type"]}</span>
-                  </div>
-                  <div style="display:flex;align-items:center;justify-content:space-between">
-                    <div style="display:flex;align-items:center;gap:6px">
-                      <span style="font-family:var(--fd);font-size:18px;color:{st_col}">{_rate_fmt}</span>
-                      <span style="font-family:var(--fm);font-size:9px;color:var(--muted)">{r["unit"]}</span>
-                    </div>
-                    <span style="font-family:var(--fm);font-size:9px;color:{chg_col}">{chg_sym}{abs(r["change"]):.1f}%</span>
-                  </div>
-                  <div style="font-family:var(--fm);font-size:9px;color:var(--muted);margin-top:2px">{r["note"]}</div>
-                </div>''', unsafe_allow_html=True)
-        else:
-            CRIT_MIN_DATA = [
-                {"mineral":"Lithium",  "price":13.50,"unit":"$/kg","change":-18.4,"supply_risk":72,"top_producer":"Australia 46%","use":"EV batteries","col":"#00e676"},
-                {"mineral":"Cobalt",   "price":26.80,"unit":"$/kg","change":-8.2, "supply_risk":85,"top_producer":"DRC 70%",      "use":"Battery cathodes","col":"#00c8ff"},
-                {"mineral":"REE (Nd)", "price":68.00,"unit":"$/kg","change":+4.1, "supply_risk":88,"top_producer":"China 60%",    "use":"EV motors/wind","col":"#ffb400"},
-                {"mineral":"Nickel",   "price":15.40,"unit":"$/kg","change":-12.1,"supply_risk":55,"top_producer":"Indonesia 37%","use":"Battery anodes","col":"#9d6eff"},
-                {"mineral":"Graphite", "price":0.48, "unit":"$/kg","change":-22.0,"supply_risk":91,"top_producer":"China 79%",    "use":"Battery anodes","col":"#ff8c42"},
-                {"mineral":"Uranium",  "price":106.5,"unit":"$/lb","change":+0.5, "supply_risk":48,"top_producer":"Kazakhstan 43%","use":"Nuclear fuel","col":"#ff3d5a"},
-                {"mineral":"Copper",   "price":8.92, "unit":"$/kg","change":+3.2, "supply_risk":42,"top_producer":"Chile 28%",    "use":"Grid/EVs/electronics","col":"#ff8c42"},
-                {"mineral":"Gallium",  "price":320,  "unit":"$/kg","change":+45.0,"supply_risk":95,"top_producer":"China 80%",    "use":"Semiconductors","col":"#ff3d5a"},
-            ]
-            for m in CRIT_MIN_DATA:
-                chg_col = "#00e676" if m["change"]<=0 else "#ff3d5a"
-                chg_sym = "▼" if m["change"]<=0 else "▲"
-                sr = m["supply_risk"]
-                sr_col = "#ff3d5a" if sr>=80 else "#ff8c42" if sr>=60 else "#ffb400" if sr>=40 else "#00e676"
-                st.markdown(f'''
-                <div style="padding:8px 11px;background:var(--card);border:1px solid var(--bord2);
-                            border-radius:7px;margin-bottom:5px;border-left:3px solid {m["col"]}">
-                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-                    <span style="font-size:12px;font-weight:600;color:var(--text)">{m["mineral"]}</span>
-                    <div style="display:flex;align-items:center;gap:6px">
-                      <span style="font-family:var(--fd);font-size:17px;color:{m["col"]}">{m["price"]} <span style="font-size:9px;font-family:var(--fm);color:var(--muted)">{m["unit"]}</span></span>
-                      <span style="font-family:var(--fm);font-size:9px;color:{chg_col}">{chg_sym}{abs(m["change"]):.1f}%</span>
-                    </div>
-                  </div>
-                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-                    <div style="flex:1;height:3px;background:var(--dim);border-radius:2px;overflow:hidden">
-                      <div style="height:100%;width:{sr}%;background:{sr_col}88;border-radius:2px"></div>
-                    </div>
-                    <span style="font-family:var(--fm);font-size:9px;color:{sr_col};min-width:30px">SR:{sr}</span>
-                  </div>
-                  <div style="display:flex;align-items:center;justify-content:space-between">
-                    <span style="font-family:var(--fm);font-size:8px;color:var(--muted)">{m["top_producer"]}</span>
-                    <span style="font-family:var(--fm);font-size:8px;color:var(--muted)">{m["use"]}</span>
-                  </div>
-                </div>''', unsafe_allow_html=True)
+/* ── LAYOUT ── */
+.main-grid {{
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}}
+.duo-grid  {{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }}
+.trio-grid {{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:24px; }}
+@media(max-width:960px) {{ .main-grid {{ grid-template-columns:1fr 1fr; }} }}
+@media(max-width:580px) {{ .main-grid, .duo-grid, .trio-grid {{ grid-template-columns:1fr; }} }}
 
-    # Financial
-    with e1c4:
-        st.markdown('<div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">FINANCIAL <span class="live-badge" style="margin-left:6px">● LIVE</span></div>', unsafe_allow_html=True)
-        st.markdown("**Crypto**")
-        for c in CRYPTO_DATA:
-            chg_col = "#00e676" if c["change"]>=0 else "#ff3d5a"
-            st.markdown(f"""
-            <div style="padding:7px 10px;background:var(--card);border:1px solid var(--bord2);border-radius:7px;margin-bottom:5px">
-              <div style="display:flex;align-items:center;justify-content:space-between">
-                <div>
-                  <div style="font-size:11px;font-weight:600;color:var(--text)">{c['name']}</div>
-                  <div style="font-family:var(--fm);font-size:9px;color:var(--muted)">{c['ticker']}</div>
-                </div>
-                <div style="text-align:right">
-                  <div style="font-family:var(--fm);font-size:12px;color:var(--text)">${c['val']:,.3f}</div>
-                  <div style="font-family:var(--fm);font-size:10px;color:{chg_col}">{'+' if c['change']>=0 else ''}{c['change']:.2f}%</div>
-                </div>
-              </div>
-            </div>""", unsafe_allow_html=True)
+/* ── SURFACE CARDS ── */
+.card {{
+  background: var(--surface);
+  border: 1px solid var(--edge);
+  border-radius: 14px;
+  padding: 20px 22px;
+  position: relative;
+  overflow: hidden;
+}}
+.card::before {{
+  content: '';
+  position: absolute; top:0; left:0; right:0; height:1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(148,163,184,.15) 40%, transparent 100%);
+}}
+.card-row {{
+  background: var(--raised);
+  border: 1px solid var(--edge2);
+  border-left: 3px solid;
+  border-radius: 9px;
+  padding: 11px 14px;
+  margin-bottom: 8px;
+  transition: background .15s, border-color .15s;
+  cursor: default;
+}}
+.card-row:last-child {{ margin-bottom: 0; }}
+.card-row:hover {{ background: var(--lift); }}
 
-        st.markdown("**Sector Heatmap**", unsafe_allow_html=False)
-        sector_cols = st.columns(4)
-        for i, s in enumerate(SECTOR_HEATMAP):
-            col_ = "#00e676" if s["v"]>=0 else "#ff3d5a"
-            bg_  = f"rgba({'0,230,118' if s['v']>=0 else '255,61,90'},.14)"
-            with sector_cols[i % 4]:
-                st.markdown(f"""
-                <div style="padding:5px 6px;background:{bg_};border-radius:5px;margin-bottom:4px;text-align:center">
-                  <div style="font-family:var(--fm);font-size:9px;color:var(--muted)">{s['s']}</div>
-                  <div style="font-family:var(--fm);font-size:10px;font-weight:700;color:{col_}">{'+' if s['v']>=0 else ''}{s['v']}%</div>
-                </div>""", unsafe_allow_html=True)
+/* ── KPI CARDS ── */
+.kpi-grid {{
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 14px;
+  margin-bottom: 28px;
+}}
+@media(max-width:700px) {{ .kpi-grid {{ grid-template-columns:1fr 1fr; }} }}
+.kpi {{
+  background: var(--surface);
+  border: 1px solid var(--edge);
+  border-radius: 14px;
+  padding: 22px 24px 18px;
+  position: relative;
+  overflow: hidden;
+}}
+.kpi-glow {{
+  position: absolute; top:0; left:0; right:0; height:60px;
+  background: radial-gradient(ellipse at 50% 0%, var(--accent-glow, rgba(56,189,248,.12)), transparent 70%);
+  pointer-events: none;
+}}
+.kpi-top-bar {{
+  position: absolute; top:0; left:0; right:0; height:2px;
+  background: var(--accent-bar, linear-gradient(90deg,transparent,var(--sky),transparent));
+}}
+.kpi-num {{ font-family:var(--fd); font-size:46px; line-height:.95; letter-spacing:-.01em; margin-bottom:8px; }}
+.kpi-label {{ font-family:var(--fm); font-size:9px; font-weight:500; letter-spacing:.2em;
+              text-transform:uppercase; color:var(--ink3); margin-bottom:4px; }}
+.kpi-sub {{ font-family:var(--fm); font-size:10px; color:var(--ink3); }}
 
-    st.markdown("---")
+/* ── PILL TABS ── */
+.pill-tabs {{ display:flex; gap:5px; margin-bottom:16px; flex-wrap:wrap; }}
+.pill {{
+  padding: 5px 14px; border-radius: 20px;
+  font-size: 11px; font-weight: 600; cursor: pointer;
+  background: var(--raised); border: 1px solid var(--edge2);
+  color: var(--ink3); transition: all .15s;
+  font-family: var(--fb);
+}}
+.pill:hover {{ border-color: var(--edge); color: var(--ink2); }}
+.pill.on {{ background:rgba(56,189,248,.1); border-color:rgba(56,189,248,.3); color:var(--sky); }}
+.pane {{ display:none; }} .pane.on {{ display:block; }}
 
-    # ── Row 2: Technology | Layoffs | Fires | Market Radar | BTC ETF ──
-    e2c1, e2c2, e2c3, e2c4, e2c5 = st.columns([1.1, 1.1, 1.1, 0.9, 0.9], gap="small")
+/* ── BADGE ── */
+.badge {{
+  display:inline-flex; align-items:center; padding:2px 9px; border-radius:5px;
+  font-family:var(--fm); font-size:9px; font-weight:600; letter-spacing:.04em;
+  border:1px solid; white-space:nowrap;
+}}
+.crit  {{ color:var(--rose);   border-color:rgba(248,113,113,.3); background:rgba(248,113,113,.08); }}
+.high  {{ color:var(--coral);  border-color:rgba(251,146,60,.3);  background:rgba(251,146,60,.08);  }}
+.med   {{ color:var(--gold);   border-color:rgba(251,191,36,.3);  background:rgba(251,191,36,.08);  }}
+.low   {{ color:var(--mint);   border-color:rgba(52,211,153,.3);  background:rgba(52,211,153,.08);  }}
+.neu   {{ color:var(--ink3);   border-color:rgba(71,85,105,.4);   background:rgba(71,85,105,.06);   }}
+.sky-b {{ color:var(--sky);    border-color:rgba(56,189,248,.3);  background:rgba(56,189,248,.08);  }}
+.vio-b {{ color:var(--violet); border-color:rgba(167,139,250,.3); background:rgba(167,139,250,.08); }}
 
-    with e2c1:
-        st.markdown('<div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">TECHNOLOGY <span class="live-badge" style="margin-left:6px">● LIVE</span></div>', unsafe_allow_html=True)
-        tech_items = [i for i in INTEL_FEED_SOURCES if i.get("tag") in ("CYBER","OSINT")] + CYBER_FEED[:4]
-        for item in tech_items[:6]:
-            st.markdown(f"""
-            <div style="border-bottom:1px solid var(--bord2);padding:8px 0">
-              <div style="font-family:var(--fm);font-size:9px;color:var(--muted);margin-bottom:3px;display:flex;justify-content:space-between">
-                <span style="color:var(--violet)">{item.get('source','').upper()}</span>
-                <span>{item.get('time','')}</span>
-              </div>
-              <div style="font-size:12px;color:var(--text);line-height:1.4">{item['title'][:90] + ('…' if len(item['title'])>90 else '')}</div>
-            </div>""", unsafe_allow_html=True)
+/* ── LIVE PULSE ── */
+.live-chip {{
+  display:inline-flex; align-items:center; gap:5px; padding:3px 10px;
+  background:rgba(248,113,113,.08); border:1px solid rgba(248,113,113,.25);
+  border-radius:20px; font-family:var(--fm); font-size:8px; color:var(--rose);
+  letter-spacing:.1em; text-transform:uppercase;
+}}
+.live-dot {{
+  width:5px; height:5px; border-radius:50%; background:var(--rose);
+  animation:pulse 1.4s ease-in-out infinite;
+}}
+@keyframes pulse {{ 0%,100%{{opacity:1;transform:scale(1)}} 50%{{opacity:.3;transform:scale(.7)}} }}
 
-    with e2c2:
-        st.markdown('<div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">LAYOFFS TRACKER <span class="live-badge" style="margin-left:6px">● LIVE</span></div>', unsafe_allow_html=True)
-        for l in LAYOFFS:
-            sc = "b-red" if l["severity"]=="Critical" else "b-orange" if l["severity"]=="High" else "b-amber"
-            st.markdown(f"""
-            <div style="padding:8px 10px;background:var(--card);border:1px solid var(--bord2);border-radius:7px;margin-bottom:5px">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
-                <span style="font-size:12px;font-weight:600;color:var(--text)">{l['company']}</span>
-                <div class="badge {sc}" style="font-size:8px">{l['severity'].upper()}</div>
-              </div>
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <div>
-                  <span style="font-family:var(--fm);font-size:10px;color:var(--amber)">{l['count']} jobs</span>
-                  <span style="font-family:var(--fm);font-size:9px;color:var(--muted)"> · {l['sector']} · {l['date']}</span>
-                </div>
-                <span style="font-family:var(--fm);font-size:9px;color:var(--muted)">{l['source']}</span>
-              </div>
-            </div>""", unsafe_allow_html=True)
+/* ── BAR ── */
+.bar-track {{ height:4px; background:rgba(148,163,184,.08); border-radius:2px; overflow:hidden; margin:6px 0; }}
+.bar-track.thick {{ height:7px; border-radius:4px; margin:8px 0; }}
+.bar-fill  {{ height:100%; border-radius:inherit; transition:width .4s ease; }}
 
-    with e2c3:
-        st.markdown('<div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">FIRES / HOTSPOTS</div>', unsafe_allow_html=True)
-        st.markdown("""
-        <div style="display:grid;grid-template-columns:1fr 60px 44px 60px;gap:0;margin-bottom:6px">
-          <div style="font-family:var(--fm);font-size:9px;font-weight:700;color:var(--muted);padding:4px 8px">REGION</div>
-          <div style="font-family:var(--fm);font-size:9px;font-weight:700;color:var(--muted);text-align:right;padding:4px 4px">FIRES</div>
-          <div style="font-family:var(--fm);font-size:9px;font-weight:700;color:var(--muted);text-align:right;padding:4px 4px">HIGH</div>
-          <div style="font-family:var(--fm);font-size:9px;font-weight:700;color:var(--muted);text-align:right;padding:4px 8px">FRP</div>
-        </div>""", unsafe_allow_html=True)
-        for f in FIRES_DATA:
-            intensity_col = "#ff3d5a" if f["high"]>50 else "#ff8c42" if f["high"]>20 else "#ffb400"
-            st.markdown(f"""
-            <div style="display:grid;grid-template-columns:1fr 60px 44px 60px;gap:0;background:var(--card);border:1px solid var(--bord2);border-radius:6px;margin-bottom:4px;border-left:3px solid {intensity_col}">
-              <div style="font-size:11px;font-weight:600;color:var(--text);padding:6px 8px">{f['region']}</div>
-              <div style="font-family:var(--fm);font-size:10px;color:var(--cyan);text-align:right;padding:6px 4px">{f['fires']:,}</div>
-              <div style="font-family:var(--fm);font-size:10px;color:{intensity_col};text-align:right;padding:6px 4px">{f['high']}</div>
-              <div style="font-family:var(--fm);font-size:10px;color:var(--muted);text-align:right;padding:6px 8px">{f['frp']//1000:.1f}k</div>
-            </div>""", unsafe_allow_html=True)
+/* ── DIVIDER ── */
+.divider {{ border:none; border-top:1px solid var(--edge2); margin:28px 0; }}
 
-    with e2c4:
-        mr = MARKET_RADAR
-        st.markdown('<div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">MARKET RADAR</div>', unsafe_allow_html=True)
-        st.markdown(f"""
-        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;margin-bottom:10px">
-          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">OVERALL</div>
-          <div style="font-family:var(--fd);font-size:32px;letter-spacing:.08em;color:{mr['color']}">{mr['label']}</div>
-          <div style="font-family:var(--fm);font-size:10px;color:var(--muted);margin-top:4px">{mr['posture']}</div>
-        </div>
-        <div style="padding:8px 10px;background:var(--card);border:1px solid var(--bord2);border-radius:7px;margin-bottom:5px">
-          <div style="font-size:10px;color:var(--muted);margin-bottom:2px">Liquidity</div>
-          <div style="font-family:var(--fm);font-size:12px;color:var(--text)">{mr['liquidity']}</div>
-        </div>
-        <div style="padding:8px 10px;background:var(--card);border:1px solid var(--bord2);border-radius:7px">
-          <div style="font-size:10px;color:var(--muted);margin-bottom:2px">Flow</div>
-          <div style="font-family:var(--fm);font-size:12px;color:var(--amber)">{mr['flow']}</div>
-        </div>""", unsafe_allow_html=True)
+/* ── SECTOR GRID ── */
+.sector-grid {{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }}
+.sector-cell {{
+  border-radius:8px; padding:9px 6px; text-align:center;
+  transition:transform .15s, filter .15s;
+}}
+.sector-cell:hover {{ transform:translateY(-2px); filter:brightness(1.1); }}
 
-    with e2c5:
-        etf = BTC_ETF
-        nf_col       = "#00e676" if etf["net_flow"]>=0 else "#ff3d5a"
-        _etf_badge   = "b-red" if etf["net_flow"]<0 else "b-green"
-        _etf_label   = "NET OUTFLOW" if etf["net_flow"]<0 else "NET INFLOW"
-        _etf_abs     = abs(etf["net_flow"])
-        st.markdown('<div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">BTC ETF TRACKER</div>', unsafe_allow_html=True)
-        st.markdown(f"""
-        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-            <div style="text-align:center">
-              <div style="font-size:9px;color:var(--muted);margin-bottom:2px">Net Flow</div>
-              <div style="font-family:var(--fd);font-size:22px;color:{nf_col}">${_etf_abs}M</div>
-              <div class="badge {_etf_badge}" style="font-size:8px;margin-top:3px">{_etf_label}</div>
-            </div>
-            <div style="text-align:center">
-              <div style="font-size:9px;color:var(--muted);margin-bottom:2px">Est. Flow</div>
-              <div style="font-family:var(--fd);font-size:22px;color:var(--cyan)">${etf['est_flow']}M</div>
-            </div>
-          </div>
-          <div style="font-size:9px;color:var(--muted);margin-bottom:6px;font-family:var(--fm)">TRACKED ETFs</div>
-          <div style="display:flex;flex-wrap:wrap;gap:4px">
-            {''.join(f'<div class="badge b-violet" style="font-size:8px">{e}</div>' for e in etf['etfs'])}
-          </div>
-        </div>""", unsafe_allow_html=True)
+/* ── SCROLLABLE ── */
+.scroll {{ max-height:380px; overflow-y:auto; padding-right:4px; }}
+.scroll::-webkit-scrollbar {{ width:3px; }}
+.scroll::-webkit-scrollbar-thumb {{ background:rgba(148,163,184,.15); border-radius:2px; }}
 
-    st.markdown("---")
+/* ── PIZZA ── */
+.pz-score {{
+  font-family: var(--fd);
+  font-size: 96px; line-height:.85;
+  letter-spacing: -.02em;
+}}
+.pz-bar {{
+  height: 10px; border-radius:5px; overflow:hidden;
+  background: linear-gradient(90deg,#34d399 0%,#fbbf24 42%,#fb923c 64%,#f87171 100%);
+  margin: 12px 0 4px; position:relative;
+}}
+.pz-needle {{
+  position:absolute; top:-4px; width:3px; height:18px;
+  background:#fff; border-radius:2px;
+  box-shadow:0 0 8px rgba(255,255,255,.6);
+  transform:translateX(-50%);
+}}
 
-    # ── PIZZA INDEX ──────────────────────────────────────────────
-    pz = PIZZA_INDEX
-    pz_col = "#ff3d5a" if pz["score"]>=75 else "#ff8c42" if pz["score"]>=55 else "#ffb400" if pz["score"]>=35 else "#00e676"
-    st.markdown(f"""
-    <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:20px">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:16px">
+/* ── FIRE TABLE ── */
+.fire-tbl {{ width:100%; border-collapse:collapse; }}
+.fire-tbl th {{
+  font-family:var(--fm); font-size:9px; font-weight:500; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--ink3); text-align:left;
+  padding:0 0 10px; border-bottom:1px solid var(--edge2);
+}}
+.fire-tbl th:not(:first-child) {{ text-align:right; }}
+.fire-tbl td {{ padding:9px 0; border-bottom:1px solid var(--edge2); vertical-align:middle; }}
+.fire-tbl tr:last-child td {{ border-bottom:none; }}
+.fire-tbl td:not(:first-child) {{ text-align:right; font-family:var(--fm); font-size:11px; }}
+
+/* ── ENTRY ANIMATIONS ── */
+@keyframes fadeUp {{
+  from {{ opacity:0; transform:translateY(10px); }}
+  to   {{ opacity:1; transform:translateY(0); }}
+}}
+.card {{ animation: fadeUp .35s ease both; }}
+.kpi:nth-child(1) {{ animation-delay:.04s; }}
+.kpi:nth-child(2) {{ animation-delay:.08s; }}
+.kpi:nth-child(3) {{ animation-delay:.12s; }}
+.kpi:nth-child(4) {{ animation-delay:.16s; }}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const D = {_econ_payload};
+
+// ── Helpers ──────────────────────────────────────────────────
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const chg = (v,decimals=2) => {{
+  const up=v>=0, c=up?'var(--mint)':'var(--rose)', sym=up?'▲':'▼';
+  return `<span style="font-family:var(--fm);font-size:10px;color:${{c}}">${{sym}}${{Math.abs(v).toFixed(decimals)}}</span>`;
+}};
+const bar = (pct,col,thick=false) =>
+  `<div class="bar-track${{thick?' thick':''}}"><div class="bar-fill" style="width:${{pct}}%;background:${{col}}"></div></div>`;
+const badge = (txt,cls) => `<span class="badge ${{cls}}">${{esc(txt)}}</span>`;
+const sevCls = s => s==='Critical'?'crit':s==='High'?'high':s==='Med'?'med':'low';
+const rCol = r => r>=75?'var(--rose)':r>=50?'var(--coral)':r>=35?'var(--gold)':'var(--mint)';
+
+// ── KPI Strip ─────────────────────────────────────────────────
+function kpiStrip() {{
+  const brent = D.oil.find(o=>o.name.includes('Brent'))||{{}};
+  const wti   = D.oil.find(o=>o.name.includes('WTI'))||{{}};
+  const fed   = D.indicators.find(i=>i.ticker==='FEDFUNDS')||{{}};
+  const btc   = D.crypto.find(c=>c.ticker==='BTC')||{{}};
+  const pz    = D.pizza;
+  const pzCol = pz.score>=75?'var(--rose)':pz.score>=55?'var(--coral)':pz.score>=35?'var(--gold)':'var(--mint)';
+
+  const items = [
+    {{ num: brent.val?`$${{brent.val.toFixed(0)}}`:'-', lbl:'Brent Crude',
+       sub:`WTI $${{wti.val?.toFixed(0)||'-'}} · per barrel`,
+       col:'var(--coral)', glow:'rgba(251,146,60,.14)', bar:'linear-gradient(90deg,transparent,var(--coral),transparent)' }},
+    {{ num: fed.val||'-', lbl:'Fed Funds Rate',
+       sub:`Unemployment ${{(D.indicators.find(i=>i.ticker==='UNRATE')||{{}}).val||'-'}}`,
+       col:'var(--sky)', glow:'rgba(56,189,248,.12)', bar:'linear-gradient(90deg,transparent,var(--sky),transparent)' }},
+    {{ num: btc.val?`$${{(btc.val/1000).toFixed(1)}}K`:'-', lbl:'Bitcoin',
+       sub:`ETH $${{(D.crypto.find(c=>c.ticker==='ETH')||{{}}).val?.toFixed(0)||'-'}} · spot`,
+       col:'var(--gold)', glow:'rgba(251,191,36,.12)', bar:'linear-gradient(90deg,transparent,var(--gold),transparent)' }},
+    {{ num: pz.score, lbl:'🍕 Pizza Index',
+       sub:pz.label,
+       col:pzCol, glow:`rgba(251,146,60,.12)`, bar:`linear-gradient(90deg,transparent,${{pzCol}},transparent)` }},
+  ];
+  return `<div class="kpi-grid">${{items.map(k=>`
+    <div class="kpi">
+      <div class="kpi-glow" style="--accent-glow:${{k.glow}}"></div>
+      <div class="kpi-top-bar" style="--accent-bar:${{k.bar}}"></div>
+      <div class="kpi-label">${{k.lbl}}</div>
+      <div class="kpi-num" style="color:${{k.col}}">${{esc(k.num)}}</div>
+      <div class="kpi-sub">${{esc(k.sub)}}</div>
+    </div>`).join('')}}</div>`;
+}}
+
+// ── Economic Indicators ───────────────────────────────────────
+function econPanel() {{
+  const indRows = D.indicators.map(e => {{
+    const up=e.up, cc=up?'var(--mint)':'var(--rose)';
+    return `<div class="card-row" style="border-left-color:${{cc}}">
+      <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
-            <div style="font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)">🍕 PIZZA INDEX</div>
-            <div class="badge b-muted" style="font-size:8px">PIZZAINT METHODOLOGY</div>
-          </div>
-          <div style="font-family:var(--fd);font-size:42px;letter-spacing:.06em;color:{pz_col};line-height:1">{pz['score']}</div>
-          <div style="font-family:var(--fm);font-size:12px;color:{pz_col};margin-top:4px">{pz['label']}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--ink)">${{esc(e.name)}}</div>
+          <div class="mono" style="font-size:9px;color:var(--ink3);margin-top:2px">${{{e.ticker}}} · ${{e.date}}</div>
         </div>
-        <div style="flex:1;max-width:520px;font-size:12px;color:var(--text2);line-height:1.7">{pz['description']}</div>
+        <div style="text-align:right">
+          <div class="disp" style="font-size:24px;color:var(--sky)">${{esc(e.val)}}</div>
+          <div>${{chg(parseFloat(e.change)||0)}}</div>
+        </div>
       </div>
-      <div style="height:6px;background:var(--dim);border-radius:3px;overflow:hidden;margin-bottom:20px">
-        <div style="height:100%;width:{pz['score']}%;background:linear-gradient(90deg,#00e676,#ffb400 45%,#ff8c42 70%,#ff3d5a);border-radius:3px"></div>
+    </div>`;
+  }}).join('');
+
+  const oilRows = D.oil.map(o => {{
+    const up=o.change>=0, cc=up?'var(--mint)':'var(--rose)';
+    return `<div class="card-row" style="border-left-color:var(--coral)">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:13px;font-weight:600;color:var(--ink)">${{esc(o.name)}}</div>
+        <div style="text-align:right">
+          <span class="disp" style="font-size:24px;color:var(--gold)">${{o.val.toFixed(2)}}</span>
+          <span class="mono" style="font-size:10px;color:var(--ink3);margin-left:5px">${{esc(o.unit)}}</span>
+          <div>${{chg(o.change)}}</div>
+        </div>
       </div>
-    </div>""", unsafe_allow_html=True)
+    </div>`;
+  }}).join('');
 
-    pz_left, pz_right = st.columns([1.3, 1], gap="medium")
-    with pz_left:
-        st.markdown('<div class="sec-label">📦 Input Components</div>', unsafe_allow_html=True)
-        for comp in pz["components"]:
-            sc = comp["stress"]
-            sc_col = "#ff3d5a" if sc>=80 else "#ff8c42" if sc>=60 else "#ffb400" if sc>=40 else "#00e676"
-            chg_col = "#ff3d5a" if comp["change"]>0 else "#00e676"
-            chg_sym = "▲" if comp["change"]>0 else "▼"
-            st.markdown(f"""
-            <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--card);border:1px solid var(--bord2);border-radius:8px;margin-bottom:5px;border-left:3px solid {sc_col}">
-              <div style="flex:1;min-width:0">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
-                  <span style="font-size:12px;font-weight:600;color:var(--text)">{comp['name']}</span>
-                  <div style="display:flex;align-items:center;gap:8px">
-                    <span style="font-family:var(--fm);font-size:11px;color:var(--text2)">{comp['val']} <span style="color:var(--muted);font-size:9px">{comp['unit']}</span></span>
-                    <span style="font-family:var(--fm);font-size:10px;color:{chg_col}">{chg_sym}{abs(comp['change']):.1f}%</span>
-                    <span style="font-family:var(--fd);font-size:16px;color:{sc_col};min-width:28px;text-align:right">{sc}</span>
-                  </div>
-                </div>
-                <div style="height:3px;background:var(--dim);border-radius:2px;overflow:hidden;margin-bottom:3px">
-                  <div style="height:100%;width:{sc}%;background:{sc_col}88"></div>
-                </div>
-                <div style="font-family:var(--fm);font-size:9px;color:var(--muted)">{comp['note']}</div>
-              </div>
-            </div>""", unsafe_allow_html=True)
+  const bondRows = D.bonds.map(b => {{
+    const up=b.change>=0;
+    return `<div class="card-row" style="border-left-color:${{b.col}}">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:13px;font-weight:600;color:var(--ink)">${{esc(b.name)}}</span>
+          ${{badge(b.rating,'neu')}}
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="disp" style="font-size:22px;color:${{b.col}}">${{b.yield.toFixed(2)}}%</span>
+          ${{chg(b.change)}}
+        </div>
+      </div>
+    </div>`;
+  }}).join('');
 
-    with pz_right:
-        st.markdown('<div class="sec-label">🌍 City Price Index</div>', unsafe_allow_html=True)
-        max_stress = max(c["stress"] for c in pz["city_prices"])
-        for city in sorted(pz["city_prices"], key=lambda x: -x["stress"]):
-            sc = city["stress"]
-            sc_col = "#ff3d5a" if sc>=80 else "#ff8c42" if sc>=60 else "#ffb400" if sc>=40 else "#00e676"
-            pct_increase = round((city["price"]-city["baseline"])/city["baseline"]*100)
-            st.markdown(f"""
-            <div style="padding:9px 12px;background:var(--card);border:1px solid var(--bord2);border-radius:8px;margin-bottom:5px;border-left:3px solid {sc_col}">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-                <span style="font-size:12px;font-weight:600;color:var(--text)">{city['city']}</span>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <span style="font-family:var(--fm);font-size:12px;color:var(--text)">{city['price']} {city['currency']}</span>
-                  <span style="font-family:var(--fm);font-size:10px;color:#ff8c42">+{pct_increase}%</span>
-                  <span style="font-family:var(--fd);font-size:16px;color:{sc_col};min-width:28px;text-align:right">{sc}</span>
-                </div>
-              </div>
-              <div style="height:4px;background:var(--dim);border-radius:2px;overflow:hidden">
-                <div style="height:100%;width:{sc}%;background:{sc_col}88"></div>
-              </div>
-              <div style="font-family:var(--fm);font-size:9px;color:var(--muted);margin-top:3px">baseline {city['baseline']} {city['currency']}</div>
-            </div>""", unsafe_allow_html=True)
+  return `<div class="card">
+    <div class="section-title">Economic Indicators</div>
+    <div class="pill-tabs">
+      <div class="pill on" onclick="sw('ei','ind',this)">Macro</div>
+      <div class="pill" onclick="sw('ei','oil',this)">Energy</div>
+      <div class="pill" onclick="sw('ei','bnd',this)">Bonds</div>
+    </div>
+    <div class="scroll">
+      <div id="ei-ind" class="pane on">${{indRows}}</div>
+      <div id="ei-oil" class="pane">${{oilRows}}</div>
+      <div id="ei-bnd" class="pane">${{bondRows}}</div>
+    </div>
+  </div>`;
+}}
 
-        st.markdown(f"""
-        <div style="padding:12px 14px;background:rgba(255,140,66,.07);border:1px solid rgba(255,140,66,.25);border-radius:9px;margin-top:8px">
-          <div style="font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--orange);margin-bottom:5px">METHODOLOGY</div>
-          <div style="font-size:11px;color:var(--text2);line-height:1.65">
-            Inspired by <em>The Economist</em>'s Big Mac Index. Tracks real margherita pizza slice prices
-            as a proxy for wheat supply disruption, energy costs, labour pressure, and consumer
-            purchasing power stress. Scores above <b>60</b> indicate material supply-chain or
-            geopolitical pressure on food affordability.
+// ── Trade Policy ──────────────────────────────────────────────
+function tradePanel() {{
+  const restrRows = D.restrictions.map(t => `
+    <div class="card-row" style="border-left-color:rgba(148,163,184,.2)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--ink)">${{esc(t.country)}}</div>
+          <div style="font-size:11px;color:var(--ink2);margin-top:3px;line-height:1.45">${{esc(t.coverage)}}</div>
+        </div>
+        ${{badge(t.impact,sevCls(t.impact))}}
+      </div>
+      <div class="mono" style="font-size:9px;color:var(--ink3)">Avg tariff ${{t.avg_rate}}% · ${{t.year}} · WTO</div>
+    </div>`).join('');
+
+  const tariffRows = D.tariffs.map(t => `
+    <div class="card-row" style="border-left-color:rgba(248,113,113,.3)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+        <span style="font-size:13px;font-weight:600;color:var(--ink)">${{esc(t.route)}}</span>
+        ${{badge(t.impact,sevCls(t.impact))}}
+      </div>
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:3px">
+        <span class="disp" style="font-size:28px;color:var(--rose)">${{t.rate}}%</span>
+        <span class="mono" style="font-size:11px;color:var(--coral)">${{esc(t.change)}}</span>
+      </div>
+      <div class="mono" style="font-size:9px;color:var(--ink3)">${{esc(t.sector)}}</div>
+    </div>`).join('');
+
+  return `<div class="card">
+    <div class="section-title">Trade Policy</div>
+    <div class="pill-tabs">
+      <div class="pill on" onclick="sw('tp','re',this)">Restrictions</div>
+      <div class="pill" onclick="sw('tp','ta',this)">Tariffs</div>
+    </div>
+    <div class="scroll">
+      <div id="tp-re" class="pane on">${{restrRows}}</div>
+      <div id="tp-ta" class="pane">${{tariffRows}}</div>
+    </div>
+  </div>`;
+}}
+
+// ── Supply Chain ──────────────────────────────────────────────
+function supplyPanel() {{
+  const chkRows = D.chokepoints.map(cp => {{
+    const sc=cp.status==='red'?'var(--rose)':cp.status==='amber'?'var(--gold)':'var(--mint)';
+    const wc=cp.wow_change<0?'var(--rose)':'var(--mint)';
+    return `<div class="card-row" style="border-left-color:${{sc}};margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+        <span style="font-size:13px;font-weight:700;color:var(--ink)">${{esc(cp.name)}}</span>
+        <span class="disp" style="font-size:20px;color:${{sc}}">${{cp.risk}}</span>
+      </div>
+      ${{bar(cp.risk,sc,true)}}
+      <div style="display:flex;gap:14px;margin-top:5px;flex-wrap:wrap">
+        <span class="mono" style="font-size:9px;color:var(--ink3)">${{cp.warnings}} warning(s)</span>
+        <span class="mono" style="font-size:9px;color:var(--ink3)">${{cp.ais_disruptions}} AIS</span>
+        <span class="mono" style="font-size:9px;color:${{wc}}">WoW ${{cp.wow_change>0?'+':''}}${{cp.wow_change}}%</span>
+      </div>
+      <div style="font-size:11px;color:var(--ink2);line-height:1.55;margin-top:6px">${{esc(cp.context.substring(0,150))}}${{cp.context.length>150?'…':''}}</div>
+    </div>`;
+  }}).join('');
+
+  const shipRows = D.shipping.map(r => {{
+    const sc=r.status==='Elevated'?'var(--rose)':r.status==='Rising'?'var(--gold)':r.status==='Reduced'?'var(--coral)':'var(--mint)';
+    const up=r.change>=0;
+    const rateStr=r.rate>999?r.rate.toLocaleString():typeof r.rate==='number'?r.rate.toFixed(2):r.rate;
+    return `<div class="card-row" style="border-left-color:${{sc}}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--ink)">${{esc(r.route)}}</div>
+          <div class="mono" style="font-size:9px;color:var(--ink3);margin-top:2px">${{esc(r.type)}} · ${{esc(r.note)}}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <span class="disp" style="font-size:20px;color:${{sc}}">${{rateStr}}</span>
+          <span class="mono" style="font-size:9px;color:var(--ink3);margin-left:3px">${{esc(r.unit)}}</span>
+          <div class="mono" style="font-size:10px;color:${{up?'var(--rose)':'var(--mint)'}}">${{up?'▲':'▼'}}${{Math.abs(r.change).toFixed(1)}}%</div>
+        </div>
+      </div>
+    </div>`;
+  }}).join('');
+
+  const minRows = D.minerals.map(m => {{
+    const dn=m.change<=0, mc=dn?'var(--mint)':'var(--rose)';
+    const sr=m.supply_risk, sc=sr>=80?'var(--rose)':sr>=60?'var(--coral)':sr>=40?'var(--gold)':'var(--mint)';
+    return `<div class="card-row" style="border-left-color:${{m.col}}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:13px;font-weight:700;color:var(--ink)">${{esc(m.mineral)}}</span>
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <span class="disp" style="font-size:20px;color:${{m.col}}">${{m.price}}</span>
+          <span class="mono" style="font-size:9px;color:var(--ink3)">${{esc(m.unit)}}</span>
+          <span class="mono" style="font-size:10px;color:${{mc}}">${{dn?'▼':'▲'}}${{Math.abs(m.change).toFixed(1)}}%</span>
+        </div>
+      </div>
+      ${{bar(sr,sc)}}
+      <div style="display:flex;justify-content:space-between;margin-top:3px">
+        <span class="mono" style="font-size:9px;color:var(--ink3)">Supply risk: <span style="color:${{sc}}">${{sr}}</span></span>
+        <span class="mono" style="font-size:9px;color:var(--ink3)">${{esc(m.top_producer)}}</span>
+      </div>
+    </div>`;
+  }}).join('');
+
+  return `<div class="card">
+    <div class="section-title">Supply Chain</div>
+    <div class="pill-tabs">
+      <div class="pill on" onclick="sw('sc','ch',this)">Chokepoints</div>
+      <div class="pill" onclick="sw('sc','sh',this)">Shipping</div>
+      <div class="pill" onclick="sw('sc','mn',this)">Minerals</div>
+    </div>
+    <div class="scroll">
+      <div id="sc-ch" class="pane on">${{chkRows}}</div>
+      <div id="sc-sh" class="pane">${{shipRows}}</div>
+      <div id="sc-mn" class="pane">${{minRows}}</div>
+    </div>
+  </div>`;
+}}
+
+// ── Financial ─────────────────────────────────────────────────
+function finPanel() {{
+  const nfUp=D.btc_etf.net_flow>=0;
+  const nfCol=nfUp?'var(--mint)':'var(--rose)';
+  const mCol=D.market.label==='CASH'?'var(--gold)':'var(--sky)';
+
+  const cryptoRows = D.crypto.map(c=>{{
+    const up=c.change>=0, cc=up?'var(--mint)':'var(--rose)';
+    return `<div class="card-row" style="border-left-color:${{up?'rgba(52,211,153,.4)':'rgba(248,113,113,.4)'}};display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--ink)">${{c.name}}</div>
+        <div class="mono" style="font-size:9px;color:var(--ink3)">${{c.ticker}}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="mono" style="font-size:13px;color:var(--ink)">$${{c.val.toLocaleString('en-US',{{minimumFractionDigits:2,maximumFractionDigits:2}})}}</div>
+        <div class="mono" style="font-size:10px;color:${{cc}}">${{up?'+':''}}${{c.change.toFixed(2)}}%</div>
+      </div>
+    </div>`;
+  }}).join('');
+
+  const heatCells = D.sectors.map(s=>{{
+    const up=s.v>=0;
+    const intensity=Math.min(Math.abs(s.v)/8,1);
+    const bg=up?`rgba(52,211,153,${{.08+intensity*.18}})`:`rgba(248,113,113,${{.08+intensity*.18}})`;
+    const col=up?'var(--mint)':'var(--rose)';
+    return `<div class="sector-cell" style="background:${{bg}}">
+      <div class="mono" style="font-size:8px;color:var(--ink3);margin-bottom:3px">${{esc(s.s)}}</div>
+      <div class="mono" style="font-size:12px;font-weight:700;color:${{col}}">${{up?'+':''}}${{s.v}}%</div>
+    </div>`;
+  }}).join('');
+
+  return `<div class="card">
+    <div class="section-title">Financial <span class="live-chip" style="margin-left:4px"><span class="live-dot"></span>Live</span></div>
+
+    <div style="margin-bottom:18px">
+      <div class="overline" style="margin-bottom:10px">Crypto</div>
+      ${{cryptoRows}}
+    </div>
+
+    <div style="margin-bottom:18px">
+      <div class="overline" style="margin-bottom:10px">Sector Heatmap</div>
+      <div class="sector-grid">${{heatCells}}</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="background:var(--raised);border:1px solid var(--edge2);border-radius:10px;padding:14px;text-align:center">
+        <div class="overline" style="margin-bottom:8px">Market Posture</div>
+        <div class="disp" style="font-size:26px;color:${{mCol}};margin-bottom:5px">${{D.market.label}}</div>
+        <div class="mono" style="font-size:9px;color:var(--ink3)">${{D.market.posture}}</div>
+        <div class="mono" style="font-size:9px;color:var(--gold);margin-top:3px">${{D.market.flow}}</div>
+      </div>
+      <div style="background:var(--raised);border:1px solid var(--edge2);border-radius:10px;padding:14px;text-align:center">
+        <div class="overline" style="margin-bottom:8px">BTC ETF Flow</div>
+        <div class="disp" style="font-size:26px;color:${{nfCol}};margin-bottom:5px">$${{Math.abs(D.btc_etf.net_flow)}}M</div>
+        ${{badge(nfUp?'INFLOW':'OUTFLOW',nfUp?'low':'crit')}}
+        <div class="mono" style="font-size:9px;color:var(--ink3);margin-top:6px">Est. $${{D.btc_etf.est_flow}}M</div>
+      </div>
+    </div>
+  </div>`;
+}}
+
+// ── Row 2: Layoffs + Fires ────────────────────────────────────
+function row2() {{
+  const layoffRows = D.layoffs.map(l=>{{
+    const sc=l.severity==='Critical'?'var(--rose)':l.severity==='High'?'var(--coral)':'var(--gold)';
+    return `<div class="card-row" style="border-left-color:${{sc}}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:13px;font-weight:600;color:var(--ink)">${{esc(l.company)}}</span>
+        ${{badge(l.severity.toUpperCase(),sevCls(l.severity))}}
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span class="mono" style="font-size:10px;color:var(--gold)">${{esc(l.count)}} jobs</span>
+        <span class="mono" style="font-size:9px;color:var(--ink3)">${{esc(l.sector)}} · ${{l.date}}</span>
+      </div>
+    </div>`;
+  }}).join('');
+
+  const fireRows = D.fires.map(f=>{{
+    const ic=f.high>50?'var(--rose)':f.high>20?'var(--coral)':'var(--gold)';
+    return `<tr>
+      <td><span style="font-size:12px;font-weight:600;color:var(--ink)">${{esc(f.region)}}</span>
+          <span style="display:block;font-size:9px;color:var(--ink3)" class="mono">${{f.biome||''}}</span></td>
+      <td class="mono" style="color:var(--sky)">${{f.fires.toLocaleString()}}</td>
+      <td class="mono" style="color:${{ic}}">${{f.high}}</td>
+      <td class="mono" style="color:var(--ink3)">${{(f.frp/1000).toFixed(1)}}k FRP</td>
+    </tr>`;
+  }}).join('');
+
+  return `<div class="duo-grid">
+    <div class="card">
+      <div class="section-title">Layoffs Tracker <span class="live-chip" style="margin-left:4px"><span class="live-dot"></span>Live</span></div>
+      <div class="scroll">${{layoffRows}}</div>
+    </div>
+    <div class="card">
+      <div class="section-title">🔥 Active Wildfires</div>
+      <table class="fire-tbl">
+        <thead><tr><th>Region</th><th>Fires</th><th>High</th><th>FRP</th></tr></thead>
+        <tbody>${{fireRows}}</tbody>
+      </table>
+    </div>
+  </div>`;
+}}
+
+// ── Pizza Index ───────────────────────────────────────────────
+function pizzaSection() {{
+  const pz=D.pizza;
+  const col=pz.score>=75?'var(--rose)':pz.score>=55?'var(--coral)':pz.score>=35?'var(--gold)':'var(--mint)';
+  const needlePct=pz.score;
+
+  const compRows = pz.components.map(c=>{{
+    const sc=c.stress; const scol=sc>=80?'var(--rose)':sc>=60?'var(--coral)':sc>=40?'var(--gold)':'var(--mint)';
+    const up=c.change>0; const csym=up?'▲':'▼'; const ccol=up?'var(--rose)':'var(--mint)';
+    return `<div class="card-row" style="border-left-color:${{scol}}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--ink)">${{esc(c.name)}}</div>
+          <div class="mono" style="font-size:9px;color:var(--ink3);margin-top:2px">${{esc(c.note)}}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-left:14px">
+          <span class="mono" style="font-size:12px;color:var(--ink2)">${{c.val}} <span style="font-size:9px;color:var(--ink3)">${{esc(c.unit)}}</span></span>
+          <div>
+            <span class="mono" style="font-size:10px;color:${{ccol}}">${{csym}}${{Math.abs(c.change).toFixed(1)}}%</span>
+            <span class="disp" style="font-size:22px;color:${{scol}};margin-left:8px">${{sc}}</span>
           </div>
-        </div>""", unsafe_allow_html=True)
+        </div>
+      </div>
+      ${{bar(sc,scol,true)}}
+    </div>`;
+  }}).join('');
 
-        # Pizza index stress trend sparkline
-        st.markdown('<div class="sec-label" style="margin-top:14px">📈 Component Stress Trend</div>', unsafe_allow_html=True)
-        _pz_names  = [c["name"][:20] for c in pz["components"]]
-        _pz_stress = [c["stress"] for c in pz["components"]]
-        _pz_colors = ["#ff3d5a" if s>=80 else "#ff8c42" if s>=60 else "#ffb400" if s>=40 else "#00e676" for s in _pz_stress]
-        _pz_fig = go.Figure(go.Bar(
-            x=_pz_names, y=_pz_stress,
-            marker_color=_pz_colors, marker_line_width=0, opacity=0.85,
-            text=_pz_stress, textposition="outside",
-            textfont=dict(size=9, color="#e2ecf8"),
-        ))
-        _pz_fig.add_hline(y=60, line_dash="dash", line_color="rgba(255,140,66,.5)",
-                          line_width=1.5, annotation_text="Stress threshold",
-                          annotation_font=dict(color="#ff8c42", size=9))
-        _pz_fig.update_layout(
-            height=180, margin=dict(l=0,r=0,t=0,b=0), **bg_chart(),
-            xaxis=dict(**ax(), tickangle=-25),
-            yaxis=dict(**ax(), range=[0,105]),
-        )
-        st.plotly_chart(_pz_fig, use_container_width=True, config={"displayModeBar":False})
+  const cityRows = [...pz.city_prices].sort((a,b)=>b.stress-a.stress).map(c=>{{
+    const sc=c.stress; const scol=sc>=80?'var(--rose)':sc>=60?'var(--coral)':sc>=40?'var(--gold)':'var(--mint)';
+    const pct=Math.round((c.price-c.baseline)/c.baseline*100);
+    return `<div class="card-row" style="border-left-color:${{scol}}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:13px;font-weight:600;color:var(--ink)">${{esc(c.city)}}</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="mono" style="font-size:13px;color:var(--ink)">${{c.price}} ${{esc(c.currency)}}</span>
+          <span class="mono" style="font-size:10px;color:var(--coral)">+${{pct}}%</span>
+          <span class="disp" style="font-size:22px;color:${{scol}}">${{sc}}</span>
+        </div>
+      </div>
+      ${{bar(sc,scol)}}
+      <div class="mono" style="font-size:9px;color:var(--ink3);margin-top:2px">baseline ${{c.baseline}} ${{esc(c.currency)}}</div>
+    </div>`;
+  }}).join('');
+
+  return `
+  <div style="background:var(--surface);border:1px solid var(--edge);border-radius:16px;padding:28px 30px;margin-bottom:24px;position:relative;overflow:hidden">
+    <div style="position:absolute;top:0;left:0;right:0;height:80px;
+                background:radial-gradient(ellipse at 50% -20%, rgba(251,146,60,.1),transparent 70%);pointer-events:none"></div>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:32px;flex-wrap:wrap">
+      <div>
+        <div class="overline" style="margin-bottom:12px">🍕 Pizza Index &nbsp;
+          <span class="badge neu" style="font-size:8px">PIZZAINT METHODOLOGY</span></div>
+        <div class="pz-score" style="color:${{col}}">${{pz.score}}</div>
+        <div class="mono" style="font-size:13px;color:${{col}};margin-top:10px;letter-spacing:.06em">${{esc(pz.label)}}</div>
+      </div>
+      <div style="flex:1;min-width:200px;max-width:500px">
+        <div style="font-size:13px;color:var(--ink2);line-height:1.8;margin-bottom:18px">${{esc(pz.description)}}</div>
+        <div class="overline" style="margin-bottom:8px">Stress gauge</div>
+        <div class="pz-bar">
+          <div class="pz-needle" style="left:${{needlePct}}%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px">
+          <span class="mono" style="font-size:9px;color:var(--mint)">Low</span>
+          <span class="mono" style="font-size:9px;color:var(--gold)">Threshold 60</span>
+          <span class="mono" style="font-size:9px;color:var(--rose)">Critical 80+</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="duo-grid">
+    <div class="card">
+      <div class="section-title">📦 Input Components</div>
+      <div class="scroll">${{compRows}}</div>
+    </div>
+    <div class="card">
+      <div class="section-title">🌍 City Price Index</div>
+      <div class="scroll">${{cityRows}}</div>
+      <div style="margin-top:16px;padding:16px 18px;background:rgba(251,146,60,.06);
+                  border:1px solid rgba(251,146,60,.18);border-radius:10px">
+        <div class="overline" style="color:var(--coral);margin-bottom:8px">Methodology</div>
+        <div style="font-size:12px;color:var(--ink2);line-height:1.75">
+          Inspired by <em>The Economist</em>&rsquo;s Big Mac Index. Tracks margherita pizza prices
+          as a proxy for wheat disruption, energy costs, and purchasing power stress.
+          Scores above <strong style="color:var(--gold)">60</strong> indicate material supply-chain pressure.
+        </div>
+      </div>
+    </div>
+  </div>`;
+}}
+
+// ── Tab switch ────────────────────────────────────────────────
+function sw(group, id, el) {{
+  const card = el.closest('.card');
+  card.querySelectorAll('.pill').forEach(p => p.classList.remove('on'));
+  el.classList.add('on');
+  card.querySelectorAll('.pane').forEach(p => p.classList.remove('on'));
+  card.querySelector('#'+group+'-'+id).classList.add('on');
+}}
+
+// ── Render ────────────────────────────────────────────────────
+document.getElementById('root').innerHTML =
+  kpiStrip() +
+  '<div class="main-grid">' + econPanel() + tradePanel() + supplyPanel() + finPanel() + '</div>' +
+  '<hr class="divider">' +
+  row2() +
+  '<hr class="divider">' +
+  pizzaSection();
+</script>
+</body></html>"""
+
+    _ec.html(_econ_html, height=5200, scrolling=True)
