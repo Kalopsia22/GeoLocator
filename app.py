@@ -755,78 +755,170 @@ CONFLICT_QUERIES = {
 }
 
 @st.cache_data(ttl=120, show_spinner=False)
-def fetch_gdelt_conflict(theatre: str, max_records: int = 30) -> list:
-    """Fetch GDELT Doc 2.0 news for a specific conflict theatre, filtered since conflict start."""
-    queries = CONFLICT_QUERIES.get(theatre, [theatre])
-    start_dates = {
-        "Ukraine–Russia War": "2022-02-24",
-        "Gaza Conflict": "2023-10-07",
-        "Israel–Iran War": "2024-04-13",
-        "Sudan Civil War": "2023-04-15",
-        "Myanmar Civil War": "2021-02-01",
+def _parse_age(dt: datetime) -> tuple:
+    """Return (age_s, dt_str, is_recent, is_new) from a datetime."""
+    age   = datetime.now(tz=timezone.utc) - dt
+    age_h = age.total_seconds() / 3600
+    if age_h < 1:
+        age_s = f"{int(age.total_seconds()//60)}m ago"
+    elif age_h < 24:
+        age_s = f"{int(age_h)}h ago"
+    else:
+        age_s = f"{int(age_h//24)}d ago"
+    return age_s, dt.strftime("%Y-%m-%d %H:%Mz"), age_h < 6, age_h < 1
+
+
+@st.cache_data(ttl=120, show_spinner=False)
+def fetch_rss_conflict(theatre: str) -> list:
+    """Fetch conflict news via server-side RSS parsing — no CORS proxies needed."""
+    import xml.etree.ElementTree as ET
+
+    # Per-theatre keyword filters applied to RSS titles
+    keywords = {
+        "Ukraine\u2013Russia War": ["ukraine","russia","kyiv","kremlin","zelenskyy","putin","donbas","kharkiv","kherson","kursk","nato","zaporizhzhia"],
+        "Gaza Conflict":           ["gaza","hamas","israel","rafah","west bank","idf","netanyahu","ceasefire","hostage","palestin"],
+        "Israel\u2013Iran War":    ["iran","israel","tehran","natanz","idf","hezbollah","mossad","irgc","nuclear","missile strike"],
+        "Sudan Civil War":         ["sudan","rsf","khartoum","darfur","el fasher","saf","hemeti","al-burhan"],
+        "Myanmar Civil War":       ["myanmar","burma","tatmadaw","junta","nug","pdf","mandalay","yangon","ethnic armed"],
     }
-    start_date = start_dates.get(theatre, "2020-01-01")
-    all_articles = []
-    seen_urls = set()
-    for query in queries[:2]:  # max 2 queries to avoid rate-limiting
+    kws = keywords.get(theatre, [theatre.lower().split("\u2013")[0].strip()])
+
+    # RSS sources — tried in order, first success wins enough articles
+    rss_sources = [
+        ("Reuters",    "https://feeds.reuters.com/reuters/worldNews"),
+        ("Reuters",    "http://feeds.reuters.com/reuters/worldNews"),
+        ("Sky News",   "https://feeds.skynews.com/feeds/rss/world.xml"),
+        ("VOA",        "https://www.voanews.com/api/ztjq_eit_pgm/rss"),
+        ("France 24",  "https://www.france24.com/en/rss"),
+        ("UN News",    "https://news.un.org/feed/subscribe/en/news/all/rss.xml"),
+        ("Al Jazeera", "https://www.aljazeera.com/xml/rss/all.xml"),
+        ("NYT World",  "https://rss.nytimes.com/services/xml/rss/nyt/World.xml"),
+        ("BBC World",  "https://feeds.bbci.co.uk/news/world/rss.xml"),
+    ]
+
+    articles = []
+    seen = set()
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; GeoLocator/1.0)"}
+
+    for source_name, url in rss_sources:
+        if len(articles) >= 15:
+            break
         try:
-            params = {
-                "query": query,
-                "mode": "artlist",
-                "maxrecords": max_records,
-                "format": "json",
-                "timespan": "7d",
-                "sort": "DateDesc",
-            }
-            r = requests.get(
-                "https://api.gdeltproject.org/api/v2/doc/doc",
-                params=params, timeout=12
-            )
-            r.raise_for_status()
-            articles = r.json().get("articles", [])
-            for a in articles:
-                url = a.get("url","")
-                if url in seen_urls:
+            r = requests.get(url, timeout=10, headers=headers)
+            if r.status_code != 200:
+                continue
+            root = ET.fromstring(r.content)
+            ns = {"atom": "http://www.w3.org/2005/Atom"}
+            # Handle both RSS <item> and Atom <entry>
+            items = root.findall(".//item") or root.findall(".//atom:entry", ns)
+            for item in items[:30]:
+                def gtext(tag):
+                    el = item.find(tag)
+                    if el is None: return ""
+                    return (el.text or "").strip()
+                title   = gtext("title") or gtext("atom:title")
+                link    = gtext("link")  or gtext("atom:link")
+                pub     = gtext("pubDate") or gtext("published") or gtext("atom:published")
+                desc    = gtext("description") or gtext("summary") or ""
+                # Keyword filter
+                combined = (title + " " + desc).lower()
+                if not any(kw in combined for kw in kws):
                     continue
-                seen_urls.add(url)
-                raw_dt = str(a.get("seendate",""))
-                try:
-                    dt = datetime.strptime(raw_dt[:14], "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
-                    # Only include articles since conflict start date
-                    conflict_start = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-                    if dt < conflict_start:
+                if not title or title in seen:
+                    continue
+                seen.add(title)
+                # Parse date
+                age_s, dt_str, is_recent, is_new = "recent", "", False, False
+                for fmt in ("%a, %d %b %Y %H:%M:%S %z", "%a, %d %b %Y %H:%M:%S %Z",
+                            "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ"):
+                    try:
+                        dt = datetime.strptime(pub.strip(), fmt)
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=timezone.utc)
+                        age_s, dt_str, is_recent, is_new = _parse_age(dt)
+                        break
+                    except:
                         continue
-                    age    = datetime.now(tz=timezone.utc) - dt
-                    age_h  = age.total_seconds() / 3600
-                    if age_h < 1:
-                        age_s = f"{int(age.total_seconds()//60)}m ago"
-                    elif age_h < 24:
-                        age_s = f"{int(age_h)}h ago"
-                    else:
-                        age_s = f"{int(age_h//24)}d ago"
-                    dt_str = dt.strftime("%Y-%m-%d %H:%Mz")
-                    is_recent = age_h < 6
-                    is_new    = age_h < 1
-                except:
-                    age_s = "just now"; dt_str = ""; is_recent = False; is_new = False
-                all_articles.append({
-                    "title":     a.get("title","")[:140],
-                    "url":       url,
-                    "source":    a.get("domain",""),
+                articles.append({
+                    "title":     title[:140],
+                    "url":       link,
+                    "source":    source_name,
                     "time":      age_s,
                     "dt_str":    dt_str,
                     "is_recent": is_recent,
                     "is_new":    is_new,
-                    "lang":      a.get("language",""),
                 })
-        except:
-            pass
+        except Exception:
+            continue
+
+    return articles
+
+
+@st.cache_data(ttl=120, show_spinner=False)
+def fetch_gdelt_conflict(theatre: str, max_records: int = 30) -> list:
+    """Fetch GDELT Doc 2.0 news — tries multiple query strategies with fallback to RSS."""
+    queries = CONFLICT_QUERIES.get(theatre, [theatre])
+
+    # Try multiple timespans — longer ones are more likely to return results
+    timespans = ["1d", "3d", "7d"]
+    all_articles = []
+    seen_urls = set()
+
+    for timespan in timespans:
+        if len(all_articles) >= 10:
+            break
+        for query in queries[:2]:
+            if len(all_articles) >= 10:
+                break
+            try:
+                r = requests.get(
+                    "https://api.gdeltproject.org/api/v2/doc/doc",
+                    params={
+                        "query": query + " sourcelang:english",
+                        "mode": "artlist",
+                        "maxrecords": max_records,
+                        "format": "json",
+                        "timespan": timespan,
+                        "sort": "DateDesc",
+                    },
+                    timeout=14,
+                    headers={"User-Agent": "Mozilla/5.0"},
+                )
+                if r.status_code != 200:
+                    continue
+                articles = r.json().get("articles", [])
+                for a in articles:
+                    url = a.get("url", "")
+                    if url in seen_urls:
+                        continue
+                    seen_urls.add(url)
+                    raw_dt = str(a.get("seendate", ""))
+                    age_s, dt_str, is_recent, is_new = "recent", "", False, False
+                    try:
+                        dt = datetime.strptime(raw_dt[:14], "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
+                        age_s, dt_str, is_recent, is_new = _parse_age(dt)
+                    except:
+                        pass
+                    all_articles.append({
+                        "title":     a.get("title", "")[:140],
+                        "url":       url,
+                        "source":    a.get("domain", ""),
+                        "time":      age_s,
+                        "dt_str":    dt_str,
+                        "is_recent": is_recent,
+                        "is_new":    is_new,
+                        "lang":      a.get("language", ""),
+                    })
+            except Exception:
+                continue
+
     # Sort by recency
     def sort_key(x):
         try:
             return datetime.strptime(x["dt_str"], "%Y-%m-%d %H:%Mz") if x["dt_str"] else datetime.min.replace(tzinfo=timezone.utc)
         except:
             return datetime.min.replace(tzinfo=timezone.utc)
+
     all_articles.sort(key=sort_key, reverse=True)
     return all_articles[:max_records]
 
@@ -2459,43 +2551,68 @@ with tab_conflict:
                         unsafe_allow_html=True
                     )
         else:
-            # GDELT unavailable — show RSS fallback
-            region_src_map = {
-                "Ukraine–Russia War": ["Reuters","BBC World","ISW","Defense One"],
-                "Gaza Conflict":      ["Al Jazeera","Reuters","BBC World","ISW"],
-                "Israel–Iran War":    ["Reuters","Al Jazeera","ISW","BBC World"],
-                "Sudan Civil War":    ["Reuters","Al Jazeera","BBC World","ACLED"],
-                "Myanmar Civil War":  ["Reuters","BBC World","The Diplomat","ACLED"],
-            }
-            preferred = region_src_map.get(theatre, ["Reuters","BBC World","ISW"])
-            theatre_feeds = [s for s in NEWS_SOURCES if s["name"] in preferred][:3]
-            tf_js = json.dumps([{"name":s["name"],"rss":s["rss"],"color":NEWS_CAT_COLOR.get(s["cat"],"#4a6b85")} for s in theatre_feeds])
-            fallback_html = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-*{{margin:0;padding:0;box-sizing:border-box;}}body{{background:#02040a;font-family:'DM Sans',system-ui,sans-serif;color:#e2ecf8;padding:8px;}}
-#st{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a6b85;margin-bottom:8px;display:flex;align-items:center;gap:6px;}}
-.dot{{width:5px;height:5px;border-radius:50%;background:#ffb400;animation:bl 1.2s ease-in-out infinite;flex-shrink:0;}}
-@keyframes bl{{0%,100%{{opacity:1}}50%{{opacity:.2}}}}
-.g{{display:grid;grid-template-columns:1fr 1fr;gap:8px;}}
-.c{{background:#0b1524;border:1px solid rgba(0,200,255,.1);border-left:3px solid {conflict_accent};border-radius:8px;padding:10px 12px;}}
-.s{{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#4a6b85;margin-bottom:4px;}}
-.h{{font-size:12px;font-weight:600;color:#e2ecf8;line-height:1.4;margin-bottom:6px;}}
-.f{{display:flex;align-items:center;justify-content:space-between;}}
-.t{{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a6b85;}}
-a.r{{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#00c8ff;text-decoration:none;padding:2px 7px;border:1px solid rgba(0,200,255,.22);border-radius:4px;}}
-</style></head><body>
-<div id="st"><div class="dot"></div><span>GDELT unavailable — loading RSS fallback…</span></div>
-<div id="g" class="g"></div>
-<script>
-const F={tf_js};
-const P=[u=>`https://api.allorigins.win/get?url=${{encodeURIComponent(u)}}`,u=>`https://corsproxy.io/?${{encodeURIComponent(u)}}`];
-function ta(s){{try{{const d=new Date(s),x=(Date.now()-d)/1000;if(x<3600)return Math.round(x/60)+'m ago';return Math.round(x/3600)+'h ago';}}catch{{return '';}}}}
-function esc(s){{return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}}
-function px(xml){{try{{const doc=new DOMParser().parseFromString(xml,'text/xml');if(doc.querySelector('parsererror'))return[];return[...doc.querySelectorAll('item')].slice(0,5).map(it=>{{const g=n=>{{const e=it.querySelector(n);return(e?.textContent||'').split('<![CDATA[').join('').split(']]>').join('').trim();}};return{{ti:g('title'),li:g('link'),pu:g('pubDate')}};}}); }}catch{{return[];}}}}
-async function ff(f){{for(const p of P){{try{{const r=await fetch(p(f.rss),{{signal:AbortSignal.timeout(8000)}});if(!r.ok)continue;const ct=r.headers.get('content-type')||'';let xml='';if(ct.includes('json')){{const j=await r.json();xml=j.contents||j.data||'';}}else xml=await r.text();const items=px(xml);if(items.length)return{{f,items}};}}catch{{}}}}return{{f,items:[]}};}}
-async function main(){{const se=document.getElementById('st'),ge=document.getElementById('g');const res=await Promise.all(F.map(ff));const arts=[];res.forEach(({{f,items}})=>{{if(items.length)items.forEach(it=>arts.push({{ti:it.ti,li:it.li,tm:ta(it.pu),sr:f.name,co:f.color}}));}});if(!arts.length){{se.innerHTML='<span style="color:#ff8c42">RSS also unavailable</span>';return;}}se.innerHTML=`<div class="dot" style="background:#00e676"></div><span>RSS fallback · ${{arts.length}} articles</span>`;ge.innerHTML=arts.slice(0,10).map(a=>`<div class="c"><div class="s" style="color:${{a.co}}">${{esc(a.sr)}}</div><div class="h">${{esc(a.ti).slice(0,100)}}</div><div class="f"><span class="t">${{a.tm}}</span>${{a.li?`<a class="r" href="${{a.li}}" target="_blank">Read →</a>`:''}}</div></div>`).join('');}}main();
-</script></body></html>"""
-            st.info("GDELT live feed unavailable — loading RSS fallback.")
-            components.html(fallback_html, height=420, scrolling=True)
+            # GDELT returned nothing — try server-side Python RSS (no CORS proxy needed)
+            _rss_articles = fetch_rss_conflict(theatre)
+            if _rss_articles:
+                st.markdown(
+                    f'<div style="font-family:var(--fm);font-size:10px;color:var(--muted);'
+                    f'display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+                    f'<span style="width:6px;height:6px;border-radius:50%;background:#ffb400;display:inline-block"></span>'
+                    f'RSS fallback · {len(_rss_articles)} articles</div>',
+                    unsafe_allow_html=True
+                )
+                feed_container2 = st.container()
+                with feed_container2:
+                    for art in _rss_articles:
+                        _is_new2    = art.get("is_new", False)
+                        _is_recent2 = art.get("is_recent", False)
+                        _border2    = conflict_accent if _is_new2 else (conflict_accent + "88" if _is_recent2 else "rgba(0,200,255,.08)")
+                        _left2      = conflict_accent if _is_recent2 else "rgba(0,200,255,.06)"
+                        _src_col2   = "#ff8c42" if _is_new2 else "#4a6b85"
+                        _src2       = art.get("source","")[:28].upper()
+                        _time2      = art.get("time","")
+                        _title2     = art.get("title","")
+                        _dt2        = art.get("dt_str","")
+                        _url2       = art.get("url","")
+                        _link2      = (f'<a href="{_url2}" target="_blank" rel="noopener" ' +
+                                       f'style="font-family:var(--fm);font-size:9px;color:var(--cyan);' +
+                                       f'text-decoration:none;padding:2px 8px;border:1px solid rgba(0,200,255,.22);border-radius:4px">Read →</a>') if _url2 else ""
+                        st.markdown(
+                            f'<div style="background:var(--card);border:1px solid {_border2};' +
+                            f'border-left:3px solid {_left2};border-radius:8px;padding:10px 14px;margin-bottom:6px">' +
+                            f'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">' +
+                            f'<span style="font-family:var(--fm);font-size:9px;font-weight:600;color:{_src_col2}">{_src2}</span>' +
+                            f'<span style="font-family:var(--fm);font-size:9px;color:var(--muted)">{_time2}</span>' +
+                            f'</div><div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.45;margin-bottom:5px">{_title2}</div>' +
+                            f'<div style="display:flex;justify-content:space-between">' +
+                            f'<span style="font-family:var(--fm);font-size:9px;color:var(--muted)">{_dt2}</span>' +
+                            _link2 + '</div></div>',
+                            unsafe_allow_html=True
+                        )
+            else:
+                # Both GDELT and RSS failed — show informative static placeholder
+                st.markdown(f"""
+                <div style="background:var(--card);border:1px solid var(--bord2);border-radius:10px;padding:20px;text-align:center">
+                  <div style="font-size:24px;margin-bottom:10px">📡</div>
+                  <div style="font-family:var(--fm);font-size:11px;color:var(--muted);margin-bottom:8px">Live feed temporarily unavailable</div>
+                  <div style="font-size:12px;color:var(--text2);margin-bottom:14px">
+                    The GDELT and RSS feeds could not be reached. This is usually temporary.
+                  </div>
+                  <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+                    <a href="https://www.reuters.com/world" target="_blank" rel="noopener"
+                       style="font-family:var(--fm);font-size:10px;color:var(--cyan);text-decoration:none;
+                              padding:5px 14px;border:1px solid rgba(0,200,255,.25);border-radius:6px">Reuters →</a>
+                    <a href="https://www.bbc.com/news/world" target="_blank" rel="noopener"
+                       style="font-family:var(--fm);font-size:10px;color:var(--cyan);text-decoration:none;
+                              padding:5px 14px;border:1px solid rgba(0,200,255,.25);border-radius:6px">BBC World →</a>
+                    <a href="https://www.aljazeera.com" target="_blank" rel="noopener"
+                       style="font-family:var(--fm);font-size:10px;color:var(--cyan);text-decoration:none;
+                              padding:5px 14px;border:1px solid rgba(0,200,255,.25);border-radius:6px">Al Jazeera →</a>
+                    <a href="https://isw.pub/UkraineConflictUpdatesISW" target="_blank" rel="noopener"
+                       style="font-family:var(--fm);font-size:10px;color:var(--cyan);text-decoration:none;
+                              padding:5px 14px;border:1px solid rgba(0,200,255,.25);border-radius:6px">ISW →</a>
+                  </div>
+                </div>""", unsafe_allow_html=True)
 
     with tracker_right:
         st.markdown(f"""
