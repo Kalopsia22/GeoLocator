@@ -1167,6 +1167,109 @@ def fetch_usgs_significant():
     except:
         return pd.DataFrame()
 
+
+# ── Country Intelligence lookup for click-to-analyse feature ─────────────────
+# Maps country name → coordinates + intel data
+COUNTRY_INTEL = {
+    "Ukraine":       {"lat":49.0, "lon":31.0,  "flag":"🇺🇦", "code":"UA", "region":"Europe"},
+    "Russia":        {"lat":61.0, "lon":105.0, "flag":"🇷🇺", "code":"RU", "region":"Europe/Asia"},
+    "Israel":        {"lat":31.5, "lon":34.8,  "flag":"🇮🇱", "code":"IL", "region":"Middle East"},
+    "Iran":          {"lat":32.0, "lon":53.0,  "flag":"🇮🇷", "code":"IR", "region":"Middle East"},
+    "Gaza":          {"lat":31.4, "lon":34.4,  "flag":"🇵🇸", "code":"PS", "region":"Middle East"},
+    "Sudan":         {"lat":12.0, "lon":30.0,  "flag":"🇸🇩", "code":"SD", "region":"Africa"},
+    "Myanmar":       {"lat":17.0, "lon":96.0,  "flag":"🇲🇲", "code":"MM", "region":"Asia"},
+    "China":         {"lat":35.0, "lon":104.0, "flag":"🇨🇳", "code":"CN", "region":"Asia"},
+    "USA":           {"lat":38.0, "lon":-97.0, "flag":"🇺🇸", "code":"US", "region":"Americas"},
+    "North Korea":   {"lat":40.0, "lon":127.0, "flag":"🇰🇵", "code":"KP", "region":"Asia"},
+    "South Korea":   {"lat":36.0, "lon":127.5, "flag":"🇰🇷", "code":"KR", "region":"Asia"},
+    "Japan":         {"lat":36.0, "lon":138.0, "flag":"🇯🇵", "code":"JP", "region":"Asia"},
+    "India":         {"lat":20.0, "lon":78.0,  "flag":"🇮🇳", "code":"IN", "region":"Asia"},
+    "Pakistan":      {"lat":30.0, "lon":69.0,  "flag":"🇵🇰", "code":"PK", "region":"Asia"},
+    "Yemen":         {"lat":15.0, "lon":48.0,  "flag":"🇾🇪", "code":"YE", "region":"Middle East"},
+    "Syria":         {"lat":34.8, "lon":38.0,  "flag":"🇸🇾", "code":"SY", "region":"Middle East"},
+    "Iraq":          {"lat":33.0, "lon":43.0,  "flag":"🇮🇶", "code":"IQ", "region":"Middle East"},
+    "Lebanon":       {"lat":33.8, "lon":35.8,  "flag":"🇱🇧", "code":"LB", "region":"Middle East"},
+    "Saudi Arabia":  {"lat":24.0, "lon":45.0,  "flag":"🇸🇦", "code":"SA", "region":"Middle East"},
+    "Turkey":        {"lat":39.0, "lon":35.0,  "flag":"🇹🇷", "code":"TR", "region":"Middle East/Europe"},
+    "Libya":         {"lat":25.0, "lon":17.0,  "flag":"🇱🇾", "code":"LY", "region":"Africa"},
+    "Somalia":       {"lat":5.0,  "lon":46.0,  "flag":"🇸🇴", "code":"SO", "region":"Africa"},
+    "Ethiopia":      {"lat":9.0,  "lon":40.0,  "flag":"🇪🇹", "code":"ET", "region":"Africa"},
+    "DRC":           {"lat":-4.0, "lon":24.0,  "flag":"🇨🇩", "code":"CD", "region":"Africa"},
+    "DR Congo":      {"lat":-4.0, "lon":24.0,  "flag":"🇨🇩", "code":"CD", "region":"Africa"},
+    "Venezuela":     {"lat":8.0,  "lon":-66.0, "flag":"🇻🇪", "code":"VE", "region":"Americas"},
+    "Haiti":         {"lat":19.0, "lon":-72.0, "flag":"🇭🇹", "code":"HT", "region":"Americas"},
+    "Afghanistan":   {"lat":33.0, "lon":65.0,  "flag":"🇦🇫", "code":"AF", "region":"Asia"},
+    "UK":            {"lat":54.0, "lon":-2.0,  "flag":"🇬🇧", "code":"GB", "region":"Europe"},
+    "France":        {"lat":46.0, "lon":2.0,   "flag":"🇫🇷", "code":"FR", "region":"Europe"},
+    "Germany":       {"lat":51.0, "lon":10.0,  "flag":"🇩🇪", "code":"DE", "region":"Europe"},
+    "NATO/USA":      {"lat":49.0, "lon":7.6,   "flag":"🇺🇸", "code":"US", "region":"Europe"},
+    "USA/Afghan":    {"lat":34.9, "lon":69.3,  "flag":"🇺🇸", "code":"US", "region":"Asia"},
+    "USA/NATO":      {"lat":35.5, "lon":24.0,  "flag":"🇺🇸", "code":"US", "region":"Europe"},
+    "Singapore":     {"lat":1.35, "lon":103.8, "flag":"🇸🇬", "code":"SG", "region":"Asia"},
+    "Mali":          {"lat":17.0, "lon":-4.0,  "flag":"🇲🇱", "code":"ML", "region":"Africa"},
+}
+
+def get_country_from_tip(tip: str) -> str:
+    """Extract country name from a tip string."""
+    # Try to find a country match in the tip
+    for country in COUNTRY_INTEL:
+        if country.lower() in tip.lower():
+            return country
+    return ""
+
+def get_all_signals_for_country(country: str) -> dict:
+    """Gather all data signals for a country from the static datasets."""
+    c_lower = country.lower()
+    signals = {
+        "military_bases": [],
+        "nuclear_sites": [],
+        "conflicts": [],
+        "military_activity": [],
+        "intel_hotspots": [],
+        "historical_events": [],
+        "instability": None,
+        "nuke_alerts": [],
+        "wmd": None,
+    }
+    # Military bases
+    for b in MILITARY_BASES:
+        if c_lower in b.get("country","").lower() or c_lower in b.get("name","").lower():
+            signals["military_bases"].append(b["name"])
+    # Nuclear sites
+    for n in NUCLEAR_SITES:
+        if c_lower in n.get("country","").lower():
+            signals["nuclear_sites"].append({"name":n["name"],"status":n.get("status","")})
+    # Active conflicts
+    for cname, cdata in CONFLICTS.items():
+        factions = " ".join(str(f) for f in cdata.get("factions",[]))
+        if c_lower in cname.lower() or c_lower in factions.lower():
+            signals["conflicts"].append(cname)
+    # Military activity
+    for m in MILITARY_ACTIVITY:
+        if c_lower in m.get("country","").lower() or c_lower in m.get("name","").lower():
+            signals["military_activity"].append(m["name"])
+    # Historical events (recent 5)
+    for e in sorted(HISTORICAL_EVENTS, key=lambda x: x["date"], reverse=True):
+        if c_lower in e.get("title","").lower() or c_lower in e.get("tip","").lower():
+            signals["historical_events"].append(e)
+            if len(signals["historical_events"]) >= 5:
+                break
+    # Instability index
+    for ci in COUNTRY_INSTABILITY:
+        if c_lower in ci["country"].lower():
+            signals["instability"] = ci
+            break
+    # Nuke alerts
+    for na in NUKE_ALERTS:
+        if c_lower in na["site"].lower():
+            signals["nuke_alerts"].append(na)
+    # WMD posture
+    for wp in WMD_POSTURE:
+        if c_lower in wp["actor"].lower():
+            signals["wmd"] = wp
+            break
+    return signals
+
 INTEL_HOTSPOTS = [
     {"name":"Strait of Hormuz","lat":26.56,"lon":56.26,"type":"Naval Chokepoint","risk":88,"tip":"🎯 INTEL HOTSPOT | Strait of Hormuz | Iran blockade risk | Risk: 88"},
     {"name":"Bab el-Mandeb","lat":12.58,"lon":43.38,"type":"Naval Chokepoint","risk":82,"tip":"🎯 INTEL HOTSPOT | Bab el-Mandeb | Houthi threat | Risk: 82"},
@@ -2150,6 +2253,200 @@ with st.sidebar:
         st.cache_data.clear(); st.rerun()
 
 # ─────────────────────────────────────────────
+
+def _render_intelligence_panel(tip: str, name: str, country: str, obj: dict):
+    """Render a rich country/point intelligence panel below the map when a marker is clicked."""
+    import streamlit.components.v1 as _cp
+
+    # Gather all signals
+    signals    = get_all_signals_for_country(country) if country else {}
+    ci         = signals.get("instability")
+    wmd        = signals.get("wmd")
+    conflicts  = signals.get("conflicts", [])
+    mil_bases  = signals.get("military_bases", [])
+    nuke_sites = signals.get("nuclear_sites", [])
+    mil_acts   = signals.get("military_activity", [])
+    hist_evts  = signals.get("historical_events", [])
+
+    # Country metadata
+    cmeta   = COUNTRY_INTEL.get(country, {})
+    flag    = cmeta.get("flag", "🌍")
+    code    = cmeta.get("code", "")
+    region  = cmeta.get("region", "")
+
+    # Instability scores
+    ci_score = ci["score"] if ci else 0
+    ci_U     = ci.get("U", 0) if ci else 0
+    ci_C     = ci.get("C", 0) if ci else 0
+    ci_S     = ci.get("S", 0) if ci else 0
+    ci_I     = ci.get("I", 0) if ci else 0
+    ci_trend = ci.get("trend","→") if ci else "→"
+    ci_col   = "#ff3d5a" if ci_score>=70 else "#ff8c42" if ci_score>=50 else "#ffb400" if ci_score>=35 else "#00e676"
+
+    # WMD risk
+    wmd_risk = wmd["risk"] if wmd else 0
+    wmd_col  = "#ff3d5a" if wmd_risk>=70 else "#ff8c42" if wmd_risk>=50 else "#ffb400" if wmd_risk>=35 else "#00e676"
+    wmd_lbl  = wmd["status"] if wmd else "No data"
+
+    # Historical events for 7-day-style timeline (last 7 days of our data)
+    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+    _now = _dt.now(tz=_tz.utc)
+    _7d_ago = _now - _td(days=365*4)  # Use all events since 2022 as our timeline
+    tl_events = hist_evts[:6]
+
+    # Nuke status
+    nuke_html = ""
+    for ns in nuke_sites[:3]:
+        ns_col = "#ff3d5a" if "Struck" in ns["status"] or "Destroyed" in ns["status"] else "#ffb400" if "Occupied" in ns["status"] else "#00e676"
+        nuke_html += f'<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(0,200,255,.05)"><span style="font-size:11px;color:#e2ecf8">{ns["name"]}</span><span style="font-family:var(--fm,monospace);font-size:9px;color:{ns_col}">{ns["status"]}</span></div>'
+
+    # Build intelligence brief text
+    brief_lines = []
+    if ci:
+        trend_word = "rising" if ci_trend == "↑" else "declining" if ci_trend == "↓" else "stable"
+        brief_lines.append(f"Instability Index {ci_score}/100 and {trend_word}. Primary drivers: Unrest ({ci_U*4}/100), Information control ({ci_I*5}/100).")
+    if conflicts:
+        brief_lines.append(f"Active in {len(conflicts)} tracked conflict theatre(s): {', '.join(conflicts[:2])}.")
+    if wmd:
+        brief_lines.append(f"WMD posture: {wmd['type']} — Status {wmd['status']}. Assets: {wmd['assets'][:80]}.")
+    if nuke_sites:
+        brief_lines.append(f"Nuclear infrastructure: {len(nuke_sites)} site(s) tracked including {nuke_sites[0]['name']} ({nuke_sites[0]['status']}).")
+    if mil_acts:
+        brief_lines.append(f"Active military operations: {mil_acts[0]}.")
+    if hist_evts:
+        brief_lines.append(f"Most recent event: {hist_evts[0]['date']} — {hist_evts[0]['title'][:80]}.")
+    if not brief_lines:
+        brief_lines.append(f"Point of interest: {tip}. No detailed country profile available for this location.")
+
+    brief_text = " ".join(brief_lines)
+
+    # Signal count badges
+    sig_count_html = ""
+    sig_items = [
+        (len(conflicts),    "⚔", "Conflicts",     "#ff3d5a"),
+        (len(mil_bases),    "🏛", "Mil Bases",     "#ff8c42"),
+        (len(nuke_sites),   "☢", "Nuclear Sites", "#ffb400"),
+        (len(mil_acts),     "✈", "Mil Activity",  "#00c8ff"),
+        (len(hist_evts),    "📅", "Events",        "#9d6eff"),
+    ]
+    for cnt, icon, label, col in sig_items:
+        if cnt > 0:
+            sig_count_html += f'<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:#0b1524;border:1px solid rgba(0,200,255,.08);border-radius:8px"><span style="font-size:13px">{icon}</span><div><div style="font-family:monospace;font-size:15px;font-weight:700;color:{col};line-height:1">{cnt}</div><div style="font-size:8px;color:#4a6b85;text-transform:uppercase;letter-spacing:.1em">{label}</div></div></div>'
+
+    # Timeline events
+    tl_html = ""
+    type_colors = {"invasion":"#ff3d5a","attack":"#ff3d5a","strike":"#ff8c42","airstrike":"#ff8c42",
+                   "counteroffensive":"#ffb400","milestone":"#00c8ff","diplomatic":"#00e676",
+                   "escalation":"#ff3d5a","setback":"#ffb400","natural":"#9d6eff","coup":"#ff3d5a",
+                   "political":"#00c8ff","sabotage":"#ff8c42","disaster":"#9d6eff"}
+    for ev in tl_events[:5]:
+        ev_col = type_colors.get(ev.get("type",""), "#4a6b85")
+        ev_title = ev.get("title","")[:70]
+        tl_html += (
+            f'<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid rgba(0,200,255,.05)">' +
+            f'<div style="width:3px;background:{ev_col};border-radius:2px;flex-shrink:0"></div>' +
+            f'<div><div style="font-family:monospace;font-size:9px;color:#4a6b85;margin-bottom:2px">{ev["date"]} · <span style="color:{ev_col};text-transform:uppercase">{ev.get("type","")}</span></div>' +
+            f'<div style="font-size:11px;color:#e2ecf8;line-height:1.4">{ev_title}</div></div></div>'
+        )
+    if not tl_html:
+        tl_html = '<div style="font-family:monospace;font-size:10px;color:#4a6b85;padding:12px 0">No tracked events for this location</div>'
+
+    # Instability bars
+    inst_bars = ""
+    for label, val, bar_col in [
+        ("Unrest",      ci_U*4, "#ff3d5a"),
+        ("Conflict",    ci_C*4, "#ff8c42"),
+        ("Security",    ci_S*4, "#ffb400"),
+        ("Information", ci_I*5, "#9d6eff"),
+    ]:
+        inst_bars += (
+            f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">' +
+            f'<div style="width:90px;font-size:10px;color:#a8c0d8">{label}</div>' +
+            f'<div style="flex:1;height:5px;background:#0f2035;border-radius:3px;overflow:hidden">' +
+            f'<div style="height:100%;width:{val}%;background:{bar_col};border-radius:3px"></div></div>' +
+            f'<div style="font-family:monospace;font-size:11px;color:{bar_col};min-width:28px;text-align:right">{val}</div></div>'
+        )
+
+    # Title and label
+    display_name = country if country else name[:40] if name else "Unknown Location"
+    subtitle = f"{code} · {region}" if code and region else (tip[:50] if tip else "")
+
+    # Render as components.html
+    panel_html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{{margin:0;padding:0;box-sizing:border-box;}}
+body{{background:#02040a;font-family:'DM Sans',system-ui,sans-serif;color:#e2ecf8;padding:16px;}}
+.header{{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}}
+.flag{{font-size:32px;margin-right:12px;}}
+.title{{font-size:24px;font-weight:700;color:#e2ecf8;}}
+.subtitle{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a6b85;margin-top:2px;}}
+.close-btn{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a6b85;cursor:pointer;
+           padding:4px 10px;border:1px solid rgba(74,107,133,.3);border-radius:5px;}}
+.close-btn:hover{{color:#00c8ff;border-color:rgba(0,200,255,.3);}}
+.grid{{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}}
+.grid-3{{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;}}
+.panel{{background:#080f1c;border:1px solid rgba(0,200,255,.1);border-radius:10px;padding:14px 16px;}}
+.panel-title{{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;letter-spacing:.18em;
+              text-transform:uppercase;color:#4a6b85;margin-bottom:10px;}}
+.score{{font-family:'Bebas Neue',sans-serif;font-size:52px;line-height:1;}}
+.trend{{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#a8c0d8;margin-left:8px;}}
+.signals{{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}}
+.brief{{font-size:12px;color:#a8c0d8;line-height:1.75;padding:14px 16px;background:#080f1c;
+        border:1px solid rgba(0,200,255,.1);border-radius:10px;margin-bottom:14px;}}
+.brief-title{{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;letter-spacing:.18em;
+              text-transform:uppercase;color:#4a6b85;margin-bottom:8px;}}
+.tip-box{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a6b85;padding:10px 14px;
+          background:#060d18;border:1px solid rgba(0,200,255,.06);border-radius:8px;line-height:1.6;
+          margin-bottom:14px;}}
+</style>
+</head><body>
+<div class="header">
+  <div style="display:flex;align-items:center">
+    <div class="flag">{flag}</div>
+    <div>
+      <div class="title">{display_name}</div>
+      <div class="subtitle">{subtitle}</div>
+    </div>
+  </div>
+  <div class="close-btn" onclick="window.parent.postMessage({{type:'streamlit:setComponentValue',value:'close'}},'*')">✕ Close</div>
+</div>
+
+<div class="tip-box">{tip[:120]}</div>
+
+<div class="signals">{sig_count_html if sig_count_html else '<div style="font-family:monospace;font-size:10px;color:#4a6b85">No linked signal data</div>'}</div>
+
+<div class="grid">
+  <div class="panel">
+    <div class="panel-title">Instability Index</div>
+    <div style="display:flex;align-items:baseline;margin-bottom:12px">
+      <span class="score" style="color:{ci_col}">{ci_score}</span>
+      <span style="font-family:monospace;font-size:14px;color:#4a6b85">/100</span>
+      <span class="trend">{ci_trend} {"rising" if ci_trend=="↑" else "declining" if ci_trend=="↓" else "stable"}</span>
+    </div>
+    {inst_bars if ci else '<div style="font-family:monospace;font-size:10px;color:#4a6b85">No instability index available</div>'}
+  </div>
+  <div class="panel">
+    <div class="panel-title">{"WMD / Nuclear Posture" if wmd or nuke_sites else "Point Data"}</div>
+    {f'<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px"><span class="score" style="color:{wmd_col};font-size:42px">{wmd_risk}</span><span style="font-family:monospace;font-size:11px;color:#4a6b85">/100 risk</span></div><div style="font-family:monospace;font-size:10px;color:{wmd_col};margin-bottom:8px">{wmd["type"] if wmd else ""} · {wmd_lbl}</div>' if wmd else ""}
+    {nuke_html if nuke_html else ('<div style="font-family:monospace;font-size:10px;color:#4a6b85">No nuclear/WMD data</div>' if not wmd else "")}
+  </div>
+</div>
+
+{"<div class='panel' style='margin-bottom:14px'><div class='panel-title'>Recent Historical Events</div>" + tl_html + "</div>" if tl_events else ""}
+
+<div class="brief">
+  <div class="brief-title">Intelligence Brief</div>
+  {brief_text}
+</div>
+
+</body></html>"""
+
+    # Render the panel in an expander for clean UX
+    with st.expander(f"📍 Intelligence Profile — {display_name}", expanded=True):
+        _cp.html(panel_html, height=750, scrolling=True)
+
 # HEADER
 # ─────────────────────────────────────────────
 m5p         = eq_df[eq_df["mag"]>=5.0]
@@ -2238,8 +2535,8 @@ st.markdown(f"""
   </div>
 </div>""", unsafe_allow_html=True)
 
-st.markdown('<div style="border:1px solid rgba(0,200,255,.12);border-top:none;border-radius:0 0 14px 14px;overflow:hidden;margin-bottom:20px">', unsafe_allow_html=True)
-st.pydeck_chart(
+st.markdown('<div style="border:1px solid rgba(0,200,255,.12);border-top:none;border-radius:0 0 14px 14px;overflow:hidden;margin-bottom:8px">', unsafe_allow_html=True)
+_map_selection = st.pydeck_chart(
     build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf, show_supp, show_heat,
         show_hist=show_hist, show_live=show_live,
         show_intel=show_intel, show_czones=show_czones, show_mbases=show_mbases,
@@ -2252,8 +2549,36 @@ st.pydeck_chart(
         show_minerals=show_minerals, show_waterways=show_waterways,
         show_fires_layer=show_fires_layer, show_protests=show_protests, show_aviation=show_aviation),
     use_container_width=True,
+    on_select="rerun",
+    selection_mode="single-object",
+    key="global_map_select",
 )
 st.markdown('</div>', unsafe_allow_html=True)
+
+# ── Click-to-Analyse Panel ────────────────────────────────────────────────────
+_clicked_obj = None
+try:
+    _sel = _map_selection.selection if _map_selection else None
+    if _sel:
+        _objs = _sel.get("objects", {})
+        for _layer_id, _items in _objs.items():
+            if _items:
+                _clicked_obj = _items[0]
+                break
+except Exception:
+    _clicked_obj = None
+
+if _clicked_obj:
+    _tip     = str(_clicked_obj.get("tip", ""))
+    _name    = str(_clicked_obj.get("name", _clicked_obj.get("title", "")))
+    _country = get_country_from_tip(_tip)
+    if not _country:
+        # Try extracting from name field
+        for c in COUNTRY_INTEL:
+            if c.lower() in _name.lower():
+                _country = c
+                break
+    _render_intelligence_panel(_tip, _name, _country, _clicked_obj)
 
 # ── LIVE EVENTS TRACKER (below global map, always visible) ────────────────
 _live_events = fetch_live_global_events(max_records=15)
