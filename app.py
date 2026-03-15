@@ -4111,6 +4111,26 @@ with tab_econ:
     import json as _ej
     import streamlit.components.v1 as _ec
 
+    # Inline fallbacks — work regardless of which file version is deployed
+    try:
+        _sr = SHIPPING_RATES
+    except NameError:
+        _sr = [
+            {"route":"Shanghai → Rotterdam","type":"Container","rate":4820,"unit":"$/FEU","change":12.4,"status":"Elevated","note":"Red Sea rerouting via Cape"},
+            {"route":"Shanghai → LA","type":"Container","rate":3140,"unit":"$/FEU","change":4.1,"status":"Normal","note":"Trans-Pacific stable"},
+            {"route":"Baltic Dry Index","type":"BDI","rate":1842,"unit":"points","change":5.8,"status":"Rising","note":"Dry bulk demand"},
+            {"route":"LNG Spot (JKM)","type":"LNG","rate":12.40,"unit":"$/MMBtu","change":8.2,"status":"Elevated","note":"Asian spot market"},
+        ]
+    try:
+        _cm = CRIT_MIN_DATA
+    except NameError:
+        _cm = [
+            {"mineral":"Lithium","price":13.50,"unit":"$/kg","change":-18.4,"supply_risk":72,"top_producer":"Australia 46%","use":"EV batteries","col":"#34d399"},
+            {"mineral":"Cobalt","price":26.80,"unit":"$/kg","change":-8.2,"supply_risk":85,"top_producer":"DRC 70%","use":"Battery cathodes","col":"#38bdf8"},
+            {"mineral":"Graphite","price":0.48,"unit":"$/kg","change":-22.0,"supply_risk":91,"top_producer":"China 79%","use":"Battery anodes","col":"#fb923c"},
+            {"mineral":"Gallium","price":320,"unit":"$/kg","change":45.0,"supply_risk":95,"top_producer":"China 80%","use":"Semiconductors","col":"#f87171"},
+        ]
+
     _econ_payload = _ej.dumps({
         "indicators": ECON_INDICATORS,
         "oil":  OIL_DATA,
@@ -4129,8 +4149,8 @@ with tab_econ:
         "restrictions": TRADE_RESTRICTIONS,
         "tariffs":      TARIFFS,
         "chokepoints":  CHOKEPOINTS,
-        "shipping":     SHIPPING_RATES,
-        "minerals":     CRIT_MIN_DATA,
+        "shipping":     _sr,
+        "minerals":     _cm,
         "crypto":       CRYPTO_DATA,
         "sectors":      SECTOR_HEATMAP,
         "layoffs":      LAYOFFS,
