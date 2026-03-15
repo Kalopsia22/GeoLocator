@@ -3787,6 +3787,28 @@ MARKET_RADAR = {"label":"CASH","posture":"2/7 bullish","flow":"PASSIVE GAP","liq
 # ══════════════════════════════════════════════════════════════
 # TAB 5 — INTEL DASHBOARD
 # ══════════════════════════════════════════════════════════════
+
+NUKE_ALERTS = [
+    {"site":"Natanz (Iran)","status":"STRUCK","level":"CRITICAL","detail":"Destroyed by IDF Mar 2026 — centrifuge halls collapsed","col":"#ff3d5a"},
+    {"site":"Fordow (Iran)","status":"DESTROYED","level":"CRITICAL","detail":"Bunker-buster strike Feb 2026 — enrichment halted","col":"#ff3d5a"},
+    {"site":"Zaporizhzhia NPP","status":"OCCUPIED","level":"CRITICAL","detail":"Russian occupation continues — IAEA monitoring disrupted","col":"#ff3d5a"},
+    {"site":"Yongbyon (DPRK)","status":"ACTIVE","level":"HIGH","detail":"Plutonium reactor operational — recent satellite imagery confirms activity","col":"#ff8c42"},
+    {"site":"Khushab (Pakistan)","status":"ACTIVE","level":"HIGH","detail":"Plutonium production ongoing — arsenal est. 165 warheads","col":"#ff8c42"},
+    {"site":"Dimona (Israel)","status":"UNDECLARED","level":"MED","detail":"Estimated 90 warheads — not IAEA member","col":"#ffb400"},
+    {"site":"Bushehr NPP (Iran)","status":"OPERATIONAL","level":"MED","detail":"1000MW — IAEA monitored but access reduced post-strikes","col":"#ffb400"},
+    {"site":"Seversk (Russia)","status":"ACTIVE","level":"HIGH","detail":"Pu-239 production — expanded capacity 2025","col":"#ff8c42"},
+]
+
+WMD_POSTURE = [
+    {"actor":"Iran","type":"Ballistic Missiles","status":"Elevated","assets":"Shahab-3, Fattah-2 hypersonic","risk":82,"col":"#ff3d5a"},
+    {"actor":"Russia","type":"Nuclear Posture","status":"Elevated","assets":"ICBM + tactical — doctrine lowered threshold","risk":78,"col":"#ff3d5a"},
+    {"actor":"DPRK","type":"ICBM/Nuclear","status":"Active","assets":"Hwasong-17/18 — 50+ warheads est.","risk":70,"col":"#ff8c42"},
+    {"actor":"Israel","type":"Second Strike","status":"Alert","assets":"Jericho III ICBM — submarines — ~90 warheads","risk":45,"col":"#ffb400"},
+    {"actor":"Pakistan","type":"Nuclear","status":"Normal","assets":"~165 warheads — India-Pakistan tension elevated","risk":55,"col":"#ff8c42"},
+    {"actor":"China","type":"Nuclear Buildup","status":"Expanding","assets":"400→1500 warhead expansion programme","risk":50,"col":"#ff8c42"},
+    {"actor":"USA","type":"Nuclear Readiness","status":"Normal","assets":"STRATCOM — 1700 deployed warheads","risk":20,"col":"#00c8ff"},
+]
+
 with tab_intel:
     st.markdown("""
     <div class="helper">
@@ -3969,16 +3991,7 @@ with tab_intel:
     _nuke_col1, _nuke_col2 = st.columns([1, 1], gap="medium")
     with _nuke_col1:
         st.markdown('<div class="sec-label">☢ Nuclear & WMD Status</div>', unsafe_allow_html=True)
-        NUKE_ALERTS = [
-            {"site":"Natanz (Iran)","status":"STRUCK","level":"CRITICAL","detail":"Destroyed by IDF Mar 2026 — centrifuge halls collapsed","col":"#ff3d5a"},
-            {"site":"Fordow (Iran)","status":"DESTROYED","level":"CRITICAL","detail":"Bunker-buster strike Feb 2026 — enrichment halted","col":"#ff3d5a"},
-            {"site":"Zaporizhzhia NPP","status":"OCCUPIED","level":"CRITICAL","detail":"Russian occupation continues — IAEA monitoring disrupted","col":"#ff3d5a"},
-            {"site":"Yongbyon (DPRK)","status":"ACTIVE","level":"HIGH","detail":"Plutonium reactor operational — recent satellite imagery confirms activity","col":"#ff8c42"},
-            {"site":"Khushab (Pakistan)","status":"ACTIVE","level":"HIGH","detail":"Plutonium production ongoing — arsenal est. 165 warheads","col":"#ff8c42"},
-            {"site":"Dimona (Israel)","status":"UNDECLARED","level":"MED","detail":"Estimated 90 warheads — not IAEA member","col":"#ffb400"},
-            {"site":"Bushehr NPP (Iran)","status":"OPERATIONAL","level":"MED","detail":"1000MW — IAEA monitored but access reduced post-strikes","col":"#ffb400"},
-            {"site":"Seversk (Russia)","status":"ACTIVE","level":"HIGH","detail":"Pu-239 production — expanded capacity 2025","col":"#ff8c42"},
-        ]
+        NUKE_ALERTS = NUKE_ALERTS  # defined at module level
         for _na in NUKE_ALERTS:
             _nb = "b-red" if _na["level"]=="CRITICAL" else "b-orange" if _na["level"]=="HIGH" else "b-amber"
             st.markdown(
@@ -3995,15 +4008,7 @@ with tab_intel:
 
     with _nuke_col2:
         st.markdown('<div class="sec-label">🚀 Missile & WMD Posture</div>', unsafe_allow_html=True)
-        WMD_POSTURE = [
-            {"actor":"Iran","type":"Ballistic Missiles","status":"Elevated","assets":"Shahab-3, Fattah-2 hypersonic","risk":82,"col":"#ff3d5a"},
-            {"actor":"Russia","type":"Nuclear Posture","status":"Elevated","assets":"ICBM + tactical — doctrine lowered threshold","risk":78,"col":"#ff3d5a"},
-            {"actor":"DPRK","type":"ICBM/Nuclear","status":"Active","assets":"Hwasong-17/18 — 50+ warheads est.","risk":70,"col":"#ff8c42"},
-            {"actor":"Israel","type":"Second Strike","status":"Alert","assets":"Jericho III ICBM — submarines — ~90 warheads","risk":45,"col":"#ffb400"},
-            {"actor":"Pakistan","type":"Nuclear","status":"Normal","assets":"~165 warheads — India-Pakistan tension elevated","risk":55,"col":"#ff8c42"},
-            {"actor":"China","type":"Nuclear Buildup","status":"Expanding","assets":"400→1500 warhead expansion programme","risk":50,"col":"#ff8c42"},
-            {"actor":"USA","type":"Nuclear Readiness","status":"Normal","assets":"STRATCOM — 1700 deployed warheads","risk":20,"col":"#00c8ff"},
-        ]
+        WMD_POSTURE = WMD_POSTURE  # defined at module level
         for _wp in WMD_POSTURE:
             _wr = _wp["risk"]
             _wc = "#ff3d5a" if _wr>=70 else "#ff8c42" if _wr>=50 else "#ffb400" if _wr>=35 else "#00c8ff"
