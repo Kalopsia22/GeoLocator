@@ -2593,6 +2593,119 @@ body{{background:#02040a;font-family:'DM Sans',system-ui,sans-serif;color:#e2ecf
     with st.expander(f"📍 Intelligence Profile — {display_name}", expanded=True):
         _cp.html(panel_html, height=750, scrolling=True)
 
+# ═══════════════════════════════════════════════════════════════
+# LIVE MARKET DATA FETCHERS  (Yahoo Finance · CoinGecko)
+# ═══════════════════════════════════════════════════════════════
+
+@st.cache_data(ttl=300, show_spinner=False)
+def _yahoo_batch(symbols: tuple) -> dict:
+    """Batch-fetch Yahoo Finance quotes. Returns {sym: {price, chg_pct, name, currency}}."""
+    out = {}
+    hdrs = {"User-Agent": "Mozilla/5.0 (compatible; GeoLocator/1.0)"}
+    for sym in symbols:
+        try:
+            r = requests.get(
+                f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}",
+                params={"interval": "1d", "range": "2d"},
+                headers=hdrs, timeout=8)
+            if r.status_code != 200:
+                continue
+            meta  = r.json()["chart"]["result"][0]["meta"]
+            price = float(meta.get("regularMarketPrice") or 0)
+            prev  = float(meta.get("previousClose") or meta.get("chartPreviousClose") or price or 1)
+            chg   = round((price - prev) / prev * 100, 2) if prev else 0.0
+            out[sym] = {"price": round(price, 4), "chg_pct": chg,
+                        "name": meta.get("shortName", sym),
+                        "currency": meta.get("currency", "USD")}
+        except Exception:
+            continue
+    return out
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_live_indices() -> list:
+    SYMS = {
+        "^GSPC": ("S&P 500","USA"), "^NDX": ("Nasdaq 100","USA"), "^DJI": ("Dow Jones","USA"),
+        "^FTSE": ("FTSE 100","UK"), "^GDAXI": ("DAX","Germany"), "^FCHI": ("CAC 40","France"),
+        "^N225": ("Nikkei 225","Japan"), "^HSI": ("Hang Seng","HK"),
+        "000001.SS": ("Shanghai Comp.","China"), "^BSESN": ("BSE Sensex","India"),
+        "^BVSP": ("Bovespa","Brazil"), "^VIX": ("VIX Fear Index","USA"),
+    }
+    q = _yahoo_batch(tuple(SYMS))
+    return [{"sym": s, "name": n, "country": c,
+             "price": q[s]["price"], "chg_pct": q[s]["chg_pct"]}
+            for s, (n, c) in SYMS.items() if s in q and q[s]["price"] > 0]
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_live_commodities() -> list:
+    SYMS = {
+        "GC=F": ("Gold","$/oz","precious"),    "SI=F": ("Silver","$/oz","precious"),
+        "HG=F": ("Copper","$/lb","industrial"), "PL=F": ("Platinum","$/oz","precious"),
+        "PA=F": ("Palladium","$/oz","precious"),"CL=F": ("WTI Crude","$/bbl","energy"),
+        "BZ=F": ("Brent Crude","$/bbl","energy"),"NG=F": ("Natural Gas","$/MMBtu","energy"),
+        "ZW=F": ("Wheat (CBOT)","¢/bu","agri"), "ZC=F": ("Corn","¢/bu","agri"),
+        "ZS=F": ("Soybeans","¢/bu","agri"),
+    }
+    q = _yahoo_batch(tuple(SYMS))
+    return [{"sym": s, "name": n, "unit": u, "cat": cat,
+             "price": q[s]["price"], "chg_pct": q[s]["chg_pct"]}
+            for s, (n, u, cat) in SYMS.items() if s in q and q[s]["price"] > 0]
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_live_forex() -> list:
+    PAIRS = {
+        "EURUSD=X": ("EUR/USD","Euro",False),          "GBPUSD=X": ("GBP/USD","British Pound",False),
+        "USDJPY=X": ("USD/JPY","Japanese Yen",True),   "USDCNY=X": ("USD/CNY","Chinese Yuan",True),
+        "USDINR=X": ("USD/INR","Indian Rupee",True),   "USDTRY=X": ("USD/TRY","Turkish Lira",True),
+        "USDRUB=X": ("USD/RUB","Russian Ruble",True),  "USDUAH=X": ("USD/UAH","Hryvnia",True),
+        "USDSAR=X": ("USD/SAR","Saudi Riyal",True),    "USDBRL=X": ("USD/BRL","Brazilian Real",True),
+        "USDCHF=X": ("USD/CHF","Swiss Franc",True),    "USDAED=X": ("USD/AED","UAE Dirham",True),
+    }
+    q = _yahoo_batch(tuple(PAIRS))
+    return [{"sym": s, "pair": p, "currency_name": cn, "usd_base": ub,
+             "rate": q[s]["price"], "chg_pct": q[s]["chg_pct"]}
+            for s, (p, cn, ub) in PAIRS.items() if s in q and q[s]["price"] > 0]
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def fetch_live_defense() -> list:
+    SYMS = {
+        "RTX": ("RTX (Raytheon)","USA","USD"),   "LMT": ("Lockheed Martin","USA","USD"),
+        "NOC": ("Northrop Grumman","USA","USD"),  "GD":  ("General Dynamics","USA","USD"),
+        "BA":  ("Boeing","USA","USD"),            "HII": ("Huntington Ingalls","USA","USD"),
+        "RHM.DE": ("Rheinmetall","Germany","EUR"),"SAAB-B.ST": ("Saab AB","Sweden","SEK"),
+        "BA.L": ("BAE Systems","UK","GBX"),       "AIR.PA": ("Airbus","France","EUR"),
+    }
+    q = _yahoo_batch(tuple(SYMS))
+    return [{"sym": s, "name": n, "country": c, "currency": cur,
+             "price": q[s]["price"], "chg_pct": q[s]["chg_pct"]}
+            for s, (n, c, cur) in SYMS.items() if s in q and q[s]["price"] > 0]
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_live_crypto() -> list:
+    CG = {
+        "bitcoin":("BTC","Bitcoin"),    "ethereum":("ETH","Ethereum"),
+        "solana":("SOL","Solana"),       "ripple":("XRP","XRP"),
+        "binancecoin":("BNB","BNB"),     "toncoin":("TON","Toncoin"),
+    }
+    try:
+        r = requests.get("https://api.coingecko.com/api/v3/simple/price",
+            params={"ids":",".join(CG),"vs_currencies":"usd",
+                    "include_24hr_change":"true","include_market_cap":"true"},
+            timeout=10, headers={"User-Agent":"Mozilla/5.0"})
+        r.raise_for_status()
+        data = r.json()
+        return [{"ticker":t,"name":n,"price":round(float(data[cid].get("usd",0)),2),
+                 "chg_pct":round(float(data[cid].get("usd_24h_change",0)),2),
+                 "mcap":int(data[cid].get("usd_market_cap",0) or 0)}
+                for cid,(t,n) in CG.items() if cid in data and data[cid].get("usd",0)>0]
+    except Exception:
+        return []
+
+
 # HEADER
 # ─────────────────────────────────────────────
 m5p         = eq_df[eq_df["mag"]>=5.0]
@@ -4451,6 +4564,58 @@ PIZZA_INDEX = {
     ]
 }
 
+# ── Sanctions Tracker ─────────────────────────────────────────
+SANCTIONS_DATA = [
+    {"entity":"Russia",      "type":"Comprehensive","year":2022,"scope":"G7+EU+allies","impact":"Critical",
+     "detail":"SWIFT exclusion, asset freeze, energy embargo, 3,000+ item export controls"},
+    {"entity":"Iran",        "type":"Comprehensive","year":2018,"scope":"USA+EU","impact":"Critical",
+     "detail":"Oil export ban, SWIFT cutoff, nuclear programme restrictions, JCPOA collapsed"},
+    {"entity":"North Korea", "type":"Comprehensive","year":2006,"scope":"UN+USA+EU","impact":"Critical",
+     "detail":"Arms embargo, financial restrictions, luxury goods ban, coal & seafood exports banned"},
+    {"entity":"Venezuela",   "type":"Sectoral",     "year":2017,"scope":"USA+EU","impact":"High",
+     "detail":"Oil sector, gold trade, financial system — Maduro regime targeted"},
+    {"entity":"Myanmar",     "type":"Targeted",     "year":2021,"scope":"USA+EU+UK","impact":"High",
+     "detail":"Military junta post-coup targeted, gems & timber sectors, SWIFT limited"},
+    {"entity":"Belarus",     "type":"Sectoral",     "year":2021,"scope":"USA+EU+UK","impact":"High",
+     "detail":"Potash, financial sector, aviation — Lukashenko regime officials"},
+    {"entity":"Cuba",        "type":"Comprehensive","year":1962,"scope":"USA","impact":"High",
+     "detail":"Oldest active US embargo — trade, financial, travel restrictions since 1962"},
+    {"entity":"Syria",       "type":"Comprehensive","year":2012,"scope":"USA+EU","impact":"High",
+     "detail":"Government, military, central bank — energy sector embargo"},
+    {"entity":"Sudan",       "type":"Targeted",     "year":2017,"scope":"USA","impact":"Med",
+     "detail":"Arms embargo, RSF+SAF commanders, human rights violators targeted"},
+    {"entity":"Nicaragua",   "type":"Targeted",     "year":2018,"scope":"USA+EU","impact":"Med",
+     "detail":"Ortega officials, election fraud, judicial system corruption"},
+]
+
+# ── Currency Crisis / Devaluation Monitor ─────────────────────
+CURRENCY_CRISIS = [
+    {"country":"Argentina", "currency":"ARS","usd_rate":1015, "yoy_chg":210,"status":"Crisis",  "col":"#f87171","note":"Milei shock therapy — hyperinflation legacy"},
+    {"country":"Turkey",    "currency":"TRY","usd_rate":38.2, "yoy_chg":62, "status":"Crisis",  "col":"#f87171","note":"Erdogan monetary unorthodoxy — structural lira decline"},
+    {"country":"Venezuela", "currency":"VES","usd_rate":40.1, "yoy_chg":180,"status":"Crisis",  "col":"#f87171","note":"Petro collapse + US sanctions — economy in freefall"},
+    {"country":"Sudan",     "currency":"SDG","usd_rate":595,  "yoy_chg":140,"status":"Crisis",  "col":"#f87171","note":"Civil war + RSF looting — monetary system collapsed"},
+    {"country":"Egypt",     "currency":"EGP","usd_rate":50.5, "yoy_chg":68, "status":"Stress",  "col":"#fb923c","note":"IMF bailout 2024 — FX crisis stabilising slowly"},
+    {"country":"Nigeria",   "currency":"NGN","usd_rate":1610, "yoy_chg":55, "status":"Stress",  "col":"#fb923c","note":"Tinubu FX reform — parallel rate gap narrowing"},
+    {"country":"Ethiopia",  "currency":"ETB","usd_rate":124,  "yoy_chg":30, "status":"Stress",  "col":"#fb923c","note":"Tigray aftermath + drought — forex reserves depleted"},
+    {"country":"Ghana",     "currency":"GHS","usd_rate":15.4, "yoy_chg":28, "status":"Stress",  "col":"#fb923c","note":"IMF programme 2024 — debt restructure stabilising"},
+    {"country":"Pakistan",  "currency":"PKR","usd_rate":278,  "yoy_chg":22, "status":"Pressure","col":"#fbbf24","note":"IMF bailout — political instability weighing on FX"},
+    {"country":"Ukraine",   "currency":"UAH","usd_rate":41.8, "yoy_chg":18, "status":"Pressure","col":"#fbbf24","note":"Managed float — NBU intervention + Western aid propping"},
+]
+
+# ── Geopolitical Risk Premiums ─────────────────────────────────
+GEO_RISK_PREMIUMS = [
+    {"name":"Red Sea / Houthi Attacks",  "asset":"Oil/Shipping","impact":"+$12-18/bbl  ·  +110% freight","driver":"Houthi missile+drone ops","status":"Active"},
+    {"name":"Hormuz Closure Scenario",   "asset":"Oil",         "impact":"+$40-80/bbl spike risk",        "driver":"Iran-Israel escalation","status":"Elevated"},
+    {"name":"Black Sea Grain Corridor",  "asset":"Wheat/Corn",  "impact":"Wheat +18%  ·  Corn +8%",       "driver":"Ukraine war + Russia blockade","status":"Active"},
+    {"name":"Russia Gas Cutoff (EU)",    "asset":"Nat Gas",     "impact":"EU TTF +35% vs baseline",       "driver":"War sanctions + NS2 sabotage","status":"Active"},
+    {"name":"Taiwan Strait Flashpoint",  "asset":"Semis/Tech",  "impact":"Semi stocks -25% scenario",     "driver":"PLA exercise pressure + TSMC","status":"Elevated"},
+    {"name":"Suez Canal Rerouting",      "asset":"Shipping",    "impact":"Asia-Europe freight +110%",     "driver":"Red Sea crisis → Cape detour","status":"Active"},
+    {"name":"Middle East Escalation",    "asset":"Oil/Gold",    "impact":"Oil +8-15%  ·  Gold +5-10%",    "driver":"Iran nuclear strikes aftermath","status":"Elevated"},
+    {"name":"DPRK Provocation Risk",     "asset":"Nikkei/KOSPI","impact":"NK test → Nikkei -2-4%",        "driver":"Hwasong-17/18 ICBM posture","status":"Watch"},
+    {"name":"Russia Nuclear Signalling", "asset":"All markets", "impact":"VIX spike +8-15 pts",           "driver":"Tactical doctrine threshold lowered","status":"Watch"},
+    {"name":"US-China Trade War",        "asset":"Tech/Mfg",   "impact":"Semi tariffs +25-50%",           "driver":"Export controls + CHIPS Act","status":"Elevated"},
+]
+
 INTEL_FEED_SOURCES = [
     {"source":"Foreign Policy","cat":"ALERT","tag":"MILITARY","title":"Six U.S. Troops Killed in Aircraft Crash in Iraq","time":"20h ago","url":"https://foreignpolicy.com"},
     {"source":"Atlantic Council","cat":"ALERT","tag":"CONFLICT","title":"UN: Putin's deportation of Ukrainian children is a crime against humanity","time":"8h ago","url":"https://atlanticcouncil.org"},
@@ -4781,9 +4946,42 @@ with tab_econ:
     import json as _ej
     import streamlit.components.v1 as _ec
 
+    # ── Fetch live market data ──────────────────────────────────
+    _live_indices     = fetch_live_indices()
+    _live_commodities = fetch_live_commodities()
+    _live_forex       = fetch_live_forex()
+    _live_defense     = fetch_live_defense()
+    _live_crypto      = fetch_live_crypto()
+
+    # Live-update oil prices if Yahoo succeeded
+    _oil_out = []
+    _oil_map = {c["name"]: c for c in _live_commodities} if _live_commodities else {}
+    for _o in OIL_DATA:
+        _lv = _oil_map.get(_o["name"])
+        if _lv:
+            _oil_out.append({**_o, "val": _lv["price"], "change": round(_lv["chg_pct"], 2)})
+        else:
+            _oil_out.append(_o)
+
+    # Live-update crypto if CoinGecko succeeded
+    _crypto_out = _live_crypto if _live_crypto else CRYPTO_DATA
+
+    from datetime import datetime as _dtnow, timezone as _tzutc
+    _data_ts   = _dtnow.now(tz=_tzutc.utc).strftime("%H:%M UTC")
+    _is_live   = bool(_live_indices or _live_commodities)
+    _is_live_js = "true" if _is_live else "false"
+
     _econ_payload = _ej.dumps({
-        "indicators": ECON_INDICATORS,
-        "oil":  OIL_DATA,
+        # Live (Yahoo Finance + CoinGecko)
+        "indices":      _live_indices,
+        "commodities":  _live_commodities,
+        "forex":        _live_forex,
+        "defense":      _live_defense,
+        "crypto_live":  _crypto_out,
+        "ts":           _data_ts,
+        # Static / semi-static
+        "indicators":   ECON_INDICATORS,
+        "oil":          _oil_out,
         "bonds": [
             {"name":"US 10Y","yield":4.42,"change":+0.03,"rating":"AAA","col":"#38bdf8"},
             {"name":"US 2Y", "yield":4.71,"change":-0.01,"rating":"AAA","col":"#38bdf8"},
@@ -4808,6 +5006,9 @@ with tab_econ:
         "market":       MARKET_RADAR,
         "btc_etf":      BTC_ETF,
         "pizza":        PIZZA_INDEX,
+        "sanctions":    SANCTIONS_DATA,
+        "currency_crisis": CURRENCY_CRISIS,
+        "geo_risk":     GEO_RISK_PREMIUMS,
     })
 
     _econ_html = f"""<!DOCTYPE html>
@@ -5031,6 +5232,15 @@ body {{
 .kpi:nth-child(2) {{ animation-delay:.08s; }}
 .kpi:nth-child(3) {{ animation-delay:.12s; }}
 .kpi:nth-child(4) {{ animation-delay:.16s; }}
+
+  .mn{{font-family:var(--fm);}}
+  .fw6{{font-weight:600;}}
+  .muted{{color:var(--ink3);}}
+  .ink2{{color:var(--ink2);}}
+  .s8{{font-size:8px;}}.s9{{font-size:9px;}}.s10{{font-size:10px;}}.s11{{font-size:11px;}}.s12{{font-size:12px;}}.s13{{font-size:13px;}}
+  .overline{{font-family:var(--fm);letter-spacing:.12em;text-transform:uppercase;}}
+  .panel{{background:var(--surface);border:1px solid var(--edge);border-radius:14px;padding:16px 18px;}}
+  .panel-hdr{{display:flex;align-items:center;gap:8px;font-family:var(--fm);font-size:9px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--ink3);margin-bottom:12px;}}
 </style>
 </head>
 <body>
@@ -5462,10 +5672,125 @@ function sw(group, id, el) {{
   card.querySelector('#'+group+'-'+id).classList.add('on');
 }}
 
+// ── Live tag helper ──────────────────────────────────────────
+function mkLt(){{
+  if(!D.ts)return'';
+  return '<span style="font-family:var(--fm);font-size:8px;display:inline-flex;align-items:center;gap:4px;padding:2px 7px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);border-radius:10px;color:var(--mint)"><span style="width:4px;height:4px;border-radius:50%;background:var(--mint);display:inline-block;animation:bl 1.2s ease-in-out infinite"></span>LIVE '+esc(D.ts)+'</span>';
+}}
+
+// ── Global Stock Indices ──────────────────────────────────────
+function panelIndices(){{
+  var arr=D.indices||[];
+  if(!arr.length)return'<div class="panel"><div class="panel-hdr">Global Indices '+mkLt()+'</div><div class="mn s10 muted">Fetching live data...</div></div>';
+  var vix=arr.filter(function(x){{return x.sym==='^VIX';}})[0],vv=vix?vix.price:0;
+  var vc=vv>=30?'var(--rose)':vv>=20?'var(--gold)':'var(--mint)';
+  var vixH=vix?('<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(0,0,0,.3);border:1px solid rgba(148,163,184,.1);border-radius:8px;margin-bottom:10px">'+'<span style="font-family:var(--fm);font-size:9px;font-weight:600;color:'+vc+'">VIX FEAR</span>'+'<span style="font-family:var(--fd);font-size:22px;color:'+vc+'">'+vv.toFixed(1)+' <span style="font-size:9px">'+(vv>=30?'EXTREME':vv>=20?'HIGH':'CALM')+'</span></span></div>'):'';
+  var rows=arr.filter(function(x){{return x.sym!=='^VIX';}}).map(function(x){{
+    var up=x.chg_pct>=0,c=up?'var(--mint)':'var(--rose)';
+    var ps=x.price>999?x.price.toLocaleString('en-US',{{maximumFractionDigits:0}}):x.price.toFixed(2);
+    return'<div class="card-row" style="border-left-color:'+c+'"><div style="display:flex;justify-content:space-between;align-items:center">'+'<div><span style="font-size:12px;font-weight:600;color:var(--ink)">'+esc(x.name)+'</span> <span class="mn s9 muted">'+esc(x.country)+'</span></div>'+'<div><span class="mn">'+ps+'</span> <span class="mn s10" style="color:'+c+'">'+(up?'&#9650;':'&#9660;')+Math.abs(x.chg_pct).toFixed(2)+'%</span></div>'+'</div></div>';
+  }}).join('');
+  return'<div class="panel"><div class="panel-hdr">Global Indices '+mkLt()+'</div>'+vixH+'<div class="scroll">'+rows+'</div></div>';
+}}
+
+// ── Forex Rates ───────────────────────────────────────────────
+function panelForex(){{
+  var arr=D.forex||[];
+  if(!arr.length)return'<div class="panel"><div class="panel-hdr">Forex Rates '+mkLt()+'</div><div class="mn s10 muted">Fetching live data...</div></div>';
+  var cmap={{}};(D.currency_crisis||[]).forEach(function(c){{cmap[c.currency]=c.status;}});
+  var rows=arr.map(function(x){{
+    var up=x.chg_pct>=0,c=up?'var(--mint)':'var(--rose)';
+    var cur=x.usd_base?x.pair.split('/')[1]:x.pair.split('/')[0];
+    var cris=cmap[cur]||'';
+    var cb=cris?('<span class="mn s8" style="padding:1px 5px;border-radius:3px;background:rgba(255,61,90,.1);color:var(--rose);border:1px solid rgba(255,61,90,.2);margin-left:4px">'+cris+'</span>'):'';
+    return'<div class="card-row" style="border-left-color:'+(cris?'var(--rose)':c)+'">'+'<div style="display:flex;justify-content:space-between;align-items:center">'+'<div><span class="mn" style="font-weight:600;color:var(--ink)">'+esc(x.pair)+'</span>'+cb+'<div class="s9 muted">'+esc(x.currency_name)+'</div></div>'+'<div><span class="mn">'+x.rate.toFixed(4)+'</span> <span class="mn s10" style="color:'+c+'">'+(up?'&#9650;':'&#9660;')+Math.abs(x.chg_pct).toFixed(2)+'%</span></div>'+'</div></div>';
+  }}).join('');
+  return'<div class="panel"><div class="panel-hdr">Forex Rates '+mkLt()+'</div><div class="scroll">'+rows+'</div></div>';
+}}
+
+// ── Commodities ───────────────────────────────────────────────
+function panelCommodities(){{
+  var arr=D.commodities||[];
+  if(!arr.length)return'<div class="panel"><div class="panel-hdr">Commodities '+mkLt()+'</div><div class="mn s10 muted">Fetching live data...</div></div>';
+  var catL={{energy:'Energy',precious:'Precious Metals',agri:'Agriculture',industrial:'Industrial',nuclear:'Nuclear'}};
+  var h='';
+  ['energy','precious','agri','industrial','nuclear'].forEach(function(cat){{
+    var items=arr.filter(function(x){{return x.cat===cat;}});
+    if(!items.length)return;
+    h+='<div class="mn s8 muted overline" style="margin:10px 0 6px">'+catL[cat]+'</div>';
+    h+=items.map(function(x){{
+      var up=x.chg_pct>=0,c=up?'var(--mint)':'var(--rose)';
+      var geo=['WTI Crude','Brent Crude','Natural Gas','Wheat (CBOT)'].indexOf(x.name)>-1;
+      return'<div class="card-row" style="border-left-color:'+(geo?'var(--gold)':c)+'">'+'<div style="display:flex;justify-content:space-between;align-items:center">'+'<div><span style="font-size:12px;font-weight:600;color:var(--ink)">'+esc(x.name)+'</span>'+(geo?'<span class="mn s8" style="color:var(--gold);margin-left:4px">GEO</span>':'')+'</div>'+'<div><span class="mn" style="color:var(--gold)">'+x.price.toLocaleString('en-US',{{maximumFractionDigits:2}})+'</span> <span class="mn s9 muted">'+esc(x.unit)+'</span> <span class="mn s10" style="color:'+c+'">'+(up?'&#9650;':'&#9660;')+Math.abs(x.chg_pct).toFixed(2)+'%</span></div>'+'</div></div>';
+    }}).join('');
+  }});
+  return'<div class="panel"><div class="panel-hdr">Commodities '+mkLt()+'</div><div class="scroll">'+h+'</div></div>';
+}}
+
+// ── Defense & Aerospace Stocks ────────────────────────────────
+function panelDefense(){{
+  var arr=D.defense||[];
+  if(!arr.length)return'<div class="panel"><div class="panel-hdr">Defense &amp; Aerospace '+mkLt()+'</div><div class="mn s10 muted">Fetching live data...</div></div>';
+  var rows=arr.map(function(x){{
+    var up=x.chg_pct>=0,c=up?'var(--mint)':'var(--rose)';
+    var cs=x.currency==='USD'?'$':x.currency==='EUR'?'\u20ac':(x.currency==='GBX'||x.currency==='GBP')?'\u00a3':'';
+    var ps=x.currency==='GBX'?(x.price/100).toFixed(2):x.price.toFixed(2);
+    return'<div class="card-row" style="border-left-color:var(--sky)">'+'<div style="display:flex;justify-content:space-between;align-items:center">'+'<div><span style="font-size:12px;font-weight:600;color:var(--ink)">'+esc(x.name)+'</span><div class="mn s9 muted">'+esc(x.country)+' \u00b7 '+esc(x.sym)+'</div></div>'+'<div><span class="mn" style="color:var(--sky)">'+cs+ps+'</span> <span class="mn s10" style="color:'+c+'">'+(up?'&#9650;':'&#9660;')+Math.abs(x.chg_pct).toFixed(2)+'%</span></div>'+'</div></div>';
+  }}).join('');
+  return'<div class="panel"><div class="panel-hdr">Defense &amp; Aerospace '+mkLt()+'</div>'+'<div class="mn s9" style="color:var(--coral);margin-bottom:10px">Conflict escalation drives these higher</div>'+'<div class="scroll">'+rows+'</div></div>';
+}}
+
+// ── Crypto (CoinGecko live) ───────────────────────────────────
+function panelCrypto(){{
+  var arr=(D.crypto_live&&D.crypto_live.length)?D.crypto_live:(D.crypto||[]);
+  var rows=arr.map(function(x){{
+    var chgV=x.chg_pct!=null?x.chg_pct:(x.change||0),up=chgV>=0,c=up?'var(--mint)':'var(--rose)';
+    var mcap=x.mcap>1e12?('$'+(x.mcap/1e12).toFixed(2)+'T'):x.mcap>1e9?('$'+(x.mcap/1e9).toFixed(1)+'B'):'';
+    var price=x.price!=null?x.price:(x.val||0);
+    return'<div class="card-row" style="border-left-color:var(--gold)">'+'<div style="display:flex;justify-content:space-between;align-items:center">'+'<div><span style="font-size:12px;font-weight:600;color:var(--ink)">'+esc(x.name)+'</span> <span class="mn s9 muted">'+esc(x.ticker)+'</span>'+(mcap?'<div class="mn s9 muted">MCap '+mcap+'</div>':'')+'</div>'+'<div><span class="mn" style="color:var(--gold)">$'+price.toLocaleString('en-US',{{minimumFractionDigits:2,maximumFractionDigits:2}})+'</span> <span class="mn s10" style="color:'+c+'">'+(up?'&#9650;':'&#9660;')+Math.abs(chgV).toFixed(2)+'%</span></div>'+'</div></div>';
+  }}).join('')||'<div class="mn s10 muted">Loading from CoinGecko...</div>';
+  return'<div class="panel"><div class="panel-hdr">Cryptocurrency '+mkLt()+'</div><div class="scroll">'+rows+'</div></div>';
+}}
+
+// ── Sanctions Tracker ─────────────────────────────────────────
+function panelSanctions(){{
+  var rows=(D.sanctions||[]).map(function(s){{
+    var col=s.impact==='Critical'?'var(--rose)':s.impact==='High'?'var(--coral)':'var(--gold)';
+    return'<div class="card-row" style="border-left-color:'+col+'">'+'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">'+'<div><span style="font-size:13px;font-weight:700;color:var(--ink)">'+esc(s.entity)+'</span> <span class="mn s9 muted">'+esc(s.type)+' \u00b7 Since '+s.year+'</span></div>'+'<span class="mn s9" style="padding:2px 7px;border-radius:4px;background:rgba(0,0,0,.3);color:'+col+'">'+s.impact+'</span></div>'+'<div class="mn s9 muted" style="margin-bottom:4px">'+esc(s.scope)+'</div>'+'<div style="font-size:11px;color:var(--ink2);line-height:1.6">'+esc(s.detail)+'</div></div>';
+  }}).join('');
+  return'<div class="panel"><div class="panel-hdr">Active Sanctions</div><div class="scroll">'+rows+'</div></div>';
+}}
+
+// ── Currency Devaluation Monitor ──────────────────────────────
+function panelCurrencyCrisis(){{
+  var sorted=[].concat(D.currency_crisis||[]).sort(function(a,b){{return b.yoy_chg-a.yoy_chg;}});
+  var rows=sorted.map(function(c){{
+    var pct=Math.min(c.yoy_chg/250*100,100),col=c.col||'var(--rose)';
+    return'<div class="card-row" style="border-left-color:'+col+'">'+'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+'<div><span style="font-size:12px;font-weight:700;color:var(--ink)">'+esc(c.country)+'</span> <span class="mn s9 muted">'+esc(c.currency)+'</span></div>'+'<div><span class="mn s11">1 USD = '+c.usd_rate.toLocaleString()+'</span> <span class="mn s10" style="color:'+col+';margin-left:8px">&#9650;'+c.yoy_chg+'% YoY</span></div></div>'+'<div style="height:4px;background:rgba(148,163,184,.08);border-radius:2px;overflow:hidden;margin-bottom:5px"><div style="height:100%;width:'+pct+'%;background:'+col+';border-radius:2px"></div></div>'+'<div class="s10 muted">'+esc(c.note)+'</div></div>';
+  }}).join('');
+  return'<div class="panel"><div class="panel-hdr">Currency Devaluation Monitor</div><div class="scroll">'+rows+'</div></div>';
+}}
+
+// ── Geopolitical Risk Premiums ────────────────────────────────
+function panelGeoRisk(){{
+  var rows=(D.geo_risk||[]).map(function(r){{
+    var col=r.status==='Active'?'var(--rose)':r.status==='Elevated'?'var(--coral)':'var(--gold)';
+    return'<div class="card-row" style="border-left-color:'+col+'">'+'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">'+'<div><div style="font-size:12px;font-weight:700;color:var(--ink)">'+esc(r.name)+'</div><div class="mn s9 muted" style="margin-top:2px">'+esc(r.driver)+' \u2014 <span style="color:var(--sky)">'+esc(r.asset)+'</span></div></div>'+'<div style="text-align:right;flex-shrink:0"><div class="mn s11" style="font-weight:700;color:'+col+'">'+esc(r.impact)+'</div><span class="mn s9" style="padding:1px 6px;border-radius:3px;background:rgba(0,0,0,.3);color:'+col+'">'+esc(r.status)+'</span></div>'+'</div></div>';
+  }}).join('');
+  return'<div class="panel"><div class="panel-hdr">Geopolitical Risk Premiums</div>'+'<div class="s10 muted" style="margin-bottom:10px">Market price impact of active conflicts and tensions</div>'+'<div class="scroll">'+rows+'</div></div>';
+}}
+
 // ── Render ────────────────────────────────────────────────────
 document.getElementById('root').innerHTML =
   kpiStrip() +
-  '<div class="main-grid">' + econPanel() + tradePanel() + supplyPanel() + finPanel() + '</div>' +
+  '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px">' +
+    panelIndices() + panelForex() + panelCommodities() + panelDefense() +
+  '</div>' +
+  '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px">' +
+    panelCrypto() + panelSanctions() + panelCurrencyCrisis() +
+  '</div>' +
+  panelGeoRisk() +
+  '<div class="main-grid" style="margin-top:18px">' + econPanel() + tradePanel() + supplyPanel() + finPanel() + '</div>' +
   '<hr class="divider">' +
   row2() +
   '<hr class="divider">' +
