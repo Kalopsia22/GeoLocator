@@ -15,6 +15,64 @@ Run:
     streamlit run app.py
 """
 
+# ── Pre-defined data constants (defined early to prevent NameError on any line) ──
+SHIPPING_RATES = [
+    {"route":"Shanghai → Rotterdam","type":"Container","rate":4820,"unit":"$/FEU","change":12.4,"status":"Elevated","note":"Red Sea rerouting via Cape"},
+    {"route":"Shanghai → Los Angeles","type":"Container","rate":3140,"unit":"$/FEU","change":4.1,"status":"Normal","note":"Trans-Pacific stable"},
+    {"route":"Rotterdam → New York","type":"Container","rate":1850,"unit":"$/FEU","change":2.8,"status":"Normal","note":"North Atlantic corridor"},
+    {"route":"Arabian Gulf → Japan","type":"VLCC Oil","rate":52000,"unit":"$/day","change":-3.2,"status":"Reduced","note":"Hormuz risk premium easing"},
+    {"route":"W.Africa → US Gulf","type":"Suezmax Oil","rate":38500,"unit":"$/day","change":1.5,"status":"Normal","note":"WAF corridor steady"},
+    {"route":"Baltic Dry Index","type":"BDI","rate":1842,"unit":"points","change":5.8,"status":"Rising","note":"Iron ore and grain demand"},
+    {"route":"LNG Spot (JKM Asia)","type":"LNG","rate":12.40,"unit":"$/MMBtu","change":8.2,"status":"Elevated","note":"Winter demand residual"},
+    {"route":"SCFI Composite","type":"Index","rate":1620,"unit":"points","change":11.6,"status":"Rising","note":"Container freight composite"},
+]
+
+CRIT_MIN_DATA = [
+    {"mineral":"Lithium",  "price":13.50,"unit":"$/kg","change":-18.4,"supply_risk":72,"top_producer":"Australia 46%","use":"EV batteries","col":"#34d399"},
+    {"mineral":"Cobalt",   "price":26.80,"unit":"$/kg","change":-8.2, "supply_risk":85,"top_producer":"DRC 70%",      "use":"Battery cathodes","col":"#38bdf8"},
+    {"mineral":"REE (Nd)", "price":68.00,"unit":"$/kg","change":4.1,  "supply_risk":88,"top_producer":"China 60%",    "use":"EV motors / wind","col":"#fbbf24"},
+    {"mineral":"Nickel",   "price":15.40,"unit":"$/kg","change":-12.1,"supply_risk":55,"top_producer":"Indonesia 37%","use":"Battery anodes","col":"#a78bfa"},
+    {"mineral":"Graphite", "price":0.48, "unit":"$/kg","change":-22.0,"supply_risk":91,"top_producer":"China 79%",    "use":"Battery anodes","col":"#fb923c"},
+    {"mineral":"Uranium",  "price":106.5,"unit":"$/lb","change":0.5,  "supply_risk":48,"top_producer":"Kazakhstan 43%","use":"Nuclear fuel","col":"#f87171"},
+    {"mineral":"Copper",   "price":8.92, "unit":"$/kg","change":3.2,  "supply_risk":42,"top_producer":"Chile 28%",   "use":"Grid / EVs / electronics","col":"#fb923c"},
+    {"mineral":"Gallium",  "price":320,  "unit":"$/kg","change":45.0, "supply_risk":95,"top_producer":"China 80%",   "use":"Semiconductors","col":"#f87171"},
+]
+
+NUKE_ALERTS = [
+    {"site":"Natanz (Iran)","status":"STRUCK","level":"CRITICAL","detail":"Destroyed by IDF Mar 2026 — centrifuge halls collapsed","col":"#ff3d5a"},
+    {"site":"Fordow (Iran)","status":"DESTROYED","level":"CRITICAL","detail":"Bunker-buster strike Feb 2026 — enrichment halted","col":"#ff3d5a"},
+    {"site":"Zaporizhzhia NPP","status":"OCCUPIED","level":"CRITICAL","detail":"Russian occupation continues — IAEA monitoring disrupted","col":"#ff3d5a"},
+    {"site":"Yongbyon (DPRK)","status":"ACTIVE","level":"HIGH","detail":"Plutonium reactor operational — recent satellite imagery confirms","col":"#ff8c42"},
+    {"site":"Khushab (Pakistan)","status":"ACTIVE","level":"HIGH","detail":"Plutonium production ongoing — arsenal est. 165 warheads","col":"#ff8c42"},
+    {"site":"Dimona (Israel)","status":"UNDECLARED","level":"MED","detail":"Estimated 90 warheads — not IAEA member","col":"#ffb400"},
+    {"site":"Bushehr NPP (Iran)","status":"OPERATIONAL","level":"MED","detail":"1000MW — IAEA monitored but access reduced post-strikes","col":"#ffb400"},
+    {"site":"Seversk (Russia)","status":"ACTIVE","level":"HIGH","detail":"Pu-239 production — expanded capacity 2025","col":"#ff8c42"},
+]
+
+WMD_POSTURE = [
+    {"actor":"Iran","type":"Ballistic Missiles","status":"Elevated","assets":"Shahab-3, Fattah-2 hypersonic","risk":82,"col":"#ff3d5a"},
+    {"actor":"Russia","type":"Nuclear Posture","status":"Elevated","assets":"ICBM + tactical — doctrine lowered threshold","risk":78,"col":"#ff3d5a"},
+    {"actor":"DPRK","type":"ICBM/Nuclear","status":"Active","assets":"Hwasong-17/18 — 50+ warheads est.","risk":70,"col":"#ff8c42"},
+    {"actor":"Israel","type":"Second Strike","status":"Alert","assets":"Jericho III ICBM — submarines — ~90 warheads","risk":45,"col":"#ffb400"},
+    {"actor":"Pakistan","type":"Nuclear","status":"Normal","assets":"~165 warheads — India-Pakistan tension elevated","risk":55,"col":"#ff8c42"},
+    {"actor":"China","type":"Nuclear Buildup","status":"Expanding","assets":"400 to 1500 warhead expansion programme","risk":50,"col":"#ff8c42"},
+    {"actor":"USA","type":"Nuclear Readiness","status":"Normal","assets":"STRATCOM — 1700 deployed warheads","risk":20,"col":"#00c8ff"},
+]
+
+GOV_BONDS = [
+    {"name":"US 10Y","yield":4.42,"change":+0.03,"rating":"AAA","col":"#38bdf8"},
+    {"name":"US 2Y", "yield":4.71,"change":-0.01,"rating":"AAA","col":"#38bdf8"},
+    {"name":"UK 10Y","yield":4.18,"change":+0.05,"rating":"AA", "col":"#34d399"},
+    {"name":"DE 10Y","yield":2.41,"change":+0.02,"rating":"AAA","col":"#34d399"},
+    {"name":"JP 10Y","yield":1.52,"change":+0.08,"rating":"A+", "col":"#fbbf24"},
+    {"name":"IT 10Y","yield":3.74,"change":+0.04,"rating":"BBB","col":"#fb923c"},
+    {"name":"IN 10Y","yield":6.83,"change":-0.02,"rating":"BBB-","col":"#fb923c"},
+    {"name":"CN 10Y","yield":2.28,"change":-0.01,"rating":"A+", "col":"#fbbf24"},
+    {"name":"TR 10Y","yield":28.4, "change":+0.60,"rating":"B+", "col":"#f87171"},
+    {"name":"NG 10Y","yield":19.6, "change":+0.30,"rating":"B-", "col":"#f87171"},
+]
+
+
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
@@ -3638,28 +3696,6 @@ CHOKEPOINTS = [
 ]
 
 
-SHIPPING_RATES = [
-    {"route":"Shanghai \u2192 Rotterdam","type":"Container","rate":4820,"unit":"$/FEU","change":12.4,"status":"Elevated","note":"Red Sea rerouting via Cape of Good Hope"},
-    {"route":"Shanghai \u2192 Los Angeles","type":"Container","rate":3140,"unit":"$/FEU","change":4.1,"status":"Normal","note":"Trans-Pacific corridor stable"},
-    {"route":"Rotterdam \u2192 New York","type":"Container","rate":1850,"unit":"$/FEU","change":2.8,"status":"Normal","note":"North Atlantic corridor"},
-    {"route":"Arabian Gulf \u2192 Japan","type":"VLCC Oil","rate":52000,"unit":"$/day","change":-3.2,"status":"Reduced","note":"Hormuz risk premium easing"},
-    {"route":"W.Africa \u2192 US Gulf","type":"Suezmax Oil","rate":38500,"unit":"$/day","change":1.5,"status":"Normal","note":"WAF corridor steady"},
-    {"route":"Baltic Dry Index","type":"BDI","rate":1842,"unit":"points","change":5.8,"status":"Rising","note":"Iron ore and grain demand"},
-    {"route":"LNG Spot (JKM Asia)","type":"LNG","rate":12.40,"unit":"$/MMBtu","change":8.2,"status":"Elevated","note":"Winter demand residual"},
-    {"route":"SCFI Composite","type":"Index","rate":1620,"unit":"points","change":11.6,"status":"Rising","note":"Container freight composite"},
-]
-
-CRIT_MIN_DATA = [
-    {"mineral":"Lithium",  "price":13.50,"unit":"$/kg","change":-18.4,"supply_risk":72,"top_producer":"Australia 46%","use":"EV batteries","col":"#34d399"},
-    {"mineral":"Cobalt",   "price":26.80,"unit":"$/kg","change":-8.2, "supply_risk":85,"top_producer":"DRC 70%",      "use":"Battery cathodes","col":"#38bdf8"},
-    {"mineral":"REE (Nd)", "price":68.00,"unit":"$/kg","change":4.1,  "supply_risk":88,"top_producer":"China 60%",    "use":"EV motors / wind","col":"#fbbf24"},
-    {"mineral":"Nickel",   "price":15.40,"unit":"$/kg","change":-12.1,"supply_risk":55,"top_producer":"Indonesia 37%","use":"Battery anodes","col":"#a78bfa"},
-    {"mineral":"Graphite", "price":0.48, "unit":"$/kg","change":-22.0,"supply_risk":91,"top_producer":"China 79%",    "use":"Battery anodes","col":"#fb923c"},
-    {"mineral":"Uranium",  "price":106.5,"unit":"$/lb","change":0.5,  "supply_risk":48,"top_producer":"Kazakhstan 43%","use":"Nuclear fuel","col":"#f87171"},
-    {"mineral":"Copper",   "price":8.92, "unit":"$/kg","change":3.2,  "supply_risk":42,"top_producer":"Chile 28%",   "use":"Grid / EVs / electronics","col":"#fb923c"},
-    {"mineral":"Gallium",  "price":320,  "unit":"$/kg","change":45.0, "supply_risk":95,"top_producer":"China 80%",   "use":"Semiconductors","col":"#f87171"},
-]
-
 # ── Trade Policy ──────────────────────────────────────────────
 TRADE_RESTRICTIONS = [
     {"country":"India","type":"MFN Applied Tariff","coverage":"All products","avg_rate":16.2,"impact":"High","year":2024},
@@ -3787,27 +3823,6 @@ MARKET_RADAR = {"label":"CASH","posture":"2/7 bullish","flow":"PASSIVE GAP","liq
 # ══════════════════════════════════════════════════════════════
 # TAB 5 — INTEL DASHBOARD
 # ══════════════════════════════════════════════════════════════
-
-NUKE_ALERTS = [
-    {"site":"Natanz (Iran)","status":"STRUCK","level":"CRITICAL","detail":"Destroyed by IDF Mar 2026 — centrifuge halls collapsed","col":"#ff3d5a"},
-    {"site":"Fordow (Iran)","status":"DESTROYED","level":"CRITICAL","detail":"Bunker-buster strike Feb 2026 — enrichment halted","col":"#ff3d5a"},
-    {"site":"Zaporizhzhia NPP","status":"OCCUPIED","level":"CRITICAL","detail":"Russian occupation continues — IAEA monitoring disrupted","col":"#ff3d5a"},
-    {"site":"Yongbyon (DPRK)","status":"ACTIVE","level":"HIGH","detail":"Plutonium reactor operational — recent satellite imagery confirms activity","col":"#ff8c42"},
-    {"site":"Khushab (Pakistan)","status":"ACTIVE","level":"HIGH","detail":"Plutonium production ongoing — arsenal est. 165 warheads","col":"#ff8c42"},
-    {"site":"Dimona (Israel)","status":"UNDECLARED","level":"MED","detail":"Estimated 90 warheads — not IAEA member","col":"#ffb400"},
-    {"site":"Bushehr NPP (Iran)","status":"OPERATIONAL","level":"MED","detail":"1000MW — IAEA monitored but access reduced post-strikes","col":"#ffb400"},
-    {"site":"Seversk (Russia)","status":"ACTIVE","level":"HIGH","detail":"Pu-239 production — expanded capacity 2025","col":"#ff8c42"},
-]
-
-WMD_POSTURE = [
-    {"actor":"Iran","type":"Ballistic Missiles","status":"Elevated","assets":"Shahab-3, Fattah-2 hypersonic","risk":82,"col":"#ff3d5a"},
-    {"actor":"Russia","type":"Nuclear Posture","status":"Elevated","assets":"ICBM + tactical — doctrine lowered threshold","risk":78,"col":"#ff3d5a"},
-    {"actor":"DPRK","type":"ICBM/Nuclear","status":"Active","assets":"Hwasong-17/18 — 50+ warheads est.","risk":70,"col":"#ff8c42"},
-    {"actor":"Israel","type":"Second Strike","status":"Alert","assets":"Jericho III ICBM — submarines — ~90 warheads","risk":45,"col":"#ffb400"},
-    {"actor":"Pakistan","type":"Nuclear","status":"Normal","assets":"~165 warheads — India-Pakistan tension elevated","risk":55,"col":"#ff8c42"},
-    {"actor":"China","type":"Nuclear Buildup","status":"Expanding","assets":"400→1500 warhead expansion programme","risk":50,"col":"#ff8c42"},
-    {"actor":"USA","type":"Nuclear Readiness","status":"Normal","assets":"STRATCOM — 1700 deployed warheads","risk":20,"col":"#00c8ff"},
-]
 
 with tab_intel:
     st.markdown("""
@@ -4111,26 +4126,6 @@ with tab_econ:
     import json as _ej
     import streamlit.components.v1 as _ec
 
-    # Inline fallbacks — work regardless of which file version is deployed
-    try:
-        _sr = SHIPPING_RATES
-    except NameError:
-        _sr = [
-            {"route":"Shanghai → Rotterdam","type":"Container","rate":4820,"unit":"$/FEU","change":12.4,"status":"Elevated","note":"Red Sea rerouting via Cape"},
-            {"route":"Shanghai → LA","type":"Container","rate":3140,"unit":"$/FEU","change":4.1,"status":"Normal","note":"Trans-Pacific stable"},
-            {"route":"Baltic Dry Index","type":"BDI","rate":1842,"unit":"points","change":5.8,"status":"Rising","note":"Dry bulk demand"},
-            {"route":"LNG Spot (JKM)","type":"LNG","rate":12.40,"unit":"$/MMBtu","change":8.2,"status":"Elevated","note":"Asian spot market"},
-        ]
-    try:
-        _cm = CRIT_MIN_DATA
-    except NameError:
-        _cm = [
-            {"mineral":"Lithium","price":13.50,"unit":"$/kg","change":-18.4,"supply_risk":72,"top_producer":"Australia 46%","use":"EV batteries","col":"#34d399"},
-            {"mineral":"Cobalt","price":26.80,"unit":"$/kg","change":-8.2,"supply_risk":85,"top_producer":"DRC 70%","use":"Battery cathodes","col":"#38bdf8"},
-            {"mineral":"Graphite","price":0.48,"unit":"$/kg","change":-22.0,"supply_risk":91,"top_producer":"China 79%","use":"Battery anodes","col":"#fb923c"},
-            {"mineral":"Gallium","price":320,"unit":"$/kg","change":45.0,"supply_risk":95,"top_producer":"China 80%","use":"Semiconductors","col":"#f87171"},
-        ]
-
     _econ_payload = _ej.dumps({
         "indicators": ECON_INDICATORS,
         "oil":  OIL_DATA,
@@ -4149,8 +4144,8 @@ with tab_econ:
         "restrictions": TRADE_RESTRICTIONS,
         "tariffs":      TARIFFS,
         "chokepoints":  CHOKEPOINTS,
-        "shipping":     _sr,
-        "minerals":     _cm,
+        "shipping":     SHIPPING_RATES,
+        "minerals":     CRIT_MIN_DATA,
         "crypto":       CRYPTO_DATA,
         "sectors":      SECTOR_HEATMAP,
         "layoffs":      LAYOFFS,
