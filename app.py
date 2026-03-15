@@ -3637,6 +3637,29 @@ CHOKEPOINTS = [
     },
 ]
 
+
+SHIPPING_RATES = [
+    {"route":"Shanghai \u2192 Rotterdam","type":"Container","rate":4820,"unit":"$/FEU","change":12.4,"status":"Elevated","note":"Red Sea rerouting via Cape of Good Hope"},
+    {"route":"Shanghai \u2192 Los Angeles","type":"Container","rate":3140,"unit":"$/FEU","change":4.1,"status":"Normal","note":"Trans-Pacific corridor stable"},
+    {"route":"Rotterdam \u2192 New York","type":"Container","rate":1850,"unit":"$/FEU","change":2.8,"status":"Normal","note":"North Atlantic corridor"},
+    {"route":"Arabian Gulf \u2192 Japan","type":"VLCC Oil","rate":52000,"unit":"$/day","change":-3.2,"status":"Reduced","note":"Hormuz risk premium easing"},
+    {"route":"W.Africa \u2192 US Gulf","type":"Suezmax Oil","rate":38500,"unit":"$/day","change":1.5,"status":"Normal","note":"WAF corridor steady"},
+    {"route":"Baltic Dry Index","type":"BDI","rate":1842,"unit":"points","change":5.8,"status":"Rising","note":"Iron ore and grain demand"},
+    {"route":"LNG Spot (JKM Asia)","type":"LNG","rate":12.40,"unit":"$/MMBtu","change":8.2,"status":"Elevated","note":"Winter demand residual"},
+    {"route":"SCFI Composite","type":"Index","rate":1620,"unit":"points","change":11.6,"status":"Rising","note":"Container freight composite"},
+]
+
+CRIT_MIN_DATA = [
+    {"mineral":"Lithium",  "price":13.50,"unit":"$/kg","change":-18.4,"supply_risk":72,"top_producer":"Australia 46%","use":"EV batteries","col":"#34d399"},
+    {"mineral":"Cobalt",   "price":26.80,"unit":"$/kg","change":-8.2, "supply_risk":85,"top_producer":"DRC 70%",      "use":"Battery cathodes","col":"#38bdf8"},
+    {"mineral":"REE (Nd)", "price":68.00,"unit":"$/kg","change":4.1,  "supply_risk":88,"top_producer":"China 60%",    "use":"EV motors / wind","col":"#fbbf24"},
+    {"mineral":"Nickel",   "price":15.40,"unit":"$/kg","change":-12.1,"supply_risk":55,"top_producer":"Indonesia 37%","use":"Battery anodes","col":"#a78bfa"},
+    {"mineral":"Graphite", "price":0.48, "unit":"$/kg","change":-22.0,"supply_risk":91,"top_producer":"China 79%",    "use":"Battery anodes","col":"#fb923c"},
+    {"mineral":"Uranium",  "price":106.5,"unit":"$/lb","change":0.5,  "supply_risk":48,"top_producer":"Kazakhstan 43%","use":"Nuclear fuel","col":"#f87171"},
+    {"mineral":"Copper",   "price":8.92, "unit":"$/kg","change":3.2,  "supply_risk":42,"top_producer":"Chile 28%",   "use":"Grid / EVs / electronics","col":"#fb923c"},
+    {"mineral":"Gallium",  "price":320,  "unit":"$/kg","change":45.0, "supply_risk":95,"top_producer":"China 80%",   "use":"Semiconductors","col":"#f87171"},
+]
+
 # ── Trade Policy ──────────────────────────────────────────────
 TRADE_RESTRICTIONS = [
     {"country":"India","type":"MFN Applied Tariff","coverage":"All products","avg_rate":16.2,"impact":"High","year":2024},
