@@ -2635,25 +2635,190 @@ async function main(){{const se=document.getElementById('st'),ge=document.getEle
     tl_c, side_c = st.columns([2,1], gap="medium")
     with tl_c:
         st.markdown('<div class="sec-label">📅 Conflict Timeline</div>', unsafe_allow_html=True)
-        st.plotly_chart(conflict_timeline_chart(C["timeline"]),use_container_width=True,config={"displayModeBar":False})
-        st.markdown("""
-        <div style="display:flex;gap:14px;margin-bottom:12px;flex-wrap:wrap">
-          <span style="font-size:11px;color:#ff3d5a">● Escalation</span>
-          <span style="font-size:11px;color:#00c8ff">● Milestone</span>
-          <span style="font-size:11px;color:#00e676">● Diplomatic</span>
-          <span style="font-size:11px;color:#ffb400">● Setback</span>
-          <span style="font-size:11px;color:#9d6eff">● Ongoing</span>
-        </div>""", unsafe_allow_html=True)
-        tl_tc = {"escalation":"var(--red)","milestone":"var(--cyan)","diplomatic":"var(--green)","setback":"var(--amber)","ongoing":"var(--violet)"}
-        for item in reversed(C["timeline"]):
-            col = tl_tc.get(item["type"],"var(--muted)")
-            st.markdown(f"""
-            <div class="tl-item" style="border-left:1px solid var(--bord2)">
-              <div style="position:absolute;left:-5px;top:4px;width:9px;height:9px;border-radius:50%;background:{col}"></div>
-              <div class="tl-date">{item['date']}</div>
-              <div class="tl-text">{item['event']}</div>
-              <div class="tl-tag" style="color:{col}">{item['type'].upper()}</div>
-            </div>""", unsafe_allow_html=True)
+
+        import json as _json
+        _tc_colors = {
+            "escalation": "#ff3d5a", "milestone": "#00c8ff",
+            "diplomatic": "#00e676", "setback":   "#ffb400", "ongoing": "#9d6eff",
+        }
+        _tc_icons = {
+            "escalation": "⬆", "milestone": "⭐",
+            "diplomatic": "🤝", "setback":   "⬇", "ongoing": "🔴",
+        }
+        _tc_labels = {
+            "escalation": "ESCALATION", "milestone": "MILESTONE",
+            "diplomatic": "DIPLOMATIC", "setback":   "SETBACK", "ongoing": "ONGOING",
+        }
+        _tl_items = [
+            {
+                "date":  item["date"],
+                "event": item["event"],
+                "type":  item["type"],
+                "color": _tc_colors.get(item["type"], "#4a6b85"),
+                "icon":  _tc_icons.get(item["type"], "●"),
+                "label": _tc_labels.get(item["type"], item["type"].upper()),
+            }
+            for item in reversed(C["timeline"])
+        ]
+        _tl_js     = _json.dumps(_tl_items)
+        _tl_accent = conflict_accent
+        _tl_count  = len(_tl_items)
+
+        _tl_html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@400;600&display=swap');
+*{{margin:0;padding:0;box-sizing:border-box;}}
+body{{background:#02040a;font-family:'DM Sans',system-ui,sans-serif;color:#e2ecf8;
+      padding:16px 12px 8px;}}
+
+/* ── Legend ── */
+.legend{{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;padding:10px 14px;
+         background:#060d18;border:1px solid rgba(0,200,255,.07);border-radius:8px;}}
+.leg{{display:flex;align-items:center;gap:6px;font-size:10px;color:#4a6b85;}}
+.leg-dot{{width:9px;height:9px;border-radius:50%;flex-shrink:0;}}
+
+/* ── Outer track ── */
+.track{{position:relative;padding-left:56px;}}
+.track-line{{
+  position:absolute;left:20px;top:12px;bottom:12px;width:2px;
+  background:linear-gradient(180deg,
+    {_tl_accent}80 0%,
+    rgba(0,200,255,.25) 40%,
+    rgba(0,200,255,.08) 100%);
+}}
+
+/* ── Each event card ── */
+.item{{
+  position:relative;
+  margin-bottom:12px;
+  opacity:0;
+  transform:translateX(12px);
+  animation:fadeIn .35s ease forwards;
+}}
+.item:last-child{{margin-bottom:0;}}
+@keyframes fadeIn{{to{{opacity:1;transform:translateX(0);}}}}
+
+/* Dot + connector */
+.node{{
+  position:absolute;left:-46px;top:16px;
+  display:flex;align-items:center;gap:0;
+}}
+.dot{{
+  width:24px;height:24px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;flex-shrink:0;
+  border:2px solid #02040a;
+  box-shadow:0 0 16px rgba(0,0,0,.6),0 0 0 3px rgba(0,0,0,.3);
+  transition:transform .2s;
+}}
+.item:hover .dot{{transform:scale(1.15);}}
+.conn{{width:20px;height:2px;flex-shrink:0;opacity:.3;}}
+
+/* Card body */
+.card{{
+  background:#0b1524;
+  border:1px solid rgba(0,200,255,.08);
+  border-radius:10px;
+  padding:13px 16px;
+  transition:border-color .2s,box-shadow .2s,transform .15s;
+  cursor:default;
+}}
+.card:hover{{
+  border-color:rgba(0,200,255,.22);
+  box-shadow:0 4px 20px rgba(0,0,0,.35);
+  transform:translateY(-1px);
+}}
+.card-header{{display:flex;align-items:center;justify-content:space-between;
+               margin-bottom:7px;gap:8px;flex-wrap:wrap;}}
+.date{{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;
+  color:#4a6b85;letter-spacing:.04em;
+}}
+.badge{{
+  display:inline-flex;align-items:center;padding:2px 9px;
+  border-radius:5px;font-family:'IBM Plex Mono',monospace;
+  font-size:9px;font-weight:600;letter-spacing:.07em;
+  border:1px solid;white-space:nowrap;
+}}
+.event-text{{
+  font-size:13px;font-weight:600;color:#e2ecf8;line-height:1.5;
+}}
+
+/* Year group separator */
+.year-sep{{
+  display:flex;align-items:center;gap:10px;
+  margin:18px 0 14px;font-family:'Bebas Neue',sans-serif;
+  font-size:16px;letter-spacing:.12em;color:#4a6b85;
+}}
+.year-sep::after{{content:'';flex:1;height:1px;background:rgba(0,200,255,.08);}}
+</style>
+</head><body>
+
+<div class="legend">
+  <div class="leg"><div class="leg-dot" style="background:#ff3d5a"></div>Escalation</div>
+  <div class="leg"><div class="leg-dot" style="background:#00c8ff"></div>Milestone</div>
+  <div class="leg"><div class="leg-dot" style="background:#00e676"></div>Diplomatic</div>
+  <div class="leg"><div class="leg-dot" style="background:#ffb400"></div>Setback</div>
+  <div class="leg"><div class="leg-dot" style="background:#9d6eff"></div>Ongoing</div>
+</div>
+
+<div class="track">
+  <div class="track-line"></div>
+  <div id="tl"></div>
+</div>
+
+<script>
+const items = {_tl_js};
+const badgeBg = {{
+  escalation:"rgba(255,61,90,.13)", milestone:"rgba(0,200,255,.13)",
+  diplomatic:"rgba(0,230,118,.13)", setback:"rgba(255,180,0,.13)",
+  ongoing:"rgba(157,110,255,.13)",
+}};
+const tl = document.getElementById("tl");
+let lastYear = null;
+let html = "";
+
+items.forEach((item, idx) => {{
+  const year = item.date.slice(0,4);
+  if(year !== lastYear) {{
+    html += `<div class="year-sep">${{year}}</div>`;
+    lastYear = year;
+  }}
+
+  const bg  = badgeBg[item.type] || "rgba(74,107,133,.13)";
+  const col = item.color;
+  const delay = idx * 0.04;
+
+  html += `
+  <div class="item" style="animation-delay:${{delay}}s">
+    <div class="node">
+      <div class="dot" style="background:${{col}}20;border-color:${{col}};box-shadow:0 0 12px ${{col}}40,0 0 0 3px #02040a">
+        <span>${{item.icon}}</span>
+      </div>
+      <div class="conn" style="background:${{col}}"></div>
+    </div>
+    <div class="card" style="border-left:3px solid ${{col}}55">
+      <div class="card-header">
+        <span class="date">${{item.date}}</span>
+        <span class="badge" style="color:${{col}};border-color:${{col}}44;background:${{bg}}">
+          ${{item.label}}
+        </span>
+      </div>
+      <div class="event-text">${{item.event}}</div>
+    </div>
+  </div>`;
+}});
+
+tl.innerHTML = html;
+</script>
+</body></html>"""
+
+        # Height: legend(70) + year headers(~30 each) + cards(~75 each)
+        _n_years = len(set(it["date"][:4] for it in _tl_items))
+        _tl_height = min(110 + _n_years * 35 + _tl_count * 78, 740)
+        import streamlit.components.v1 as _stc
+        _stc.html(_tl_html, height=_tl_height, scrolling=True)
 
     with side_c:
         st.markdown('<div class="sec-label">⟶ Supply & Support Lines</div>', unsafe_allow_html=True)
