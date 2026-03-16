@@ -2712,396 +2712,654 @@ def fetch_live_crypto() -> list:
 # CINEMATIC INTRO  (plays once per session, 10 s)
 # ─────────────────────────────────────────────
 if not st.session_state.get("intro_shown", False):
-    import time as _intro_time
+    import time as _it
 
-    # ── Inject fullscreen intro directly into the Streamlit page ──────────
-    # Hide all Streamlit chrome while intro plays
     st.markdown("""
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-/* Hide entire Streamlit UI while intro plays */
-[data-testid="stAppViewContainer"] > section:first-child,
-[data-testid="stSidebar"],
-[data-testid="stHeader"],
-[data-testid="stToolbar"],
-footer { display: none !important; }
-[data-testid="stAppViewContainer"] {
-    background: #000 !important;
-    padding: 0 !important;
+/* ── Hide all Streamlit chrome ── */
+#root > div:first-child,
+[data-testid="stAppViewContainer"] > section:first-child { display:none!important; }
+[data-testid="stSidebar"]  { display:none!important; }
+[data-testid="stHeader"]   { display:none!important; }
+[data-testid="stToolbar"]  { display:none!important; }
+footer                     { display:none!important; }
+[data-testid="stAppViewContainer"] { padding:0!important; background:#02040a!important; }
+[data-testid="block-container"]    { padding:0!important; max-width:100%!important; }
+.main .block-container             { padding:0!important; }
+
+/* ── Intro overlay ── */
+#geo-intro {
+  position:fixed; inset:0; z-index:999999;
+  background:#02040a;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  overflow:hidden; font-family:'DM Sans',system-ui,sans-serif;
 }
-[data-testid="block-container"] {
-    padding: 0 !important;
-    max-width: 100% !important;
+
+/* Canvases */
+#gi-bg, #gi-globe, #gi-fx {
+  position:absolute; inset:0; width:100%; height:100%;
 }
-#intro-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 99999;
-    background: #000;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Arial', sans-serif;
-    overflow: hidden;
+#gi-globe, #gi-fx { pointer-events:none; }
+
+/* Scan lines + vignette */
+#gi-scan {
+  position:absolute; inset:0; pointer-events:none; z-index:5;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.04) 3px,rgba(0,0,0,.04) 6px);
 }
-#bg-c, #gb-c, #fx-c {
-    position: absolute; inset: 0;
-    width: 100%; height: 100%;
+#gi-vig {
+  position:absolute; inset:0; pointer-events:none; z-index:4;
+  background:radial-gradient(ellipse 90% 90% at 50% 50%, transparent 30%, rgba(2,4,10,.92) 100%);
 }
-#gb-c, #fx-c { pointer-events: none; }
-#scanline {
-    position: absolute; inset: 0;
-    background: repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.06) 3px,rgba(0,0,0,.06) 6px);
-    pointer-events: none; z-index: 5;
+
+/* ── PHASE 1: classification flash (0 → 1.8s) ── */
+#gi-phase1 {
+  position:absolute; z-index:20; text-align:center; width:100%;
+  opacity:0; animation:gi-fadein .3s ease .1s forwards, gi-fadeout .4s ease 1.7s forwards;
 }
-#vignette {
-    position: absolute; inset: 0;
-    background: radial-gradient(ellipse 80% 80% at 50% 50%, transparent 35%, rgba(0,0,0,.88) 100%);
-    pointer-events: none; z-index: 4;
+@keyframes gi-fadein  { to { opacity:1 } }
+@keyframes gi-fadeout { to { opacity:0 } }
+.gi-cbar {
+  height:1px; background:linear-gradient(90deg,transparent,#ff3d5a,transparent);
+  margin:6px auto; width:clamp(180px,35vw,480px);
+  animation:gi-scaleX .8s ease .15s forwards; opacity:0; transform:scaleX(0);
 }
-#intro-content {
-    position: absolute; z-index: 10;
-    text-align: center; width: 100%;
-    top: 50%; transform: translateY(-50%);
+@keyframes gi-scaleX { to { opacity:1; transform:scaleX(1) } }
+.gi-cline {
+  font-family:'IBM Plex Mono',monospace; font-size:clamp(8px,1.1vw,12px);
+  letter-spacing:.3em; color:#ff3d5a; text-transform:uppercase; margin:4px 0;
 }
-#phase1 { opacity:0; animation: p1in .4s ease .2s forwards, p1out .3s ease 1.6s forwards; }
-@keyframes p1in  { to { opacity:1 } }
-@keyframes p1out { to { opacity:0 } }
-.classline {
-    font-size: clamp(8px,1.2vw,13px); letter-spacing:.35em;
-    color:#ff3d5a; text-transform:uppercase; margin:3px 0; font-weight:700;
+
+/* ── PHASE 2: main content (fades in at 2s) ── */
+#gi-phase2 {
+  position:absolute; z-index:20; text-align:center; width:100%;
+  opacity:0; animation:gi-fadein .7s ease 2s forwards;
 }
-.classbar {
-    height:2px; background:linear-gradient(90deg,transparent,#ff3d5a,transparent);
-    margin:8px auto; width:clamp(200px,40vw,500px);
-    animation: classbar 1s ease .3s forwards; opacity:0; transform:scaleX(0);
+
+/* Logo */
+#gi-logo-wrap {
+  opacity:0; transform:translateY(10px);
+  animation:gi-logoin 1s cubic-bezier(.16,1,.3,1) 3s forwards;
 }
-@keyframes classbar { to { opacity:1; transform:scaleX(1) } }
-#phase2 { opacity:0; animation: pfade .6s ease 2s forwards; }
-@keyframes pfade { to { opacity:1 } }
-#intro-logo-wrap {
-    opacity:0; transform:translateY(8px);
-    animation: logoin 1s cubic-bezier(.16,1,.3,1) 3.2s forwards;
+@keyframes gi-logoin { to { opacity:1; transform:translateY(0) } }
+#gi-logo {
+  font-family:'Bebas Neue','Impact',sans-serif;
+  font-size:clamp(40px,9vw,110px);
+  letter-spacing:.18em; color:#00c8ff; line-height:1;
+  text-shadow:0 0 60px rgba(0,200,255,.8), 0 0 120px rgba(0,200,255,.3), 0 0 3px rgba(255,255,255,.6);
 }
-@keyframes logoin { to { opacity:1; transform:translateY(0) } }
-#intro-logo {
-    font-family: 'Arial Black', Impact, sans-serif;
-    font-size: clamp(32px,7vw,88px);
-    font-weight:900; letter-spacing:.16em; color:#00c8ff; line-height:1;
-    text-shadow: 0 0 50px rgba(0,200,255,.9), 0 0 100px rgba(0,200,255,.4), 0 0 2px #fff;
+#gi-logo em {
+  color:#ffb400; font-style:normal;
+  text-shadow:0 0 60px rgba(255,180,0,.8), 0 0 120px rgba(255,180,0,.3);
 }
-#intro-logo em { color:#ffb400; font-style:normal; text-shadow:0 0 50px rgba(255,180,0,.9),0 0 100px rgba(255,180,0,.4); }
-#intro-logo-sub {
-    font-size:clamp(8px,1.3vw,15px); letter-spacing:.4em;
-    text-transform:uppercase; color:rgba(0,200,255,.55); margin-top:10px;
+#gi-sub {
+  font-family:'IBM Plex Mono',monospace; font-size:clamp(8px,1.2vw,14px);
+  letter-spacing:.38em; text-transform:uppercase; color:rgba(0,200,255,.5);
+  margin-top:8px;
 }
-#intro-divider {
-    height:1px; background:linear-gradient(90deg,transparent,rgba(0,200,255,.5),rgba(255,180,0,.5),transparent);
-    margin:18px auto; width:0; animation: divexpand .8s ease 4.4s forwards;
+
+/* Divider */
+#gi-div {
+  height:1px; margin:16px auto; width:0;
+  background:linear-gradient(90deg,transparent,rgba(0,200,255,.45),rgba(255,180,0,.45),transparent);
+  animation:gi-divexp .7s ease 4.2s forwards;
 }
-@keyframes divexpand { to { width:clamp(260px,50vw,640px) } }
-#intro-stats {
-    display:flex; justify-content:center; gap:clamp(20px,5vw,60px);
-    opacity:0; transform:translateY(10px); animation: statsin .7s ease 5s forwards;
+@keyframes gi-divexp { to { width:clamp(240px,46vw,620px) } }
+
+/* Chess scene */
+#gi-chess-wrap {
+  opacity:0; transform:translateY(6px);
+  animation:gi-logoin .8s ease 4.6s forwards;
+  display:flex; flex-direction:column; align-items:center; gap:10px;
+  margin-top:8px;
 }
-@keyframes statsin { to { opacity:1; transform:translateY(0) } }
-.istat .n { font-family:'Arial Black',sans-serif; font-size:clamp(22px,4vw,48px); font-weight:900; line-height:1; }
-.istat .l { font-size:clamp(7px,1vw,11px); letter-spacing:.22em; text-transform:uppercase; color:rgba(255,255,255,.35); margin-top:5px; }
-.isep { width:1px; background:rgba(255,255,255,.1); align-self:stretch; margin:4px 0; }
-#ticker-wrap {
-    position:absolute; bottom:52px; left:0; right:0; height:28px;
-    background:rgba(0,0,0,.7); border-top:1px solid rgba(255,61,90,.25);
-    display:flex; align-items:center; overflow:hidden;
-    opacity:0; animation: pfade .5s ease 6.2s forwards;
+#gi-chess {
+  border:1px solid rgba(0,200,255,.15);
+  border-radius:3px;
+  box-shadow:0 0 32px rgba(0,200,255,.12), 0 0 80px rgba(0,0,0,.8);
+  image-rendering:pixelated;
 }
-.ticker-label {
-    position:absolute; left:0; top:0; bottom:0; background:#ff3d5a;
-    color:#fff; font-size:10px; font-weight:700; letter-spacing:.15em;
-    padding:0 14px; display:flex; align-items:center; white-space:nowrap; z-index:2;
+.gi-chess-label {
+  font-family:'IBM Plex Mono',monospace;
+  font-size:clamp(8px,1vw,11px); letter-spacing:.28em;
+  text-transform:uppercase; color:rgba(255,61,90,.7);
+  animation:gi-chess-pulse 1s ease-in-out infinite;
 }
-.ticker-inner {
-    display:inline-block; white-space:nowrap; font-size:11px;
-    color:rgba(255,255,255,.55); letter-spacing:.06em;
-    padding-left:100%; animation: tickscroll 14s linear infinite;
+@keyframes gi-chess-pulse { 0%,100%{opacity:.7} 50%{opacity:1} }
+
+/* ── HUD corners ── */
+.gi-hud {
+  position:absolute; z-index:20;
+  opacity:0; animation:gi-fadein .5s ease 5.8s forwards;
 }
-@keyframes tickscroll { from{transform:translateX(0)} to{transform:translateX(-50%)} }
-.hud-corner { position:absolute; z-index:10; opacity:0; animation:pfade .5s ease 6s forwards; }
-#hud-tl { top:18px; left:18px; }
-#hud-tr { top:18px; right:18px; text-align:right; }
-#hud-bl { bottom:88px; left:18px; }
-.hud-line { font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:rgba(0,200,255,.4); line-height:1.8; }
-.hud-val  { font-size:11px; font-weight:700; color:rgba(0,200,255,.7); }
-.hud-brk  { position:absolute; width:14px; height:14px; border-color:rgba(0,200,255,.35); border-style:solid; }
-.br-tl { top:0;left:0;   border-width:2px 0 0 2px; }
-.br-tr { top:0;right:0;  border-width:2px 2px 0 0; }
-.br-bl { bottom:0;left:0;  border-width:0 0 2px 2px; }
-.br-br { bottom:0;right:0; border-width:0 2px 2px 0; }
-.hud-box { position:relative; padding:8px 12px; border:1px solid rgba(0,200,255,.12); border-radius:2px; background:rgba(0,0,0,.5); }
-#threat {
-    position:absolute; left:50%; transform:translateX(-50%); top:18px; z-index:10;
-    display:flex; align-items:center; gap:10px;
-    opacity:0; animation:pfade .5s ease 6.5s forwards;
+#gi-hud-tl { top:20px; left:20px; }
+#gi-hud-tr { top:20px; right:20px; text-align:right; }
+#gi-hud-bl { bottom:56px; left:20px; }
+.gi-hbox {
+  position:relative; padding:8px 12px;
+  border:1px solid rgba(0,200,255,.1); border-radius:2px;
+  background:rgba(2,4,10,.7);
 }
-.tl-label  { font-size:9px; letter-spacing:.2em; text-transform:uppercase; color:rgba(255,255,255,.35); }
-.tl-blocks { display:flex; gap:3px; }
-.tl-block  { width:clamp(14px,2vw,22px); height:8px; border-radius:1px; background:rgba(255,255,255,.08); }
-.tl-block.on { animation: blockpulse 2s ease-in-out infinite; }
-@keyframes blockpulse { 0%,100%{opacity:1} 50%{opacity:.6} }
-#intro-progress {
-    position:absolute; bottom:0; left:0; height:2px;
-    background:linear-gradient(90deg,#ff3d5a,#ff8c42,#ffb400,#00c8ff);
-    animation: prog 10s linear forwards;
+.gi-hbox::before,.gi-hbox::after,
+.gi-hbox .gi-bc::before,.gi-hbox .gi-bc::after {
+  content:''; position:absolute; width:8px; height:8px;
+  border-color:rgba(0,200,255,.4); border-style:solid;
 }
-@keyframes prog { 0%{width:0%} 100%{width:100%} }
-#intro-skip {
-    position:absolute; bottom:16px; right:20px; z-index:20;
-    font-size:10px; letter-spacing:.15em; text-transform:uppercase;
-    color:rgba(255,255,255,.3); background:transparent;
-    border:1px solid rgba(255,255,255,.12); padding:5px 14px;
-    border-radius:3px; cursor:pointer; transition:all .2s;
+.gi-hbox::before  { top:-1px;left:-1px;   border-width:2px 0 0 2px; }
+.gi-hbox::after   { top:-1px;right:-1px;  border-width:2px 2px 0 0; }
+.gi-hbox .gi-bc::before { bottom:-1px;left:-1px;  border-width:0 0 2px 2px; }
+.gi-hbox .gi-bc::after  { bottom:-1px;right:-1px; border-width:0 2px 2px 0; }
+.gi-hl { font-family:'IBM Plex Mono',monospace; font-size:8px; letter-spacing:.2em; text-transform:uppercase; color:rgba(0,200,255,.4); line-height:1.9; }
+.gi-hv { font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:500; color:rgba(0,200,255,.75); }
+
+/* ── Threat bar (top center) ── */
+#gi-threat {
+  position:absolute; top:20px; left:50%; transform:translateX(-50%);
+  z-index:20; display:flex; align-items:center; gap:8px;
+  opacity:0; animation:gi-fadein .5s ease 6.2s forwards;
 }
-#intro-skip:hover { color:#00c8ff; border-color:rgba(0,200,255,.35); }
+.gi-tl { font-family:'IBM Plex Mono',monospace; font-size:8px; letter-spacing:.2em; text-transform:uppercase; color:rgba(255,255,255,.3); }
+.gi-tb { display:flex; gap:2px; }
+.gi-tb span { width:clamp(12px,1.8vw,20px); height:7px; border-radius:1px; background:rgba(255,255,255,.07); }
+.gi-tb span.on { animation:gi-bp 2s ease-in-out infinite; }
+@keyframes gi-bp { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+/* ── Ticker ── */
+#gi-tick {
+  position:absolute; bottom:46px; left:0; right:0; height:26px;
+  background:rgba(6,13,24,.9); border-top:1px solid rgba(255,61,90,.2);
+  display:flex; align-items:center; overflow:hidden;
+  opacity:0; animation:gi-fadein .5s ease 6s forwards;
+}
+.gi-tklbl {
+  flex-shrink:0; background:#ff3d5a; color:#fff;
+  font-family:'IBM Plex Mono',monospace; font-size:9px;
+  font-weight:500; letter-spacing:.12em; padding:0 12px;
+  height:100%; display:flex; align-items:center; white-space:nowrap;
+}
+.gi-tkscroll {
+  display:inline-block; white-space:nowrap;
+  font-family:'IBM Plex Mono',monospace; font-size:10px;
+  color:rgba(226,236,248,.45); letter-spacing:.05em;
+  padding-left:100%; animation:gi-scroll 16s linear infinite;
+}
+@keyframes gi-scroll { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+
+/* ── Progress bar ── */
+#gi-prog {
+  position:absolute; bottom:0; left:0; height:2px;
+  background:linear-gradient(90deg,#ff3d5a,#ff8c42,#ffb400,#00c8ff);
+  animation:gi-prog 10s linear forwards;
+}
+@keyframes gi-prog { 0%{width:0%} 100%{width:100%} }
+
+/* ── Skip ── */
+#gi-skip {
+  position:absolute; bottom:14px; right:18px; z-index:30;
+  font-family:'IBM Plex Mono',monospace; font-size:9px;
+  letter-spacing:.15em; text-transform:uppercase;
+  color:rgba(255,255,255,.25); background:transparent;
+  border:1px solid rgba(255,255,255,.1); padding:4px 12px;
+  border-radius:2px; cursor:pointer; transition:all .2s;
+}
+#gi-skip:hover { color:#00c8ff; border-color:rgba(0,200,255,.3); }
 </style>
 
-<div id="intro-overlay">
-  <canvas id="bg-c"></canvas>
-  <canvas id="gb-c"></canvas>
-  <canvas id="fx-c"></canvas>
-  <div id="vignette"></div>
-  <div id="scanline"></div>
+<div id="geo-intro">
+  <canvas id="gi-bg"></canvas>
+  <canvas id="gi-globe"></canvas>
+  <canvas id="gi-fx"></canvas>
+  <div id="gi-vig"></div>
+  <div id="gi-scan"></div>
 
-  <div class="hud-corner" id="hud-tl">
-    <div class="hud-box">
-      <div class="hud-brk br-tl"></div><div class="hud-brk br-tr"></div>
-      <div class="hud-brk br-bl"></div><div class="hud-brk br-br"></div>
-      <div class="hud-line">SYSTEM STATUS</div>
-      <div class="hud-val">OPERATIONAL</div>
-      <div class="hud-line" id="utc-clk">UTC 00:00:00</div>
+  <!-- HUD corners -->
+  <div class="gi-hud" id="gi-hud-tl">
+    <div class="gi-hbox"><div class="gi-bc"></div>
+      <div class="gi-hl">SYSTEM STATUS</div>
+      <div class="gi-hv" style="color:#00e676">OPERATIONAL</div>
+      <div class="gi-hl" id="gi-utc">UTC 00:00:00</div>
     </div>
   </div>
-  <div class="hud-corner" id="hud-tr">
-    <div class="hud-box">
-      <div class="hud-brk br-tl"></div><div class="hud-brk br-tr"></div>
-      <div class="hud-brk br-bl"></div><div class="hud-brk br-br"></div>
-      <div class="hud-line">FEEDS ACTIVE</div>
-      <div class="hud-val" style="color:#00e676">12 / 12</div>
-      <div class="hud-line">GDELT &middot; USGS &middot; NOAA</div>
+  <div class="gi-hud" id="gi-hud-tr">
+    <div class="gi-hbox"><div class="gi-bc"></div>
+      <div class="gi-hl">FEEDS ACTIVE</div>
+      <div class="gi-hv" style="color:#00e676">12 / 12 ONLINE</div>
+      <div class="gi-hl">GDELT &middot; USGS &middot; NOAA &middot; YAHOO</div>
     </div>
   </div>
-  <div class="hud-corner" id="hud-bl">
-    <div class="hud-box">
-      <div class="hud-brk br-tl"></div><div class="hud-brk br-tr"></div>
-      <div class="hud-brk br-bl"></div><div class="hud-brk br-br"></div>
-      <div class="hud-line">ACTIVE CONFLICTS</div>
-      <div class="hud-val" style="color:#ff3d5a">5 THEATRES</div>
-      <div class="hud-line">UKRAINE &middot; GAZA &middot; IRAN &middot; SUDAN &middot; MYANMAR</div>
+  <div class="gi-hud" id="gi-hud-bl">
+    <div class="gi-hbox"><div class="gi-bc"></div>
+      <div class="gi-hl">ACTIVE THEATRES</div>
+      <div class="gi-hv" style="color:#ff3d5a">UKRAINE &middot; GAZA &middot; IRAN</div>
+      <div class="gi-hv" style="color:#ff8c42">SUDAN &middot; MYANMAR &middot; YEMEN</div>
     </div>
   </div>
 
-  <div id="threat">
-    <div class="tl-label">GLOBAL THREAT</div>
-    <div class="tl-blocks" id="tl-blocks"></div>
-    <div class="tl-label" style="color:#ff8c42;font-weight:700">ELEVATED</div>
+  <!-- Threat level -->
+  <div id="gi-threat">
+    <div class="gi-tl">GLOBAL THREAT</div>
+    <div class="gi-tb" id="gi-tblocks"></div>
+    <div class="gi-tl" style="color:#ff8c42;font-weight:700;letter-spacing:.1em">ELEVATED</div>
   </div>
 
-  <div id="intro-content">
-    <div id="phase1">
-      <div class="classbar"></div>
-      <div class="classline">&#x25BC; INITIALISING GLOBAL INTELLIGENCE FEED &#x25BC;</div>
-      <div class="classline" style="color:rgba(255,61,90,.6);font-size:clamp(7px,1vw,10px)">
-        AUTHORISED ACCESS ONLY &nbsp;|&nbsp; ALL ACTIVITY MONITORED
-      </div>
-      <div class="classbar"></div>
+  <!-- Phase 1: boot flash -->
+  <div id="gi-phase1">
+    <div class="gi-cbar"></div>
+    <div class="gi-cline">&#x25BC; INITIALISING GLOBAL INTELLIGENCE FEED &#x25BC;</div>
+    <div class="gi-cline" style="color:rgba(255,61,90,.5);font-size:clamp(6px,.9vw,10px);margin-top:3px">
+      AUTHORISED ACCESS ONLY &nbsp;/&nbsp; ALL ACTIVITY MONITORED &nbsp;/&nbsp; CLASSIFICATION: RESTRICTED
     </div>
-    <div id="phase2">
-      <div id="intro-logo-wrap">
-        <div id="intro-logo">THE GEO&#8209;<em>LOCATOR</em></div>
-        <div id="intro-logo-sub">Global Intelligence Operations Center</div>
-      </div>
-      <div id="intro-divider"></div>
-      <div id="intro-stats">
-        <div class="istat"><div class="n" style="color:#ff3d5a" id="sc">0</div><div class="l">Active Conflicts</div></div>
-        <div class="isep"></div>
-        <div class="istat"><div class="n" style="color:#ffb400" id="sk">0</div><div class="l">Est. Casualties</div></div>
-        <div class="isep"></div>
-        <div class="istat"><div class="n" style="color:#00c8ff" id="sn">0</div><div class="l">Countries Tracked</div></div>
-        <div class="isep"></div>
-        <div class="istat"><div class="n" style="color:#00e676" id="sf">0</div><div class="l">Live Data Feeds</div></div>
-      </div>
+    <div class="gi-cbar"></div>
+  </div>
+
+  <!-- Phase 2: logo + stats -->
+  <div id="gi-phase2">
+    <div id="gi-logo-wrap">
+      <div id="gi-logo">THE&nbsp;GEO&#8209;<em>LOCATOR</em></div>
+      <div id="gi-sub">Global Intelligence Operations Center</div>
+    </div>
+    <div id="gi-div"></div>
+    <div id="gi-chess-wrap">
+      <canvas id="gi-chess" width="224" height="224"></canvas>
+      <div class="gi-chess-label">&#9812; CHECKMATE</div>
     </div>
   </div>
 
-  <div id="ticker-wrap">
-    <div class="ticker-label">&#9679; LIVE</div>
-    <div style="overflow:hidden;flex:1;height:100%;display:flex;align-items:center;padding-left:90px;">
-      <div class="ticker-inner">
-        &#x25C6; UKRAINE: Russian missile salvo targets Kyiv energy grid &nbsp;&nbsp;
-        &#x25C6; GAZA: IDF operations continue in Rafah sector &nbsp;&nbsp;
-        &#x25C6; IRAN: IRGC ballistic missile posture elevated &nbsp;&nbsp;
-        &#x25C6; RED SEA: Houthi drone intercepted near Bab el-Mandeb &nbsp;&nbsp;
-        &#x25C6; SUDAN: RSF advancing in North Darfur &mdash; famine risk critical &nbsp;&nbsp;
-        &#x25C6; MARKETS: Brent crude +2.1% on Hormuz closure risk &nbsp;&nbsp;
-        &#x25C6; UKRAINE: Russian missile salvo targets Kyiv energy grid &nbsp;&nbsp;
-        &#x25C6; GAZA: IDF operations continue in Rafah sector &nbsp;&nbsp;
-        &#x25C6; IRAN: IRGC ballistic missile posture elevated &nbsp;&nbsp;
-        &#x25C6; RED SEA: Houthi drone intercepted near Bab el-Mandeb &nbsp;&nbsp;
-        &#x25C6; SUDAN: RSF advancing in North Darfur &mdash; famine risk critical &nbsp;&nbsp;
+  <!-- Ticker -->
+  <div id="gi-tick">
+    <div class="gi-tklbl">&#9679;&nbsp;LIVE</div>
+    <div style="overflow:hidden;flex:1;height:100%;display:flex;align-items:center;padding-left:80px">
+      <div class="gi-tkscroll">
+        &#x25C6;&nbsp;UKRAINE: Russian missile salvo targets Kyiv power grid &nbsp;&nbsp;&nbsp;
+        &#x25C6;&nbsp;GAZA: Ground operations continue — civilian corridor closed &nbsp;&nbsp;&nbsp;
+        &#x25C6;&nbsp;IRAN: IRGC ballistic missile posture elevated following strikes &nbsp;&nbsp;&nbsp;
+        &#x25C6;&nbsp;RED SEA: Houthi drone intercepted 40nm from Bab el-Mandeb &nbsp;&nbsp;&nbsp;
+        &#x25C6;&nbsp;SUDAN: RSF advancing in North Darfur — UN declares famine &nbsp;&nbsp;&nbsp;
+        &#x25C6;&nbsp;MARKETS: Brent crude +2.1% — Hormuz closure risk premium rising &nbsp;&nbsp;&nbsp;
+        &#x25C6;&nbsp;SEISMIC: M5.4 recorded near Turkey-Syria border &nbsp;&nbsp;&nbsp;
+        &#x25C6;&nbsp;UKRAINE: Russian missile salvo targets Kyiv power grid &nbsp;&nbsp;&nbsp;
+        &#x25C6;&nbsp;GAZA: Ground operations continue — civilian corridor closed &nbsp;&nbsp;&nbsp;
+        &#x25C6;&nbsp;IRAN: IRGC ballistic missile posture elevated following strikes &nbsp;&nbsp;&nbsp;
+        &#x25C6;&nbsp;RED SEA: Houthi drone intercepted 40nm from Bab el-Mandeb &nbsp;&nbsp;&nbsp;
+        &#x25C6;&nbsp;SUDAN: RSF advancing in North Darfur — UN declares famine &nbsp;&nbsp;&nbsp;
+        &#x25C6;&nbsp;MARKETS: Brent crude +2.1% — Hormuz closure risk premium rising &nbsp;&nbsp;&nbsp;
       </div>
     </div>
   </div>
 
-  <button id="intro-skip" onclick="introSkip()">SKIP &rsaquo;</button>
-  <div id="intro-progress"></div>
+  <button id="gi-skip" onclick="geoIntroSkip()">SKIP &rsaquo;</button>
+  <div id="gi-prog"></div>
 </div>
 
 <script>
 (function(){
-var bgC=document.getElementById('bg-c'),gbC=document.getElementById('gb-c'),fxC=document.getElementById('fx-c');
-var bgX=bgC.getContext('2d'),gbX=gbC.getContext('2d'),fxX=fxC.getContext('2d');
-var W=window.innerWidth,H=window.innerHeight;
+// ── Canvas setup ──────────────────────────────────
+var bgC=document.getElementById('gi-bg'),
+    gbC=document.getElementById('gi-globe'),
+    fxC=document.getElementById('gi-fx');
+var bgX=bgC.getContext('2d'),
+    gbX=gbC.getContext('2d'),
+    fxX=fxC.getContext('2d');
+var W=window.innerWidth, H=window.innerHeight;
+
 function resize(){
-  W=window.innerWidth;H=window.innerHeight;
+  W=window.innerWidth; H=window.innerHeight;
   bgC.width=gbC.width=fxC.width=W;
   bgC.height=gbC.height=fxC.height=H;
 }
-resize();window.addEventListener('resize',resize);
+resize(); window.addEventListener('resize',resize);
 
-// UTC clock
+// ── UTC clock ─────────────────────────────────────
 function ck(){
-  var n=new Date(),el=document.getElementById('utc-clk');
-  if(el)el.textContent='UTC '+String(n.getUTCHours()).padStart(2,'0')+':'+String(n.getUTCMinutes()).padStart(2,'0')+':'+String(n.getUTCSeconds()).padStart(2,'0');
+  var n=new Date(), el=document.getElementById('gi-utc');
+  if(el) el.textContent='UTC '
+    +String(n.getUTCHours()).padStart(2,'0')+':'
+    +String(n.getUTCMinutes()).padStart(2,'0')+':'
+    +String(n.getUTCSeconds()).padStart(2,'0');
 }
-ck();setInterval(ck,1000);
+ck(); setInterval(ck,1000);
 
-// Threat blocks
+// ── Threat level blocks ───────────────────────────
 var tlC=['#00e676','#00e676','#ffb400','#ffb400','#ff8c42','#ff8c42','#ff3d5a','#ff3d5a'];
-var tlEl=document.getElementById('tl-blocks');
+var tlEl=document.getElementById('gi-tblocks');
 for(var i=0;i<8;i++){
-  var b=document.createElement('div');
-  b.className='tl-block'+(i<6?' on':'');
-  b.style.background=i<6?tlC[i]:'rgba(255,255,255,.08)';
-  if(i<6)b.style.animationDelay=(i*.15)+'s';
+  var b=document.createElement('span');
+  b.className=i<6?'on':'';
+  b.style.background=i<6?tlC[i]:'rgba(255,255,255,.07)';
+  if(i<6) b.style.animationDelay=(i*.12)+'s';
   tlEl.appendChild(b);
 }
 
-// Particles
+// ── Particle field ────────────────────────────────
 var pts=[];
-for(var i=0;i<140;i++)pts.push({x:Math.random()*1920,y:Math.random()*1080,vx:(Math.random()-.5)*.45,vy:(Math.random()-.5)*.45,r:Math.random()*1.4+.3,warm:Math.random()>.72,ph:Math.random()*Math.PI*2});
+for(var i=0;i<160;i++) pts.push({
+  x:Math.random()*1920, y:Math.random()*1080,
+  vx:(Math.random()-.5)*.4, vy:(Math.random()-.5)*.4,
+  r:Math.random()*1.3+.25,
+  warm:Math.random()>.75,
+  ph:Math.random()*Math.PI*2
+});
 
-// Hotspots
-var hs=[
-  {nx:.46,ny:.42,col:'#ff3d5a',lb:'UKR'},
-  {nx:.55,ny:.46,col:'#ff3d5a',lb:'GAZ'},
-  {nx:.59,ny:.48,col:'#ff8c42',lb:'IRN'},
-  {nx:.43,ny:.58,col:'#ff8c42',lb:'SUD'},
-  {nx:.73,ny:.52,col:'#ffb400',lb:'MMR'},
-  {nx:.57,ny:.50,col:'#ff8c42',lb:'YEM'}
+// ── Conflict hotspots ─────────────────────────────
+var hss=[
+  {nx:.46,ny:.40,col:'#ff3d5a',lb:'UKR'},
+  {nx:.545,ny:.455,col:'#ff3d5a',lb:'GAZ'},
+  {nx:.585,ny:.475,col:'#ff8c42',lb:'IRN'},
+  {nx:.435,ny:.575,col:'#ff8c42',lb:'SUD'},
+  {nx:.725,ny:.515,col:'#ffb400',lb:'MMR'},
+  {nx:.565,ny:.495,col:'#ff8c42',lb:'YEM'}
 ];
 
-// Globe
-var gRot=0,gLat=20*Math.PI/180;
-function ll2xy(lat,lon,r,cx,cy){
-  var la=lat*Math.PI/180,lo=(lon+gRot*180/Math.PI)*Math.PI/180;
+// ── Globe (orthographic projection) ──────────────
+var gRot=0, gTilt=18*Math.PI/180;
+function ll(lat,lon,r,cx,cy){
+  var la=lat*Math.PI/180, lo=(lon+gRot*180/Math.PI)*Math.PI/180;
   var x=r*Math.cos(la)*Math.sin(lo);
-  var y=r*(Math.sin(la)*Math.cos(gLat)-Math.cos(la)*Math.cos(lo)*Math.sin(gLat));
-  var z=Math.cos(la)*Math.cos(lo)*Math.cos(gLat)+Math.sin(la)*Math.sin(gLat);
-  return{x:cx+x,y:cy-y,z:z};
+  var y=r*(Math.sin(la)*Math.cos(gTilt)-Math.cos(la)*Math.cos(lo)*Math.sin(gTilt));
+  var z=Math.cos(la)*Math.cos(lo)*Math.cos(gTilt)+Math.sin(la)*Math.sin(gTilt);
+  return{x:cx+x, y:cy-y, z:z};
 }
+
 function drawGlobe(){
   gbX.clearRect(0,0,W,H);
-  var cx=W*.5,cy=H*.5,r=Math.min(W,H)*.26;
+  var cx=W*.5, cy=H*.5, r=Math.min(W,H)*.255;
+
+  // atmosphere glow
+  var ag=gbX.createRadialGradient(cx,cy-r*.08,r*.7,cx,cy,r*1.12);
+  ag.addColorStop(0,'rgba(0,200,255,.0)');
+  ag.addColorStop(.75,'rgba(0,200,255,.025)');
+  ag.addColorStop(1,'rgba(0,200,255,.1)');
+  gbX.beginPath(); gbX.arc(cx,cy,r*1.12,0,Math.PI*2);
+  gbX.fillStyle=ag; gbX.fill();
+
+  // latitude lines
   for(var lat=-75;lat<=75;lat+=15){
-    var p2=[];for(var lon=-180;lon<=180;lon+=3)p2.push(ll2xy(lat,lon,r,cx,cy));
-    gbX.beginPath();var go=false;
-    for(var i=0;i<p2.length;i++){if(p2[i].z<0){go=false;continue;}if(!go){gbX.moveTo(p2[i].x,p2[i].y);go=true;}else gbX.lineTo(p2[i].x,p2[i].y);}
-    gbX.strokeStyle=lat===0?'rgba(0,200,255,.2)':'rgba(0,200,255,.08)';gbX.lineWidth=lat===0?1.2:.6;gbX.stroke();
+    var pp=[]; for(var lo=-180;lo<=180;lo+=3) pp.push(ll(lat,lo,r,cx,cy));
+    gbX.beginPath(); var go=false;
+    for(var k=0;k<pp.length;k++){
+      if(pp[k].z<0){go=false;continue;}
+      if(!go){gbX.moveTo(pp[k].x,pp[k].y);go=true;}
+      else gbX.lineTo(pp[k].x,pp[k].y);
+    }
+    // equator brighter
+    gbX.strokeStyle=lat===0?'rgba(0,200,255,.22)':'rgba(0,200,255,.07)';
+    gbX.lineWidth=lat===0?1.2:.5; gbX.stroke();
   }
-  for(var lon2=-180;lon2<180;lon2+=20){
-    var p3=[];for(var la2=-90;la2<=90;la2+=3)p3.push(ll2xy(la2,lon2,r,cx,cy));
-    gbX.beginPath();var go2=false;
-    for(var i=0;i<p3.length;i++){if(p3[i].z<0){go2=false;continue;}if(!go2){gbX.moveTo(p3[i].x,p3[i].y);go2=true;}else gbX.lineTo(p3[i].x,p3[i].y);}
-    gbX.strokeStyle='rgba(0,200,255,.05)';gbX.lineWidth=.5;gbX.stroke();
+
+  // longitude lines
+  for(var lo2=-180;lo2<180;lo2+=20){
+    var pp2=[]; for(var la2=-90;la2<=90;la2+=3) pp2.push(ll(la2,lo2,r,cx,cy));
+    gbX.beginPath(); var go2=false;
+    for(var k=0;k<pp2.length;k++){
+      if(pp2[k].z<0){go2=false;continue;}
+      if(!go2){gbX.moveTo(pp2[k].x,pp2[k].y);go2=true;}
+      else gbX.lineTo(pp2[k].x,pp2[k].y);
+    }
+    gbX.strokeStyle='rgba(0,200,255,.04)'; gbX.lineWidth=.4; gbX.stroke();
   }
-  gbX.beginPath();gbX.arc(cx,cy,r,0,Math.PI*2);gbX.strokeStyle='rgba(0,200,255,.22)';gbX.lineWidth=1;gbX.stroke();
-  var atm=gbX.createRadialGradient(cx,cy-r*.1,r*.88,cx,cy,r*1.06);
-  atm.addColorStop(0,'rgba(0,200,255,0)');atm.addColorStop(.8,'rgba(0,200,255,.04)');atm.addColorStop(1,'rgba(0,200,255,.14)');
-  gbX.beginPath();gbX.arc(cx,cy,r*1.06,0,Math.PI*2);gbX.fillStyle=atm;gbX.fill();
+
+  // rim
+  gbX.beginPath(); gbX.arc(cx,cy,r,0,Math.PI*2);
+  gbX.strokeStyle='rgba(0,200,255,.2)'; gbX.lineWidth=1; gbX.stroke();
+
+  // conflict hotspot markers on globe
   var now=Date.now();
-  hs.forEach(function(h){
-    var la3=(0.5-h.ny)*140,lo3=(h.nx-0.5)*320;
-    var p=ll2xy(la3,lo3,r,cx,cy);if(p.z<0)return;
-    var pulse=(Math.sin(now*.003+h.nx*10)+1)*.5,pr=4+pulse*8;
-    gbX.beginPath();gbX.arc(p.x,p.y,pr,0,Math.PI*2);gbX.strokeStyle=h.col+'88';gbX.lineWidth=1;gbX.stroke();
-    gbX.beginPath();gbX.arc(p.x,p.y,2.5,0,Math.PI*2);gbX.fillStyle=h.col;gbX.fill();
-    gbX.font='bold '+Math.round(W*.007+7)+'px Arial';gbX.fillStyle='rgba(255,255,255,.6)';gbX.fillText(h.lb,p.x+5,p.y-4);
+  hss.forEach(function(h){
+    var gla=(0.5-h.ny)*135, glo=(h.nx-0.5)*310;
+    var p=ll(gla,glo,r,cx,cy); if(p.z<.05) return;
+    var pulse=(Math.sin(now*.0028+h.nx*8)+1)*.5;
+
+    // outer ring pulse
+    gbX.beginPath(); gbX.arc(p.x,p.y,6+pulse*7,0,Math.PI*2);
+    gbX.strokeStyle=h.col+(Math.round((0.3*(1-pulse))*255).toString(16).padStart(2,'0'));
+    gbX.lineWidth=1; gbX.stroke();
+
+    // inner dot
+    gbX.beginPath(); gbX.arc(p.x,p.y,2.5,0,Math.PI*2);
+    gbX.fillStyle=h.col; gbX.fill();
+
+    // label
+    gbX.font='500 '+Math.round(W*.0065+6)+'px "IBM Plex Mono",monospace';
+    gbX.fillStyle='rgba(226,236,248,.6)';
+    gbX.fillText(h.lb, p.x+6, p.y-4);
   });
 }
+
+// ── FX: radar + orbital rings + data arcs ─────────
 function drawFX(){
   fxX.clearRect(0,0,W,H);
-  var cx=W*.5,cy=H*.5,r=Math.min(W,H)*.26,now=Date.now();
-  var ang=(now/4000)*Math.PI*2;
-  fxX.save();fxX.beginPath();fxX.moveTo(cx,cy);fxX.arc(cx,cy,r,ang-.7,ang);fxX.closePath();
-  var rf=fxX.createRadialGradient(cx,cy,0,cx,cy,r);
-  rf.addColorStop(0,'rgba(0,200,255,0)');rf.addColorStop(.6,'rgba(0,200,255,.05)');rf.addColorStop(1,'rgba(0,200,255,.13)');
-  fxX.fillStyle=rf;fxX.fill();fxX.restore();
-  fxX.beginPath();fxX.moveTo(cx,cy);fxX.lineTo(cx+Math.cos(ang)*r,cy+Math.sin(ang)*r);fxX.strokeStyle='rgba(0,200,255,.4)';fxX.lineWidth=1.5;fxX.stroke();
-  fxX.beginPath();fxX.ellipse(cx,cy,r*1.18,r*1.18*.28,now/8000,0,Math.PI*2);fxX.strokeStyle='rgba(255,180,0,.14)';fxX.lineWidth=1;fxX.stroke();
-  fxX.beginPath();fxX.ellipse(cx,cy,r*1.36,r*1.36*.22,-now/12000,0,Math.PI*2);fxX.strokeStyle='rgba(0,200,255,.07)';fxX.lineWidth=.8;fxX.stroke();
-  var sa=now/8000,sx=cx+Math.cos(sa)*r*1.18,sy=cy+Math.sin(sa)*r*1.18*.28;
-  fxX.beginPath();fxX.arc(sx,sy,3,0,Math.PI*2);fxX.fillStyle='#ffb400';fxX.fill();
-  var sA=now*.001;
-  hs.forEach(function(h,idx){
-    var ph=(sA+idx*1.1)%(Math.PI*2);if(ph>Math.PI)return;
-    var pg=ph/Math.PI,sx2=h.nx*W,sy2=h.ny*H,mx=(sx2+cx)/2,my=(sy2+cy)/2-40;
-    fxX.beginPath();fxX.moveTo(sx2,sy2);fxX.quadraticCurveTo(mx,my,sx2+(cx-sx2)*pg,sy2+(cy-sy2)*pg);
-    var hx=h.col.slice(1);
-    fxX.strokeStyle='rgba('+parseInt(hx.slice(0,2),16)+','+parseInt(hx.slice(2,4),16)+','+parseInt(hx.slice(4,6),16)+','+(Math.sin(pg*Math.PI)*.35)+')';
-    fxX.lineWidth=1;fxX.stroke();
+  var cx=W*.5, cy=H*.5, r=Math.min(W,H)*.255, now=Date.now();
+
+  // radar sweep
+  var ang=(now/4200)*Math.PI*2;
+  fxX.save();
+  fxX.beginPath(); fxX.moveTo(cx,cy);
+  fxX.arc(cx,cy,r,ang-.65,ang); fxX.closePath();
+  var rg=fxX.createRadialGradient(cx,cy,0,cx,cy,r);
+  rg.addColorStop(0,'rgba(0,200,255,.0)');
+  rg.addColorStop(.5,'rgba(0,200,255,.04)');
+  rg.addColorStop(1,'rgba(0,200,255,.11)');
+  fxX.fillStyle=rg; fxX.fill(); fxX.restore();
+  // leading edge
+  fxX.beginPath(); fxX.moveTo(cx,cy);
+  fxX.lineTo(cx+Math.cos(ang)*r, cy+Math.sin(ang)*r);
+  fxX.strokeStyle='rgba(0,200,255,.38)'; fxX.lineWidth=1.2; fxX.stroke();
+
+  // orbital ring 1 (amber, tilted)
+  fxX.beginPath();
+  fxX.ellipse(cx,cy, r*1.2, r*1.2*.27, now/8500, 0,Math.PI*2);
+  fxX.strokeStyle='rgba(255,180,0,.13)'; fxX.lineWidth=1; fxX.stroke();
+
+  // orbital ring 2 (cyan, counter)
+  fxX.beginPath();
+  fxX.ellipse(cx,cy, r*1.38, r*1.38*.21, -now/13000, 0,Math.PI*2);
+  fxX.strokeStyle='rgba(0,200,255,.06)'; fxX.lineWidth=.7; fxX.stroke();
+
+  // satellite dot on ring 1
+  var sa=now/8500;
+  var sx=cx+Math.cos(sa)*r*1.2, sy=cy+Math.sin(sa)*r*1.2*.27;
+  fxX.beginPath(); fxX.arc(sx,sy,3,0,Math.PI*2);
+  fxX.fillStyle='#ffb400'; fxX.fill();
+  // satellite trail
+  for(var t=1;t<=5;t++){
+    var ta=sa-t*.04;
+    var tx=cx+Math.cos(ta)*r*1.2, ty=cy+Math.sin(ta)*r*1.2*.27;
+    fxX.beginPath(); fxX.arc(tx,ty,3-t*.45,0,Math.PI*2);
+    fxX.fillStyle='rgba(255,180,0,'+(0.5-t*.09)+')'; fxX.fill();
+  }
+
+  // data stream arcs from hotspots
+  var sa2=now*.00085;
+  hss.forEach(function(h,idx){
+    var ph=(sa2+idx*1.05)%(Math.PI*2); if(ph>Math.PI) return;
+    var pg=ph/Math.PI;
+    var sx2=h.nx*W, sy2=h.ny*H;
+    var mx=(sx2+cx)*.5+20*Math.sin(idx*1.3), my=(sy2+cy)*.5-50;
+    fxX.beginPath(); fxX.moveTo(sx2,sy2);
+    fxX.quadraticCurveTo(mx,my, sx2+(cx-sx2)*pg, sy2+(cy-sy2)*pg);
+    var hx=h.col.replace('#','');
+    var alpha=Math.sin(pg*Math.PI)*.3;
+    fxX.strokeStyle='rgba('+parseInt(hx.slice(0,2),16)+','+parseInt(hx.slice(2,4),16)+','+parseInt(hx.slice(4,6),16)+','+alpha+')';
+    fxX.lineWidth=.9; fxX.stroke();
   });
 }
+
+// ── BG: dot grid + particles ──────────────────────
 function drawBG(){
-  bgX.clearRect(0,0,W,H);var now=Date.now();
-  for(var gx=0;gx<W;gx+=60)for(var gy=0;gy<H;gy+=60){
-    var p=Math.sin(now*.0006+gx*.02+gy*.015)*.5+.5;
-    bgX.globalAlpha=.03+p*.05;bgX.fillStyle='rgba(0,200,255,.06)';
-    bgX.beginPath();bgX.arc(gx,gy,1.2,0,Math.PI*2);bgX.fill();
+  bgX.clearRect(0,0,W,H);
+  var now=Date.now();
+
+  // animated dot grid (matches dashboard's panel grid feel)
+  for(var gx=0;gx<W;gx+=55) for(var gy=0;gy<H;gy+=55){
+    var p=Math.sin(now*.0005+gx*.018+gy*.014)*.5+.5;
+    bgX.globalAlpha=.02+p*.04;
+    bgX.fillStyle='#00c8ff';
+    bgX.fillRect(gx,gy,1,1);
   }
   bgX.globalAlpha=1;
-  var sx=W/1920,sy=H/1080;
+
+  // particles
+  var sx=W/1920, sy=H/1080;
   for(var i=0;i<pts.length;i++){
-    var p=pts[i];p.x+=p.vx;p.y+=p.vy;
-    if(p.x<0)p.x=1920;if(p.x>1920)p.x=0;if(p.y<0)p.y=1080;if(p.y>1080)p.y=0;
-    p.ph+=.03;var pa=.25+Math.sin(p.ph)*.15;
-    bgX.beginPath();bgX.arc(p.x*sx,p.y*sy,p.r,0,Math.PI*2);
-    bgX.fillStyle=p.warm?'rgba(255,180,0,'+pa+')':'rgba(0,200,255,'+pa+')';bgX.fill();
+    var p=pts[i];
+    p.x+=p.vx; p.y+=p.vy;
+    if(p.x<0)p.x=1920; if(p.x>1920)p.x=0;
+    if(p.y<0)p.y=1080; if(p.y>1080)p.y=0;
+    p.ph+=.025;
+    var pa=.18+Math.sin(p.ph)*.12;
+    bgX.beginPath(); bgX.arc(p.x*sx,p.y*sy,p.r,0,Math.PI*2);
+    bgX.fillStyle=p.warm?'rgba(255,180,0,'+pa+')':'rgba(0,200,255,'+pa+')';
+    bgX.fill();
+    // connection lines
     for(var j=i+1;j<pts.length;j++){
-      var dx=(p.x-pts[j].x)*sx,dy=(p.y-pts[j].y)*sy,d=Math.sqrt(dx*dx+dy*dy);
-      if(d<80){bgX.beginPath();bgX.moveTo(p.x*sx,p.y*sy);bgX.lineTo(pts[j].x*sx,pts[j].y*sy);bgX.strokeStyle='rgba(0,200,255,'+(0.06*(1-d/80))+')';bgX.lineWidth=.5;bgX.stroke();}
+      var dx=(p.x-pts[j].x)*sx, dy=(p.y-pts[j].y)*sy;
+      var d=Math.sqrt(dx*dx+dy*dy);
+      if(d<75){
+        bgX.beginPath();
+        bgX.moveTo(p.x*sx,p.y*sy);
+        bgX.lineTo(pts[j].x*sx,pts[j].y*sy);
+        bgX.strokeStyle='rgba(0,200,255,'+(0.05*(1-d/75))+')';
+        bgX.lineWidth=.4; bgX.stroke();
+      }
     }
   }
 }
-function ctr(id,tgt,sfx,dur){
-  var el=document.getElementById(id);if(!el)return;
-  var s=0,st=tgt/(dur/16),t=setInterval(function(){
-    s=Math.min(s+st,tgt);
-    el.textContent=(tgt>999?(Math.floor(s/1000)+'K'):Math.floor(s))+(sfx||'+');
-    if(s>=tgt)clearInterval(t);
-  },16);
-}
-setTimeout(function(){ctr('sc',5,'+',1000);ctr('sk',463,'K',1600);ctr('sn',50,'+',1400);ctr('sf',12,'+',900);},5200);
 
-function render(){gRot+=.002;drawBG();drawGlobe();drawFX();requestAnimationFrame(render);}
+// ── Chess checkmate scene ────────────────────────────
+// Draws a king-in-checkmate position with animated threat highlight
+// Board: White King g1 is checkmated by Black Queen h2 + Black King g3
+// Classic "Fool's mate" derived final position
+(function drawChess(){
+  var cc=document.getElementById('gi-chess');
+  if(!cc)return;
+  var cx=cc.getContext('2d');
+  var sq=28, cols=8, size=sq*cols; // 224px total
+  cc.width=size; cc.height=size;
+
+  // Pieces: {col, row, piece, color}  col/row 0-based from a1=0,1 to h8=7,8
+  // Simplified near-checkmate: White King h1, Black Queen g2, Black King f3
+  var pieces=[
+    {c:7,r:0,p:'K',side:'w'},   // White King  h1
+    {c:6,r:1,p:'Q',side:'b'},   // Black Queen g2  (delivers check)
+    {c:5,r:2,p:'K',side:'b'},   // Black King  f3  (supports)
+  ];
+
+  // Squares attacked by black queen from g2 that surround white king
+  var threatened=[[7,0],[6,0],[5,0],[7,1],[5,1],[7,2],[6,2],[5,2]];
+
+  var pulse=0;
+  function draw(){
+    pulse+=0.04;
+    cx.clearRect(0,0,size,size);
+
+    // Draw board squares
+    for(var r=0;r<8;r++) for(var c=0;c<8;c++){
+      var light=(c+r)%2===0;
+      // check if this square is threatened
+      var threat=threatened.some(function(t){return t[0]===c&&t[1]===r;});
+      if(threat && light)      cx.fillStyle='rgba(255,61,90,.22)';
+      else if(threat)          cx.fillStyle='rgba(255,61,90,.32)';
+      else if(light)           cx.fillStyle='#0f1e30';
+      else                     cx.fillStyle='#081424';
+      cx.fillRect(c*sq, (7-r)*sq, sq, sq);
+      // subtle threat pulse on white king square
+      if(c===7&&r===0){
+        var a=0.12+Math.abs(Math.sin(pulse))*0.22;
+        cx.fillStyle='rgba(255,61,90,'+a+')';
+        cx.fillRect(c*sq,(7-r)*sq,sq,sq);
+      }
+    }
+
+    // Board border
+    cx.strokeStyle='rgba(0,200,255,.2)';
+    cx.lineWidth=1;
+    cx.strokeRect(.5,.5,size-1,size-1);
+
+    // Grid lines
+    cx.strokeStyle='rgba(0,200,255,.06)';
+    cx.lineWidth=.5;
+    for(var i=1;i<8;i++){
+      cx.beginPath();cx.moveTo(i*sq,0);cx.lineTo(i*sq,size);cx.stroke();
+      cx.beginPath();cx.moveTo(0,i*sq);cx.lineTo(size,i*sq);cx.stroke();
+    }
+
+    // Draw pieces as unicode chess symbols
+    pieces.forEach(function(p){
+      var symbols={
+        'K':{'w':'\u2654','b':'\u265A'},
+        'Q':{'w':'\u2655','b':'\u265B'},
+        'R':{'w':'\u2656','b':'\u265C'},
+        'B':{'w':'\u2657','b':'\u265D'},
+        'N':{'w':'\u2658','b':'\u265E'},
+        'P':{'w':'\u2659','b':'\u265F'},
+      };
+      var sym=symbols[p.p][p.side];
+      var px=p.c*sq+sq/2, py=(7-p.r)*sq+sq/2+2;
+      cx.font='bold '+Math.round(sq*.72)+'px serif';
+      cx.textAlign='center';
+      cx.textBaseline='middle';
+      // glow for black queen (the attacker)
+      if(p.p==='Q'&&p.side==='b'){
+        cx.shadowColor='#ff3d5a';
+        cx.shadowBlur=10;
+      } else if(p.p==='K'&&p.side==='w'){
+        cx.shadowColor='rgba(255,61,90,0.8)';
+        cx.shadowBlur=8+Math.abs(Math.sin(pulse))*8;
+      } else {
+        cx.shadowColor='rgba(0,200,255,0.5)';
+        cx.shadowBlur=6;
+      }
+      cx.fillStyle=p.side==='w'?'#e2ecf8':'#1a0a0a';
+      cx.strokeStyle=p.side==='w'?'rgba(0,200,255,.35)':'rgba(255,61,90,.5)';
+      cx.lineWidth=0.5;
+      cx.fillText(sym,px,py);
+      cx.strokeText(sym,px,py);
+      cx.shadowBlur=0;
+    });
+
+    // "CHECK" arrow from queen to king
+    var qx=6*sq+sq/2, qy=(7-1)*sq+sq/2;
+    var kx=7*sq+sq/2, ky=(7-0)*sq+sq/2;
+    var a=Math.atan2(ky-qy,kx-qx);
+    var arrowAlpha=0.3+Math.abs(Math.sin(pulse))*0.5;
+    cx.strokeStyle='rgba(255,61,90,'+arrowAlpha+')';
+    cx.lineWidth=1.5;
+    cx.setLineDash([3,3]);
+    cx.beginPath();
+    cx.moveTo(qx+Math.cos(a)*sq*.35, qy+Math.sin(a)*sq*.35);
+    cx.lineTo(kx-Math.cos(a)*sq*.35, ky-Math.sin(a)*sq*.35);
+    cx.stroke();
+    cx.setLineDash([]);
+    // arrowhead
+    cx.fillStyle='rgba(255,61,90,'+arrowAlpha+')';
+    cx.beginPath();
+    var ax=kx-Math.cos(a)*sq*.35, ay=ky-Math.sin(a)*sq*.35;
+    cx.moveTo(ax,ay);
+    cx.lineTo(ax-8*Math.cos(a-0.4),ay-8*Math.sin(a-0.4));
+    cx.lineTo(ax-8*Math.cos(a+0.4),ay-8*Math.sin(a+0.4));
+    cx.closePath(); cx.fill();
+
+    requestAnimationFrame(draw);
+  }
+  // Start chess after the wrap fades in (4.6s)
+  setTimeout(draw, 4600);
+})();
+
+// ── Render loop ───────────────────────────────────
+function render(){ gRot+=.0018; drawBG(); drawGlobe(); drawFX(); requestAnimationFrame(render); }
 render();
 
-window.introSkip=function(){
-  var ov=document.getElementById('intro-overlay');
-  if(ov){ov.style.transition='opacity .6s ease';ov.style.opacity='0';setTimeout(function(){ov.style.display='none';},650);}
+// ── Skip ──────────────────────────────────────────
+window.geoIntroSkip=function(){
+  var ov=document.getElementById('geo-intro');
+  if(ov){ ov.style.transition='opacity .6s ease'; ov.style.opacity='0'; setTimeout(function(){ov.style.display='none';},650); }
 };
 })();
 </script>
 """, unsafe_allow_html=True)
 
-    _intro_time.sleep(10)
+    _it.sleep(10)
     st.session_state["intro_shown"] = True
     st.rerun()
 
