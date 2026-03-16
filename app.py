@@ -4744,9 +4744,7 @@ with tab_intel:
 
     # Inject data as a <script> tag, keep all JS as a plain (non-f-string) literal.
     # This completely eliminates all Python/JS escaping conflicts.
-    _data_script = "<script>const D=" + _ij.dumps(_intel_data) + ";</script>"
-
-    _intel_html = _data_script + """<!DOCTYPE html>
+    _intel_html  = """<!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -4794,7 +4792,11 @@ body{background:#030609;font-family:'Inter',system-ui,sans-serif;color:#dce8f5;p
 .kc{background:#070d16;border:1px solid rgba(0,200,255,.07);border-radius:12px;padding:16px 18px;position:relative;overflow:hidden;}
 .kt{position:absolute;top:0;left:0;right:0;height:2px;}
 @media(max-width:700px){.ks{grid-template-columns:1fr 1fr;}}
-</style>
+</style>"""
+    _intel_html += "\n<script>const D="
+    _intel_html += _ij.dumps(_intel_data)
+    _intel_html += ";</script>"
+    _intel_html += """
 </head>
 <body>
 <div id="root"></div>
@@ -5075,7 +5077,6 @@ document.getElementById('root').innerHTML=
   '<div class="row row-2">'+panelChokepoints()+panelOutages()+'</div>';
 </script>
 </body></html>"""
-
     _ic.html(_intel_html, height=4800, scrolling=True)
 
 
