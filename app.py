@@ -441,6 +441,7 @@ hr{border:none!important;border-top:1px solid var(--bord2)!important;margin:18px
 for k, v in {
     "selected_conflict": "Ukraine–Russia War",
     "last_refresh": 0,
+    "intro_shown": False,
 }.items():
     if k not in st.session_state:
         st.session_state[k] = v
@@ -2704,6 +2705,140 @@ def fetch_live_crypto() -> list:
                 for cid,(t,n) in CG.items() if cid in data and data[cid].get("usd",0)>0]
     except Exception:
         return []
+
+
+# ─────────────────────────────────────────────
+# VIDEO INTRO  (plays once per session)
+# ─────────────────────────────────────────────
+if not st.session_state.intro_shown:
+    import streamlit.components.v1 as _intro_comp
+    import time as _intro_time
+
+    _intro_html = """<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;background:#000;overflow:hidden;}
+#wrap{
+  position:fixed;inset:0;z-index:99999;
+  background:#000;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+canvas{position:absolute;inset:0;width:100%;height:100%;}
+#content{position:relative;z-index:2;text-align:center;pointer-events:none;}
+#logo{
+  font-family:'Arial Black',Impact,sans-serif;
+  font-size:clamp(28px,6vw,72px);
+  font-weight:900;
+  letter-spacing:0.18em;
+  color:#00c8ff;
+  text-shadow:0 0 40px rgba(0,200,255,0.8),0 0 80px rgba(0,200,255,0.4);
+  opacity:0;
+  transform:scale(0.85);
+  animation:logoIn 1.2s cubic-bezier(.16,1,.3,1) 0.4s forwards;
+}
+#logo em{color:#ffb400;font-style:normal;text-shadow:0 0 40px rgba(255,180,0,0.8);}
+#tagline{
+  font-size:clamp(9px,1.4vw,16px);
+  letter-spacing:0.3em;
+  text-transform:uppercase;
+  color:rgba(0,200,255,0.6);
+  margin-top:16px;opacity:0;
+  animation:fadeUp 0.8s ease 1.6s forwards;
+}
+#stats{display:flex;gap:clamp(16px,4vw,48px);margin-top:32px;opacity:0;animation:fadeUp 0.8s ease 2.4s forwards;}
+.stat{text-align:center;}
+.stat-num{
+  font-family:'Arial Black',Impact,sans-serif;
+  font-size:clamp(18px,3vw,36px);
+  font-weight:900;color:#ff3d5a;
+  text-shadow:0 0 20px rgba(255,61,90,0.6);
+}
+.stat-lbl{font-size:clamp(7px,1vw,11px);letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-top:4px;}
+#scanline{position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px);pointer-events:none;z-index:3;}
+#vignette{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,0.75) 100%);pointer-events:none;z-index:1;}
+#skip{
+  position:absolute;bottom:20px;right:24px;z-index:10;
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:rgba(255,255,255,0.35);background:transparent;
+  border:1px solid rgba(255,255,255,0.15);
+  padding:6px 16px;border-radius:4px;cursor:pointer;transition:all 0.2s;
+}
+#skip:hover{color:#00c8ff;border-color:rgba(0,200,255,0.4);}
+#progress{position:absolute;bottom:0;left:0;height:2px;background:linear-gradient(90deg,#00c8ff,#ffb400);animation:prog 8s linear forwards;}
+#ring1{position:absolute;width:clamp(200px,40vw,520px);height:clamp(200px,40vw,520px);border-radius:50%;border:1px solid rgba(0,200,255,0.07);animation:spin 18s linear infinite;top:50%;left:50%;transform:translate(-50%,-50%);}
+#ring2{position:absolute;width:clamp(260px,52vw,660px);height:clamp(260px,52vw,660px);border-radius:50%;border:1px solid rgba(255,180,0,0.04);animation:spin 28s linear infinite reverse;top:50%;left:50%;transform:translate(-50%,-50%);}
+@keyframes prog{0%{width:0%}100%{width:100%}}
+@keyframes logoIn{0%{opacity:0;transform:scale(0.85)}100%{opacity:1;transform:scale(1)}}
+@keyframes fadeUp{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:translateY(0)}}
+@keyframes spin{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div id="vignette"></div>
+  <div id="ring1"></div><div id="ring2"></div>
+  <div id="scanline"></div>
+  <div id="content">
+    <div id="logo">THE GEO&#8209;<em>LOCATOR</em></div>
+    <div id="tagline">Global Intelligence Operations Center</div>
+    <div id="stats">
+      <div class="stat"><div class="stat-num" id="s1">0</div><div class="stat-lbl">Active Conflicts</div></div>
+      <div class="stat"><div class="stat-num" id="s2">0</div><div class="stat-lbl">Countries Tracked</div></div>
+      <div class="stat"><div class="stat-num" id="s3">0</div><div class="stat-lbl">Live Data Feeds</div></div>
+    </div>
+  </div>
+  <button id="skip" onclick="dismiss()">Skip &rsaquo;</button>
+  <div id="progress"></div>
+</div>
+<script>
+var canvas=document.getElementById('c');
+var ctx=canvas.getContext('2d');
+var W,H,pts=[];
+function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}
+resize();window.addEventListener('resize',resize);
+for(var i=0;i<130;i++){pts.push({x:Math.random()*1920,y:Math.random()*1080,vx:(Math.random()-.5)*.4,vy:(Math.random()-.5)*.4,r:Math.random()*1.4+.3,warm:Math.random()>.7});}
+function counter(el,target,dur){var s=0,step=target/(dur/16);var t=setInterval(function(){s=Math.min(s+step,target);el.textContent=Math.floor(s)+(target>=10?'+':'');if(s>=target)clearInterval(t);},16);}
+setTimeout(function(){counter(document.getElementById('s1'),5,1200);counter(document.getElementById('s2'),50,1500);counter(document.getElementById('s3'),12,1800);},2600);
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle='rgba(0,200,255,0.025)';ctx.lineWidth=1;
+  for(var x=0;x<W;x+=80){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(var y=0;y<H;y+=80){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  var sx=W/1920,sy=H/1080;
+  for(var i=0;i<pts.length;i++){
+    var p=pts[i];p.x+=p.vx;p.y+=p.vy;
+    if(p.x<0)p.x=1920;if(p.x>1920)p.x=0;if(p.y<0)p.y=1080;if(p.y>1080)p.y=0;
+    ctx.beginPath();ctx.arc(p.x*sx,p.y*sy,p.r,0,Math.PI*2);
+    ctx.fillStyle=p.warm?'rgba(255,180,0,0.5)':'rgba(0,200,255,0.4)';ctx.fill();
+    for(var j=i+1;j<pts.length;j++){
+      var dx=(p.x-pts[j].x)*sx,dy=(p.y-pts[j].y)*sy,d=Math.sqrt(dx*dx+dy*dy);
+      if(d<85){ctx.beginPath();ctx.moveTo(p.x*sx,p.y*sy);ctx.lineTo(pts[j].x*sx,pts[j].y*sy);ctx.strokeStyle='rgba(0,200,255,'+(0.07*(1-d/85))+')';ctx.lineWidth=.5;ctx.stroke();}
+    }
+  }
+  var ang=(Date.now()/3000)*(Math.PI*2),cx=W/2,cy=H/2,rad=Math.min(W,H)*.2;
+  var g=ctx.createLinearGradient(cx,cy,cx+Math.cos(ang)*rad,cy+Math.sin(ang)*rad);
+  g.addColorStop(0,'rgba(0,200,255,0)');g.addColorStop(1,'rgba(0,200,255,0.12)');
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,rad,ang-.55,ang);ctx.closePath();ctx.fillStyle=g;ctx.fill();
+  requestAnimationFrame(draw);
+}
+draw();
+var _aut=setTimeout(dismiss,8000);
+function dismiss(){
+  clearTimeout(_aut);
+  var w=document.getElementById('wrap');
+  w.style.transition='opacity 0.6s ease';w.style.opacity='0';
+  setTimeout(function(){w.style.display='none';},650);
+}
+</script>
+</body></html>"""
+
+    _intro_comp.html(_intro_html, height=520)
+    _intro_time.sleep(8)
+    st.session_state.intro_shown = True
+    st.rerun()
+
 
 
 # HEADER
