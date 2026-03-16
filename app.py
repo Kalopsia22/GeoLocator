@@ -2707,138 +2707,403 @@ def fetch_live_crypto() -> list:
         return []
 
 
+
 # ─────────────────────────────────────────────
-# VIDEO INTRO  (plays once per session)
+# CINEMATIC INTRO  (plays once per session, 10 s)
 # ─────────────────────────────────────────────
-if not st.session_state.intro_shown:
-    import streamlit.components.v1 as _intro_comp
+if not st.session_state.get("intro_shown", False):
     import time as _intro_time
 
-    _intro_html = """<!DOCTYPE html>
-<html><head><meta charset="utf-8">
+    # ── Inject fullscreen intro directly into the Streamlit page ──────────
+    # Hide all Streamlit chrome while intro plays
+    st.markdown("""
 <style>
-*{margin:0;padding:0;box-sizing:border-box;}
-html,body{width:100%;height:100%;background:#000;overflow:hidden;}
-#wrap{
-  position:fixed;inset:0;z-index:99999;
-  background:#000;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
+/* Hide entire Streamlit UI while intro plays */
+[data-testid="stAppViewContainer"] > section:first-child,
+[data-testid="stSidebar"],
+[data-testid="stHeader"],
+[data-testid="stToolbar"],
+footer { display: none !important; }
+[data-testid="stAppViewContainer"] {
+    background: #000 !important;
+    padding: 0 !important;
 }
-canvas{position:absolute;inset:0;width:100%;height:100%;}
-#content{position:relative;z-index:2;text-align:center;pointer-events:none;}
-#logo{
-  font-family:'Arial Black',Impact,sans-serif;
-  font-size:clamp(28px,6vw,72px);
-  font-weight:900;
-  letter-spacing:0.18em;
-  color:#00c8ff;
-  text-shadow:0 0 40px rgba(0,200,255,0.8),0 0 80px rgba(0,200,255,0.4);
-  opacity:0;
-  transform:scale(0.85);
-  animation:logoIn 1.2s cubic-bezier(.16,1,.3,1) 0.4s forwards;
+[data-testid="block-container"] {
+    padding: 0 !important;
+    max-width: 100% !important;
 }
-#logo em{color:#ffb400;font-style:normal;text-shadow:0 0 40px rgba(255,180,0,0.8);}
-#tagline{
-  font-size:clamp(9px,1.4vw,16px);
-  letter-spacing:0.3em;
-  text-transform:uppercase;
-  color:rgba(0,200,255,0.6);
-  margin-top:16px;opacity:0;
-  animation:fadeUp 0.8s ease 1.6s forwards;
+#intro-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Arial', sans-serif;
+    overflow: hidden;
 }
-#stats{display:flex;gap:clamp(16px,4vw,48px);margin-top:32px;opacity:0;animation:fadeUp 0.8s ease 2.4s forwards;}
-.stat{text-align:center;}
-.stat-num{
-  font-family:'Arial Black',Impact,sans-serif;
-  font-size:clamp(18px,3vw,36px);
-  font-weight:900;color:#ff3d5a;
-  text-shadow:0 0 20px rgba(255,61,90,0.6);
+#bg-c, #gb-c, #fx-c {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
 }
-.stat-lbl{font-size:clamp(7px,1vw,11px);letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-top:4px;}
-#scanline{position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px);pointer-events:none;z-index:3;}
-#vignette{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,0.75) 100%);pointer-events:none;z-index:1;}
-#skip{
-  position:absolute;bottom:20px;right:24px;z-index:10;
-  font-size:11px;letter-spacing:.14em;text-transform:uppercase;
-  color:rgba(255,255,255,0.35);background:transparent;
-  border:1px solid rgba(255,255,255,0.15);
-  padding:6px 16px;border-radius:4px;cursor:pointer;transition:all 0.2s;
+#gb-c, #fx-c { pointer-events: none; }
+#scanline {
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.06) 3px,rgba(0,0,0,.06) 6px);
+    pointer-events: none; z-index: 5;
 }
-#skip:hover{color:#00c8ff;border-color:rgba(0,200,255,0.4);}
-#progress{position:absolute;bottom:0;left:0;height:2px;background:linear-gradient(90deg,#00c8ff,#ffb400);animation:prog 8s linear forwards;}
-#ring1{position:absolute;width:clamp(200px,40vw,520px);height:clamp(200px,40vw,520px);border-radius:50%;border:1px solid rgba(0,200,255,0.07);animation:spin 18s linear infinite;top:50%;left:50%;transform:translate(-50%,-50%);}
-#ring2{position:absolute;width:clamp(260px,52vw,660px);height:clamp(260px,52vw,660px);border-radius:50%;border:1px solid rgba(255,180,0,0.04);animation:spin 28s linear infinite reverse;top:50%;left:50%;transform:translate(-50%,-50%);}
-@keyframes prog{0%{width:0%}100%{width:100%}}
-@keyframes logoIn{0%{opacity:0;transform:scale(0.85)}100%{opacity:1;transform:scale(1)}}
-@keyframes fadeUp{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:translateY(0)}}
-@keyframes spin{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+#vignette {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 80% 80% at 50% 50%, transparent 35%, rgba(0,0,0,.88) 100%);
+    pointer-events: none; z-index: 4;
+}
+#intro-content {
+    position: absolute; z-index: 10;
+    text-align: center; width: 100%;
+    top: 50%; transform: translateY(-50%);
+}
+#phase1 { opacity:0; animation: p1in .4s ease .2s forwards, p1out .3s ease 1.6s forwards; }
+@keyframes p1in  { to { opacity:1 } }
+@keyframes p1out { to { opacity:0 } }
+.classline {
+    font-size: clamp(8px,1.2vw,13px); letter-spacing:.35em;
+    color:#ff3d5a; text-transform:uppercase; margin:3px 0; font-weight:700;
+}
+.classbar {
+    height:2px; background:linear-gradient(90deg,transparent,#ff3d5a,transparent);
+    margin:8px auto; width:clamp(200px,40vw,500px);
+    animation: classbar 1s ease .3s forwards; opacity:0; transform:scaleX(0);
+}
+@keyframes classbar { to { opacity:1; transform:scaleX(1) } }
+#phase2 { opacity:0; animation: pfade .6s ease 2s forwards; }
+@keyframes pfade { to { opacity:1 } }
+#intro-logo-wrap {
+    opacity:0; transform:translateY(8px);
+    animation: logoin 1s cubic-bezier(.16,1,.3,1) 3.2s forwards;
+}
+@keyframes logoin { to { opacity:1; transform:translateY(0) } }
+#intro-logo {
+    font-family: 'Arial Black', Impact, sans-serif;
+    font-size: clamp(32px,7vw,88px);
+    font-weight:900; letter-spacing:.16em; color:#00c8ff; line-height:1;
+    text-shadow: 0 0 50px rgba(0,200,255,.9), 0 0 100px rgba(0,200,255,.4), 0 0 2px #fff;
+}
+#intro-logo em { color:#ffb400; font-style:normal; text-shadow:0 0 50px rgba(255,180,0,.9),0 0 100px rgba(255,180,0,.4); }
+#intro-logo-sub {
+    font-size:clamp(8px,1.3vw,15px); letter-spacing:.4em;
+    text-transform:uppercase; color:rgba(0,200,255,.55); margin-top:10px;
+}
+#intro-divider {
+    height:1px; background:linear-gradient(90deg,transparent,rgba(0,200,255,.5),rgba(255,180,0,.5),transparent);
+    margin:18px auto; width:0; animation: divexpand .8s ease 4.4s forwards;
+}
+@keyframes divexpand { to { width:clamp(260px,50vw,640px) } }
+#intro-stats {
+    display:flex; justify-content:center; gap:clamp(20px,5vw,60px);
+    opacity:0; transform:translateY(10px); animation: statsin .7s ease 5s forwards;
+}
+@keyframes statsin { to { opacity:1; transform:translateY(0) } }
+.istat .n { font-family:'Arial Black',sans-serif; font-size:clamp(22px,4vw,48px); font-weight:900; line-height:1; }
+.istat .l { font-size:clamp(7px,1vw,11px); letter-spacing:.22em; text-transform:uppercase; color:rgba(255,255,255,.35); margin-top:5px; }
+.isep { width:1px; background:rgba(255,255,255,.1); align-self:stretch; margin:4px 0; }
+#ticker-wrap {
+    position:absolute; bottom:52px; left:0; right:0; height:28px;
+    background:rgba(0,0,0,.7); border-top:1px solid rgba(255,61,90,.25);
+    display:flex; align-items:center; overflow:hidden;
+    opacity:0; animation: pfade .5s ease 6.2s forwards;
+}
+.ticker-label {
+    position:absolute; left:0; top:0; bottom:0; background:#ff3d5a;
+    color:#fff; font-size:10px; font-weight:700; letter-spacing:.15em;
+    padding:0 14px; display:flex; align-items:center; white-space:nowrap; z-index:2;
+}
+.ticker-inner {
+    display:inline-block; white-space:nowrap; font-size:11px;
+    color:rgba(255,255,255,.55); letter-spacing:.06em;
+    padding-left:100%; animation: tickscroll 14s linear infinite;
+}
+@keyframes tickscroll { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+.hud-corner { position:absolute; z-index:10; opacity:0; animation:pfade .5s ease 6s forwards; }
+#hud-tl { top:18px; left:18px; }
+#hud-tr { top:18px; right:18px; text-align:right; }
+#hud-bl { bottom:88px; left:18px; }
+.hud-line { font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:rgba(0,200,255,.4); line-height:1.8; }
+.hud-val  { font-size:11px; font-weight:700; color:rgba(0,200,255,.7); }
+.hud-brk  { position:absolute; width:14px; height:14px; border-color:rgba(0,200,255,.35); border-style:solid; }
+.br-tl { top:0;left:0;   border-width:2px 0 0 2px; }
+.br-tr { top:0;right:0;  border-width:2px 2px 0 0; }
+.br-bl { bottom:0;left:0;  border-width:0 0 2px 2px; }
+.br-br { bottom:0;right:0; border-width:0 2px 2px 0; }
+.hud-box { position:relative; padding:8px 12px; border:1px solid rgba(0,200,255,.12); border-radius:2px; background:rgba(0,0,0,.5); }
+#threat {
+    position:absolute; left:50%; transform:translateX(-50%); top:18px; z-index:10;
+    display:flex; align-items:center; gap:10px;
+    opacity:0; animation:pfade .5s ease 6.5s forwards;
+}
+.tl-label  { font-size:9px; letter-spacing:.2em; text-transform:uppercase; color:rgba(255,255,255,.35); }
+.tl-blocks { display:flex; gap:3px; }
+.tl-block  { width:clamp(14px,2vw,22px); height:8px; border-radius:1px; background:rgba(255,255,255,.08); }
+.tl-block.on { animation: blockpulse 2s ease-in-out infinite; }
+@keyframes blockpulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+#intro-progress {
+    position:absolute; bottom:0; left:0; height:2px;
+    background:linear-gradient(90deg,#ff3d5a,#ff8c42,#ffb400,#00c8ff);
+    animation: prog 10s linear forwards;
+}
+@keyframes prog { 0%{width:0%} 100%{width:100%} }
+#intro-skip {
+    position:absolute; bottom:16px; right:20px; z-index:20;
+    font-size:10px; letter-spacing:.15em; text-transform:uppercase;
+    color:rgba(255,255,255,.3); background:transparent;
+    border:1px solid rgba(255,255,255,.12); padding:5px 14px;
+    border-radius:3px; cursor:pointer; transition:all .2s;
+}
+#intro-skip:hover { color:#00c8ff; border-color:rgba(0,200,255,.35); }
 </style>
-</head>
-<body>
-<div id="wrap">
-  <canvas id="c"></canvas>
+
+<div id="intro-overlay">
+  <canvas id="bg-c"></canvas>
+  <canvas id="gb-c"></canvas>
+  <canvas id="fx-c"></canvas>
   <div id="vignette"></div>
-  <div id="ring1"></div><div id="ring2"></div>
   <div id="scanline"></div>
-  <div id="content">
-    <div id="logo">THE GEO&#8209;<em>LOCATOR</em></div>
-    <div id="tagline">Global Intelligence Operations Center</div>
-    <div id="stats">
-      <div class="stat"><div class="stat-num" id="s1">0</div><div class="stat-lbl">Active Conflicts</div></div>
-      <div class="stat"><div class="stat-num" id="s2">0</div><div class="stat-lbl">Countries Tracked</div></div>
-      <div class="stat"><div class="stat-num" id="s3">0</div><div class="stat-lbl">Live Data Feeds</div></div>
+
+  <div class="hud-corner" id="hud-tl">
+    <div class="hud-box">
+      <div class="hud-brk br-tl"></div><div class="hud-brk br-tr"></div>
+      <div class="hud-brk br-bl"></div><div class="hud-brk br-br"></div>
+      <div class="hud-line">SYSTEM STATUS</div>
+      <div class="hud-val">OPERATIONAL</div>
+      <div class="hud-line" id="utc-clk">UTC 00:00:00</div>
     </div>
   </div>
-  <button id="skip" onclick="dismiss()">Skip &rsaquo;</button>
-  <div id="progress"></div>
+  <div class="hud-corner" id="hud-tr">
+    <div class="hud-box">
+      <div class="hud-brk br-tl"></div><div class="hud-brk br-tr"></div>
+      <div class="hud-brk br-bl"></div><div class="hud-brk br-br"></div>
+      <div class="hud-line">FEEDS ACTIVE</div>
+      <div class="hud-val" style="color:#00e676">12 / 12</div>
+      <div class="hud-line">GDELT &middot; USGS &middot; NOAA</div>
+    </div>
+  </div>
+  <div class="hud-corner" id="hud-bl">
+    <div class="hud-box">
+      <div class="hud-brk br-tl"></div><div class="hud-brk br-tr"></div>
+      <div class="hud-brk br-bl"></div><div class="hud-brk br-br"></div>
+      <div class="hud-line">ACTIVE CONFLICTS</div>
+      <div class="hud-val" style="color:#ff3d5a">5 THEATRES</div>
+      <div class="hud-line">UKRAINE &middot; GAZA &middot; IRAN &middot; SUDAN &middot; MYANMAR</div>
+    </div>
+  </div>
+
+  <div id="threat">
+    <div class="tl-label">GLOBAL THREAT</div>
+    <div class="tl-blocks" id="tl-blocks"></div>
+    <div class="tl-label" style="color:#ff8c42;font-weight:700">ELEVATED</div>
+  </div>
+
+  <div id="intro-content">
+    <div id="phase1">
+      <div class="classbar"></div>
+      <div class="classline">&#x25BC; INITIALISING GLOBAL INTELLIGENCE FEED &#x25BC;</div>
+      <div class="classline" style="color:rgba(255,61,90,.6);font-size:clamp(7px,1vw,10px)">
+        AUTHORISED ACCESS ONLY &nbsp;|&nbsp; ALL ACTIVITY MONITORED
+      </div>
+      <div class="classbar"></div>
+    </div>
+    <div id="phase2">
+      <div id="intro-logo-wrap">
+        <div id="intro-logo">THE GEO&#8209;<em>LOCATOR</em></div>
+        <div id="intro-logo-sub">Global Intelligence Operations Center</div>
+      </div>
+      <div id="intro-divider"></div>
+      <div id="intro-stats">
+        <div class="istat"><div class="n" style="color:#ff3d5a" id="sc">0</div><div class="l">Active Conflicts</div></div>
+        <div class="isep"></div>
+        <div class="istat"><div class="n" style="color:#ffb400" id="sk">0</div><div class="l">Est. Casualties</div></div>
+        <div class="isep"></div>
+        <div class="istat"><div class="n" style="color:#00c8ff" id="sn">0</div><div class="l">Countries Tracked</div></div>
+        <div class="isep"></div>
+        <div class="istat"><div class="n" style="color:#00e676" id="sf">0</div><div class="l">Live Data Feeds</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="ticker-wrap">
+    <div class="ticker-label">&#9679; LIVE</div>
+    <div style="overflow:hidden;flex:1;height:100%;display:flex;align-items:center;padding-left:90px;">
+      <div class="ticker-inner">
+        &#x25C6; UKRAINE: Russian missile salvo targets Kyiv energy grid &nbsp;&nbsp;
+        &#x25C6; GAZA: IDF operations continue in Rafah sector &nbsp;&nbsp;
+        &#x25C6; IRAN: IRGC ballistic missile posture elevated &nbsp;&nbsp;
+        &#x25C6; RED SEA: Houthi drone intercepted near Bab el-Mandeb &nbsp;&nbsp;
+        &#x25C6; SUDAN: RSF advancing in North Darfur &mdash; famine risk critical &nbsp;&nbsp;
+        &#x25C6; MARKETS: Brent crude +2.1% on Hormuz closure risk &nbsp;&nbsp;
+        &#x25C6; UKRAINE: Russian missile salvo targets Kyiv energy grid &nbsp;&nbsp;
+        &#x25C6; GAZA: IDF operations continue in Rafah sector &nbsp;&nbsp;
+        &#x25C6; IRAN: IRGC ballistic missile posture elevated &nbsp;&nbsp;
+        &#x25C6; RED SEA: Houthi drone intercepted near Bab el-Mandeb &nbsp;&nbsp;
+        &#x25C6; SUDAN: RSF advancing in North Darfur &mdash; famine risk critical &nbsp;&nbsp;
+      </div>
+    </div>
+  </div>
+
+  <button id="intro-skip" onclick="introSkip()">SKIP &rsaquo;</button>
+  <div id="intro-progress"></div>
 </div>
+
 <script>
-var canvas=document.getElementById('c');
-var ctx=canvas.getContext('2d');
-var W,H,pts=[];
-function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}
+(function(){
+var bgC=document.getElementById('bg-c'),gbC=document.getElementById('gb-c'),fxC=document.getElementById('fx-c');
+var bgX=bgC.getContext('2d'),gbX=gbC.getContext('2d'),fxX=fxC.getContext('2d');
+var W=window.innerWidth,H=window.innerHeight;
+function resize(){
+  W=window.innerWidth;H=window.innerHeight;
+  bgC.width=gbC.width=fxC.width=W;
+  bgC.height=gbC.height=fxC.height=H;
+}
 resize();window.addEventListener('resize',resize);
-for(var i=0;i<130;i++){pts.push({x:Math.random()*1920,y:Math.random()*1080,vx:(Math.random()-.5)*.4,vy:(Math.random()-.5)*.4,r:Math.random()*1.4+.3,warm:Math.random()>.7});}
-function counter(el,target,dur){var s=0,step=target/(dur/16);var t=setInterval(function(){s=Math.min(s+step,target);el.textContent=Math.floor(s)+(target>=10?'+':'');if(s>=target)clearInterval(t);},16);}
-setTimeout(function(){counter(document.getElementById('s1'),5,1200);counter(document.getElementById('s2'),50,1500);counter(document.getElementById('s3'),12,1800);},2600);
-function draw(){
-  ctx.clearRect(0,0,W,H);
-  ctx.strokeStyle='rgba(0,200,255,0.025)';ctx.lineWidth=1;
-  for(var x=0;x<W;x+=80){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
-  for(var y=0;y<H;y+=80){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+// UTC clock
+function ck(){
+  var n=new Date(),el=document.getElementById('utc-clk');
+  if(el)el.textContent='UTC '+String(n.getUTCHours()).padStart(2,'0')+':'+String(n.getUTCMinutes()).padStart(2,'0')+':'+String(n.getUTCSeconds()).padStart(2,'0');
+}
+ck();setInterval(ck,1000);
+
+// Threat blocks
+var tlC=['#00e676','#00e676','#ffb400','#ffb400','#ff8c42','#ff8c42','#ff3d5a','#ff3d5a'];
+var tlEl=document.getElementById('tl-blocks');
+for(var i=0;i<8;i++){
+  var b=document.createElement('div');
+  b.className='tl-block'+(i<6?' on':'');
+  b.style.background=i<6?tlC[i]:'rgba(255,255,255,.08)';
+  if(i<6)b.style.animationDelay=(i*.15)+'s';
+  tlEl.appendChild(b);
+}
+
+// Particles
+var pts=[];
+for(var i=0;i<140;i++)pts.push({x:Math.random()*1920,y:Math.random()*1080,vx:(Math.random()-.5)*.45,vy:(Math.random()-.5)*.45,r:Math.random()*1.4+.3,warm:Math.random()>.72,ph:Math.random()*Math.PI*2});
+
+// Hotspots
+var hs=[
+  {nx:.46,ny:.42,col:'#ff3d5a',lb:'UKR'},
+  {nx:.55,ny:.46,col:'#ff3d5a',lb:'GAZ'},
+  {nx:.59,ny:.48,col:'#ff8c42',lb:'IRN'},
+  {nx:.43,ny:.58,col:'#ff8c42',lb:'SUD'},
+  {nx:.73,ny:.52,col:'#ffb400',lb:'MMR'},
+  {nx:.57,ny:.50,col:'#ff8c42',lb:'YEM'}
+];
+
+// Globe
+var gRot=0,gLat=20*Math.PI/180;
+function ll2xy(lat,lon,r,cx,cy){
+  var la=lat*Math.PI/180,lo=(lon+gRot*180/Math.PI)*Math.PI/180;
+  var x=r*Math.cos(la)*Math.sin(lo);
+  var y=r*(Math.sin(la)*Math.cos(gLat)-Math.cos(la)*Math.cos(lo)*Math.sin(gLat));
+  var z=Math.cos(la)*Math.cos(lo)*Math.cos(gLat)+Math.sin(la)*Math.sin(gLat);
+  return{x:cx+x,y:cy-y,z:z};
+}
+function drawGlobe(){
+  gbX.clearRect(0,0,W,H);
+  var cx=W*.5,cy=H*.5,r=Math.min(W,H)*.26;
+  for(var lat=-75;lat<=75;lat+=15){
+    var p2=[];for(var lon=-180;lon<=180;lon+=3)p2.push(ll2xy(lat,lon,r,cx,cy));
+    gbX.beginPath();var go=false;
+    for(var i=0;i<p2.length;i++){if(p2[i].z<0){go=false;continue;}if(!go){gbX.moveTo(p2[i].x,p2[i].y);go=true;}else gbX.lineTo(p2[i].x,p2[i].y);}
+    gbX.strokeStyle=lat===0?'rgba(0,200,255,.2)':'rgba(0,200,255,.08)';gbX.lineWidth=lat===0?1.2:.6;gbX.stroke();
+  }
+  for(var lon2=-180;lon2<180;lon2+=20){
+    var p3=[];for(var la2=-90;la2<=90;la2+=3)p3.push(ll2xy(la2,lon2,r,cx,cy));
+    gbX.beginPath();var go2=false;
+    for(var i=0;i<p3.length;i++){if(p3[i].z<0){go2=false;continue;}if(!go2){gbX.moveTo(p3[i].x,p3[i].y);go2=true;}else gbX.lineTo(p3[i].x,p3[i].y);}
+    gbX.strokeStyle='rgba(0,200,255,.05)';gbX.lineWidth=.5;gbX.stroke();
+  }
+  gbX.beginPath();gbX.arc(cx,cy,r,0,Math.PI*2);gbX.strokeStyle='rgba(0,200,255,.22)';gbX.lineWidth=1;gbX.stroke();
+  var atm=gbX.createRadialGradient(cx,cy-r*.1,r*.88,cx,cy,r*1.06);
+  atm.addColorStop(0,'rgba(0,200,255,0)');atm.addColorStop(.8,'rgba(0,200,255,.04)');atm.addColorStop(1,'rgba(0,200,255,.14)');
+  gbX.beginPath();gbX.arc(cx,cy,r*1.06,0,Math.PI*2);gbX.fillStyle=atm;gbX.fill();
+  var now=Date.now();
+  hs.forEach(function(h){
+    var la3=(0.5-h.ny)*140,lo3=(h.nx-0.5)*320;
+    var p=ll2xy(la3,lo3,r,cx,cy);if(p.z<0)return;
+    var pulse=(Math.sin(now*.003+h.nx*10)+1)*.5,pr=4+pulse*8;
+    gbX.beginPath();gbX.arc(p.x,p.y,pr,0,Math.PI*2);gbX.strokeStyle=h.col+'88';gbX.lineWidth=1;gbX.stroke();
+    gbX.beginPath();gbX.arc(p.x,p.y,2.5,0,Math.PI*2);gbX.fillStyle=h.col;gbX.fill();
+    gbX.font='bold '+Math.round(W*.007+7)+'px Arial';gbX.fillStyle='rgba(255,255,255,.6)';gbX.fillText(h.lb,p.x+5,p.y-4);
+  });
+}
+function drawFX(){
+  fxX.clearRect(0,0,W,H);
+  var cx=W*.5,cy=H*.5,r=Math.min(W,H)*.26,now=Date.now();
+  var ang=(now/4000)*Math.PI*2;
+  fxX.save();fxX.beginPath();fxX.moveTo(cx,cy);fxX.arc(cx,cy,r,ang-.7,ang);fxX.closePath();
+  var rf=fxX.createRadialGradient(cx,cy,0,cx,cy,r);
+  rf.addColorStop(0,'rgba(0,200,255,0)');rf.addColorStop(.6,'rgba(0,200,255,.05)');rf.addColorStop(1,'rgba(0,200,255,.13)');
+  fxX.fillStyle=rf;fxX.fill();fxX.restore();
+  fxX.beginPath();fxX.moveTo(cx,cy);fxX.lineTo(cx+Math.cos(ang)*r,cy+Math.sin(ang)*r);fxX.strokeStyle='rgba(0,200,255,.4)';fxX.lineWidth=1.5;fxX.stroke();
+  fxX.beginPath();fxX.ellipse(cx,cy,r*1.18,r*1.18*.28,now/8000,0,Math.PI*2);fxX.strokeStyle='rgba(255,180,0,.14)';fxX.lineWidth=1;fxX.stroke();
+  fxX.beginPath();fxX.ellipse(cx,cy,r*1.36,r*1.36*.22,-now/12000,0,Math.PI*2);fxX.strokeStyle='rgba(0,200,255,.07)';fxX.lineWidth=.8;fxX.stroke();
+  var sa=now/8000,sx=cx+Math.cos(sa)*r*1.18,sy=cy+Math.sin(sa)*r*1.18*.28;
+  fxX.beginPath();fxX.arc(sx,sy,3,0,Math.PI*2);fxX.fillStyle='#ffb400';fxX.fill();
+  var sA=now*.001;
+  hs.forEach(function(h,idx){
+    var ph=(sA+idx*1.1)%(Math.PI*2);if(ph>Math.PI)return;
+    var pg=ph/Math.PI,sx2=h.nx*W,sy2=h.ny*H,mx=(sx2+cx)/2,my=(sy2+cy)/2-40;
+    fxX.beginPath();fxX.moveTo(sx2,sy2);fxX.quadraticCurveTo(mx,my,sx2+(cx-sx2)*pg,sy2+(cy-sy2)*pg);
+    var hx=h.col.slice(1);
+    fxX.strokeStyle='rgba('+parseInt(hx.slice(0,2),16)+','+parseInt(hx.slice(2,4),16)+','+parseInt(hx.slice(4,6),16)+','+(Math.sin(pg*Math.PI)*.35)+')';
+    fxX.lineWidth=1;fxX.stroke();
+  });
+}
+function drawBG(){
+  bgX.clearRect(0,0,W,H);var now=Date.now();
+  for(var gx=0;gx<W;gx+=60)for(var gy=0;gy<H;gy+=60){
+    var p=Math.sin(now*.0006+gx*.02+gy*.015)*.5+.5;
+    bgX.globalAlpha=.03+p*.05;bgX.fillStyle='rgba(0,200,255,.06)';
+    bgX.beginPath();bgX.arc(gx,gy,1.2,0,Math.PI*2);bgX.fill();
+  }
+  bgX.globalAlpha=1;
   var sx=W/1920,sy=H/1080;
   for(var i=0;i<pts.length;i++){
     var p=pts[i];p.x+=p.vx;p.y+=p.vy;
     if(p.x<0)p.x=1920;if(p.x>1920)p.x=0;if(p.y<0)p.y=1080;if(p.y>1080)p.y=0;
-    ctx.beginPath();ctx.arc(p.x*sx,p.y*sy,p.r,0,Math.PI*2);
-    ctx.fillStyle=p.warm?'rgba(255,180,0,0.5)':'rgba(0,200,255,0.4)';ctx.fill();
+    p.ph+=.03;var pa=.25+Math.sin(p.ph)*.15;
+    bgX.beginPath();bgX.arc(p.x*sx,p.y*sy,p.r,0,Math.PI*2);
+    bgX.fillStyle=p.warm?'rgba(255,180,0,'+pa+')':'rgba(0,200,255,'+pa+')';bgX.fill();
     for(var j=i+1;j<pts.length;j++){
       var dx=(p.x-pts[j].x)*sx,dy=(p.y-pts[j].y)*sy,d=Math.sqrt(dx*dx+dy*dy);
-      if(d<85){ctx.beginPath();ctx.moveTo(p.x*sx,p.y*sy);ctx.lineTo(pts[j].x*sx,pts[j].y*sy);ctx.strokeStyle='rgba(0,200,255,'+(0.07*(1-d/85))+')';ctx.lineWidth=.5;ctx.stroke();}
+      if(d<80){bgX.beginPath();bgX.moveTo(p.x*sx,p.y*sy);bgX.lineTo(pts[j].x*sx,pts[j].y*sy);bgX.strokeStyle='rgba(0,200,255,'+(0.06*(1-d/80))+')';bgX.lineWidth=.5;bgX.stroke();}
     }
   }
-  var ang=(Date.now()/3000)*(Math.PI*2),cx=W/2,cy=H/2,rad=Math.min(W,H)*.2;
-  var g=ctx.createLinearGradient(cx,cy,cx+Math.cos(ang)*rad,cy+Math.sin(ang)*rad);
-  g.addColorStop(0,'rgba(0,200,255,0)');g.addColorStop(1,'rgba(0,200,255,0.12)');
-  ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,rad,ang-.55,ang);ctx.closePath();ctx.fillStyle=g;ctx.fill();
-  requestAnimationFrame(draw);
 }
-draw();
-var _aut=setTimeout(dismiss,8000);
-function dismiss(){
-  clearTimeout(_aut);
-  var w=document.getElementById('wrap');
-  w.style.transition='opacity 0.6s ease';w.style.opacity='0';
-  setTimeout(function(){w.style.display='none';},650);
+function ctr(id,tgt,sfx,dur){
+  var el=document.getElementById(id);if(!el)return;
+  var s=0,st=tgt/(dur/16),t=setInterval(function(){
+    s=Math.min(s+st,tgt);
+    el.textContent=(tgt>999?(Math.floor(s/1000)+'K'):Math.floor(s))+(sfx||'+');
+    if(s>=tgt)clearInterval(t);
+  },16);
 }
+setTimeout(function(){ctr('sc',5,'+',1000);ctr('sk',463,'K',1600);ctr('sn',50,'+',1400);ctr('sf',12,'+',900);},5200);
+
+function render(){gRot+=.002;drawBG();drawGlobe();drawFX();requestAnimationFrame(render);}
+render();
+
+window.introSkip=function(){
+  var ov=document.getElementById('intro-overlay');
+  if(ov){ov.style.transition='opacity .6s ease';ov.style.opacity='0';setTimeout(function(){ov.style.display='none';},650);}
+};
+})();
 </script>
-</body></html>"""
+""", unsafe_allow_html=True)
 
-    _intro_comp.html(_intro_html, height=600)
     _intro_time.sleep(10)
-    st.session_state.intro_shown = True
+    st.session_state["intro_shown"] = True
     st.rerun()
-
 
 
 # HEADER
