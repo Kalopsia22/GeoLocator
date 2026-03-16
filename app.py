@@ -2834,8 +2834,8 @@ function dismiss(){
 </script>
 </body></html>"""
 
-    _intro_comp.html(_intro_html, height=520)
-    _intro_time.sleep(8)
+    _intro_comp.html(_intro_html, height=600)
+    _intro_time.sleep(10)
     st.session_state.intro_shown = True
     st.rerun()
 
