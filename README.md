@@ -1,31 +1,51 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/OSINT%20ARENA-v3.0-00c8ff?style=for-the-badge&labelColor=02040a&color=00c8ff" alt="version"/>
+  <img src="https://img.shields.io/badge/THE%20GEO--LOCATOR-v7-00c8ff?style=for-the-badge&labelColor=02040a&color=00c8ff" alt="version"/>
   <img src="https://img.shields.io/badge/Streamlit-1.35+-ff4b4b?style=for-the-badge&logo=streamlit&logoColor=white&labelColor=02040a" alt="streamlit"/>
   <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white&labelColor=02040a" alt="python"/>
   <img src="https://img.shields.io/badge/License-MIT-00e676?style=for-the-badge&labelColor=02040a" alt="license"/>
 </p>
 
 <h1 align="center">
-  <br/>Geo-Locator
-  <br/><sub><sup>Global Intelligence Operations Center</sup></sub>
+  <br/>THE GEO-<em>LOCATOR</em>
+  <br/><sub><sup>Global Intelligence Operations Center — v7</sup></sub>
 </h1>
 
 <p align="center">
-  A luxury-aesthetic, intelligence-grade Streamlit dashboard combining live Earth signals,
-  civil movement tracking, conflict monitoring, multi-source news aggregation,
-  AI-powered analysis, and gamified OSINT training challenges — all in a single dark ops interface.
+  A luxury-aesthetic, intelligence-grade Streamlit dashboard combining a multi-layer global command map,
+  live earth signals, conflict monitoring, civil movement tracking, live TV streams,
+  multi-source news aggregation, an intelligence operations center, and a full economic &amp; markets suite —
+  all in a single dark-ops interface.
 </p>
 
 <p align="center">
   <a href="#quick-start">Quick Start</a> ·
   <a href="#features">Features</a> ·
+  <a href="#global-command-map">Global Command Map</a> ·
   <a href="#conflict-dashboard">Conflict Dashboard</a> ·
+  <a href="#intel-dashboard">Intel Dashboard</a> ·
+  <a href="#economic--markets">Economic &amp; Markets</a> ·
   <a href="#data-sources">Data Sources</a> ·
-  <a href="#ai-setup">AI Setup</a> ·
   <a href="#tech-stack">Tech Stack</a> ·
-  <a href="#live-api-integration">Live API Integration</a> ·
   <a href="#deployment">Deployment</a>
 </p>
+
+---
+
+## What's New in v7
+
+> **Compared to v3 (the previous README):**
+
+- **REMOVED** AI Provider sidebar, AI Analyst tab, Training Arena tab, AI Situation Report Generator
+- **ADDED** 🛰 Intel Dashboard — a full intelligence operations center with country instability index (50 countries), strategic risk matrix, WMD/nuclear posture tracker, geopolitical force posture, and an embedded intel feed
+- **ADDED** 📊 Economic & Markets tab — a full financial intelligence suite (see below)
+- **ADDED** Global Command Map — a single persistent interactive map above all tabs with 30+ toggleable intelligence layers, a live click-to-analyse Intelligence Profile panel, a live events tracker (GDELT 90s TTL), and a Today's Briefing strip
+- **ADDED** Cinematic animated intro screen (skippable) with rotating globe, particle field, conflict hotspots, and live UTC clock
+- **ADDED** Live TV Streams sub-tab inside Live News — HLS player supporting 15+ news channels (Bloomberg, Sky News, Euronews, DW, France 24, Al Jazeera, etc.)
+- **ADDED** Israel–Iran War as a fifth conflict theatre
+- **EXPANDED** Global map to 30+ optional layers across 7 sidebar expander groups
+- **ADDED** GDELT-blended live instability scoring for the 50-country index
+- **ADDED** Full mobile responsive CSS breakpoints (480px and 768px)
+- **ADDED** `streamlit-autorefresh` dependency for live refresh
 
 ---
 
@@ -33,11 +53,11 @@
 
 ```bash
 # 1. Clone / download
-git clone https://github.com/your-org/osint-arena
-cd osint-arena
+git clone https://github.com/your-org/geo-locator
+cd geo-locator
 
 # 2. Install dependencies
-pip install -r requirements.txt
+pip install streamlit pydeck plotly pandas numpy requests streamlit-autorefresh
 
 # 3. Launch
 streamlit run app.py
@@ -45,168 +65,209 @@ streamlit run app.py
 
 Opens at **http://localhost:8501**
 
-No API keys required to run — all live feeds degrade gracefully to rich synthetic fallback data when offline.
+No API keys required — all live feeds degrade gracefully to rich synthetic fallback data when offline.
 
 ---
 
 ## Features
 
-OSINT Arena v3 is organised into six tabs, each a full analytical instrument.
+The Geo-Locator v7 is organised into a persistent Global Command Map plus six tabs, each a full analytical instrument.
 
-### ⚔ Conflict Dashboard *(new in v3)*
+### 🌐 Global Command Map *(new in v7)*
 
-The centrepiece of v3. A full conflict-intelligence workstation covering four active theatres with theatre-select, incident mapping, faction tracking, supply arc visualisation, escalation gauges, timelines, risk matrices, media bias analysis, and an AI situation report generator.
+A single interactive PyDeck map that sits above all tabs and is always visible. Supports 30+ independently toggleable layers across seven sidebar groups.
 
-[Full breakdown below ↓](#conflict-dashboard)
+**Core Layers (on by default)**
 
-### 🌍 Earth Signals
+| Layer | Data Source | What it shows |
+|---|---|---|
+| 🟦 Seismic Events | USGS M2.5+ (60s TTL) | Magnitude-coloured earthquake dots |
+| 🟠 Volcanic / EONET | NASA EONET v3 (5min TTL) | Active volcanoes, wildfires, severe storms |
+| 🔴 Conflict Incidents | Structured conflict dict | All incidents across 5 active theatres |
+| 🟣 Civil Movements | Static + GDELT | Protest/strike/civil unrest markers |
+| ⟶ Supply Arc Lines | Conflict supply_lines | Military aid and humanitarian arcs |
+| 🌡 Heatmap (Seismic) | USGS | PyDeck HeatmapLayer |
+| 📅 Historical Events 2022+ | 60+ curated events | Every major event since Feb 2022 |
+| ⚡ Live Events (GDELT) | GDELT Doc API (90s TTL) | Last-hour global events |
 
-Live geophysical monitoring combining three independent feeds into a single interactive map.
+**Intelligence Layers (off by default)**
 
-- **Seismic layer** — USGS M2.5+ earthquakes, last 24 hours, colour-coded by magnitude
-- **Volcanic/EONET layer** — NASA Earth Observatory Natural Event Tracker (active volcanoes, wildfires, severe storms)
-- **Geomagnetic layer** — NOAA SWPC Kp-index sparkline with storm threshold indicator
-- **Heatmap mode** — PyDeck `HeatmapLayer` showing seismic density
-- Magnitude histogram and M4.5+ significant events list in sidebar
+Military Bases · Nuclear Sites · Intel Hotspots · Conflict Zones · Gamma Irradiators · Cyber Threat Actors · GPS Jamming Zones · Orbital Surveillance
 
-### ✊ Civil Movements
+**Infrastructure Layers**
 
-Civil unrest and large-scale public movement tracker.
+Spaceports · Undersea Cables · Oil & Gas Pipelines · AI Data Centers · Military Activity · Ship Traffic Zones · Trade Route Arcs
 
-- Interactive map with sentiment-coloured markers (CRIT / HIGH / MED)
-- Scale bar per event (0–100 mobilisation index)
-- Filter by type: protest / strike / civil
-- Movement chart (horizontal bar, sorted by scale)
-- Age tracking and participant count
+**Environment & Society Layers**
 
-### 📡 Live News Feeds
+Climate Anomalies · Weather Alerts · Displacement Flows · Critical Infrastructure Instability · Internet Outages · Active Fire Hotspots · Protest Locations · Aviation Incidents
 
-Multi-source RSS aggregation across 16 curated feeds in 6 categories. 10-minute TTL cache.
+**Economic Layers**
 
-| Category | Sources |
-|---|---|
-| 🌐 Global Wire | Reuters World, BBC World, Al Jazeera, AP News |
-| 🔬 Earth Science | NASA JPL, USGS News, Phys.org Earth |
-| 🗺 Geopolitics | Foreign Policy, The Diplomat, Defense One |
-| ⚔ Conflict | ACLED Updates, ISW Daily, CSIS Analysis |
-| 🌱 Climate | Carbon Brief |
-| ☀ Space Weather | SpaceWeather.com, NOAA SWPC |
+Economic Centers · Critical Mineral Deposits · Strategic Waterways
 
-Each article card shows source name, category badge, headline, excerpt, publication age, and a direct link. Category-specific left-border accent colours distinguish feed origins at a glance. Falls back to the full source directory (with RSS endpoints) when offline.
+#### Click-to-Analyse Intelligence Profile
 
-### 🎯 Arena Challenges
+Clicking any map marker opens a full Intelligence Profile panel showing:
+- Country Instability Index score (0–100) with 4-component breakdown (Unrest, Conflict, Security, Information) — **blended live with GDELT tone data** (70% baseline / 30% live, 1h TTL)
+- WMD / Nuclear Posture risk score and asset detail
+- Recent Historical Events linked to the location
+- Signal count badges (conflicts, military bases, nuclear sites, military activity, historical events)
+- Formatted intelligence brief
 
-Gamified OSINT training system with XP progression, leaderboard, and four intelligence challenges of increasing difficulty.
+#### Today's Briefing
 
-| Challenge | Difficulty | XP | Topic |
-|---|---|---|---|
-| Seismic Trail | ANALYST | 250 | Tsunami risk assessment from seismic parameters |
-| Civil Unrest Assessment | AGENT | 400 | ACLED escalation methodology |
-| Conflict Intelligence | ANALYST | 350 | Convergent OSINT — satellite + SOCMINT + SIGINT |
-| Multi-Source Fusion | HANDLER | 500 | Compound risk correlation across data streams |
-
-Tier system: RECRUIT → ANALYST (2,000 XP) → AGENT (5,000 XP) → HANDLER (10,000 XP)
-
-### 🤖 AI Analyst
-
-Natural language intelligence analysis powered by your choice of LLM provider.
-
-- Provider-agnostic: Groq (fastest), Ollama (fully offline), OpenRouter (model variety)
-- 7 pre-built prompt templates covering seismic risks, conflict assessment, Kp impacts, and multi-theatre correlation
-- **Live context injection** — automatically appends top earthquakes, Kp index, all conflict data, and civil movement sentiment to every query
-- Outputs to a styled terminal-aesthetic code block
-- Magnitude donut, movement sentiment bar, and raw earthquake data table alongside
+Auto-generated text brief below the map summarising active critical conflicts, geomagnetic storm status, solar wind speed, latest historical event, live GDELT headline, and NASA FIRMS wildfire count.
 
 ---
 
-## Conflict Dashboard
+### ⚔ Conflict Dashboard
 
-The ⚔ Conflict Dashboard is the primary new module in v3. It tracks four active conflict theatres with intelligence-grade depth.
+Five active conflict theatres with intelligence-grade depth. Select theatre via radio buttons.
 
-### Monitored Theatres
-
-| Theatre | Region | Intensity | Escalation Index | Casualties | Displaced |
+| Theatre | Region | Intensity | Escalation | Casualties | Displaced |
 |---|---|---|---|---|---|
 | Ukraine–Russia War | Eastern Europe | CRITICAL | 87/100 | ~350,000 | 14.2M |
 | Gaza Conflict | Middle East | CRITICAL | 92/100 | ~46,000 | 1.9M |
+| Israel–Iran War | Middle East | CRITICAL | 88/100 | ~28,000 | 0.7M |
 | Sudan Civil War | Sub-Saharan Africa | HIGH | 74/100 | ~15,000 | 8.1M |
 | Myanmar Civil War | Southeast Asia | HIGH | 68/100 | ~50,000 | 2.6M |
 
-### Per-Theatre Panels
+**Per-Theatre Features**
 
-#### 1. Incident Map
-PyDeck `ScatterplotLayer` with severity-coloured markers and `ArcLayer` supply lines. Click any event for a tooltip showing type, location, severity, date, and casualty count.
+- **Live Conflict Tracker** — live-running conflict duration clock (years/months/days/hh:mm:ss), GDELT article count with new/recent badges
+- **Incident Map** — PyDeck ScatterplotLayer + ArcLayer supply lines, severity-coloured, click for tooltip
+- **Escalation Gauge** — Plotly indicator gauge 0–100 with colour-coded risk zones
+- **Faction Tracker** — territory control %, operational strength, weapons systems, external support
+- **Filterable Incident Feed** — filter by: ALL / airstrike / ground / drone / naval / rocket / cyber / humanitarian / diplomatic
+- **Conflict Timeline** — Plotly scatter timeline + scrollable chronological list
+- **Supply & Support Lines** — ArcLayer arcs coloured by type (Military Aid, Arms Supply, Humanitarian)
+- **Media Reliability Tracker** — bar chart with editorial bias colour coding (Centre / State / Pro-Party)
 
-**Incident types tracked:**
-`💥 airstrike` · `⚔️ ground` · `🛸 drone` · `⚓ naval` · `🚀 rocket` · `💻 cyber` · `🤝 diplomatic` · `🏥 humanitarian`
+**Cross-Theatre Analytics**
 
-**Severity levels:** `CRITICAL` (red) · `HIGH` (orange) · `MED` (amber) · `LOW` (green) · `INFO` (muted)
+- Casualties & Displacement grouped bar chart
+- Escalation vs Casualties scatter plot (bubbles sized by displaced population)
+- Risk Assessment Matrix — 6 dimensions across all theatres (Escalation, Humanitarian, Spillover, WMD Risk, Ceasefire, Intervention)
+- Global Events Timeline (2022–present) — 60+ historical events, filterable by type, severity, year, and free-text search
 
-#### 2. Escalation Gauge
-Plotly indicator gauge (0–100) with colour-coded risk zones:
-- 0–30: Low (green)
-- 30–60: Elevated (amber)
-- 60–80: High (orange)
-- 80–100: Critical (red)
+---
 
-#### 3. Faction Tracker
-Each belligerent shown with:
-- Territory control percentage + visual bar
-- Operational strength (High / Med / Low)
-- Current operational status (Offensive / Defending / Advancing / Active)
-- Key weapons systems
-- External support providers
-- Colour-coded by alignment
+### 🌍 Earth Signals
 
-#### 4. Incident Feed
-Filterable real-time incident list. Filters: ALL / airstrike / ground / drone / naval / rocket / cyber / humanitarian / diplomatic. Each row shows icon, title, location, date, casualty count, severity badge, and type badge.
+Live geophysical monitoring.
 
-#### 5. Conflict Timeline
-- Plotly scatter timeline with colour-coded event types (escalation / milestone / diplomatic / setback / ongoing)
-- Scrollable chronological list below with full event descriptions
-- Type colours: 🔴 escalation · 🔵 milestone · 🟢 diplomatic · 🟡 setback · 🟣 ongoing
+- **Seismic Map** — USGS M2.5+ earthquakes, last 24h, magnitude-coloured PyDeck scatter
+- **Kp Sparkline** — NOAA SWPC 24-hour geomagnetic index with Kp≥5 storm threshold annotation
+- **M5+ Depth Profile** — 30-day scatter plot (depth vs magnitude) from USGS significant earthquakes feed
+- **Significant Events List** — M4.5+ events in sidebar with category badge and date
+- **Space Weather Panel** — NOAA live solar wind speed (km/s) and 10cm radio flux (sfu)
 
-#### 6. Supply & Support Lines
-PyDeck `ArcLayer` arcs drawn from provider to recipient:
-- 🔴 Military Aid / Arms Supply (red arcs)
-- 🟢 Humanitarian corridors (green arcs)
-- Toggleable via sidebar "Supply Arc Lines" toggle
+---
 
-Card list below the map shows provider, route type, and coordinates.
+### ✊ Civil Movements
 
-#### 7. Media Reliability Tracker
-Per-conflict bar chart showing each media outlet's reliability score (0–100) colour-coded by editorial bias:
-- 🔵 Centre
-- 🟣 Centre-Left
-- 🟠 Right / Pro-party
-- 🔴 State media (lowest trust)
+- Interactive PyDeck map with sentiment-coloured markers (CRIT / HIGH / MED)
+- Mobilisation Scale horizontal bar chart (sorted by scale)
+- Filter by type: ALL / protest / strike / civil
+- Each event card shows title, location, age, size, type badge, sentiment badge, and a visual scale bar
 
-#### 8. Risk Assessment Matrix
-Six-dimension risk matrix across all four conflicts simultaneously:
+---
 
-| Dimension | Description |
+### 📡 Live News
+
+Three sub-tabs:
+
+#### 📺 Live TV Streams *(new in v7)*
+
+HLS video player with channel grid supporting 15 channels:
+
+| Category | Channels |
 |---|---|
-| Escalation | Probability of further escalation |
-| Humanitarian | Civilian population risk level |
-| Regional Spillover | Cross-border spread risk |
-| Nuclear/WMD | Non-conventional weapon use risk |
-| Ceasefire Probability | Likelihood of near-term ceasefire |
-| External Intervention | Risk of new external actor entry |
+| Global | Bloomberg TV, Sky News, Euronews, DW News, France 24 |
+| Middle East | Al Jazeera English, Al Arabiya, i24 News |
+| Asia-Pacific | NHK World, CGTN, Arirang TV |
+| Conflict/Security | Wion News |
+| Business | CNBC International, Reuters TV |
+| Americas | PBS NewsHour |
 
-#### 9. Cross-Theatre Analytics
-- **Casualties & Displacement** — grouped bar chart comparing all theatres
-- **Escalation vs Casualties** — scatter plot, bubbles sized by displaced population
-- **Global Conflict Map** — all 4 theatres combined on one world map
+Each channel tries multiple HLS fallback URLs in sequence. If all HLS sources fail, the player displays a direct link to the channel's official live page. 
 
-#### 10. AI Situation Report Generator
-Select from six report types and generate an AI-authored intelligence brief, with all structured conflict data (factions, incidents, timeline, escalation index) auto-injected as context:
+#### 📰 Article Feeds
 
-- Executive Summary (3 paragraphs)
-- Escalation Risk Assessment
-- Humanitarian Impact Brief
-- Supply Chain & External Support Analysis
-- Media Bias & Information Environment Report
-- Ceasefire / Diplomatic Prospects
+Multi-source RSS aggregation across 16 feeds in 6 categories (10-minute TTL). Category filter tabs: ALL · Global · Geopolitics · Conflict · Science · Climate · Space Weather.
+
+| Category | Sources |
+|---|---|
+| 🌍 Global | Reuters World, BBC World, Al Jazeera, AP News |
+| 🔬 Science | NASA JPL, USGS News, Phys.org Earth |
+| 🏛 Geopolitics | Foreign Policy, The Diplomat, Defense One |
+| ⚔ Conflict | ACLED, ISW Daily, CSIS Analysis |
+| 🌿 Climate | Carbon Brief |
+| 🌌 Space Weather | SpaceWeather.com, NOAA SWPC |
+
+#### 📋 Source Directory
+
+Full registry of all 16 RSS sources with site, category badge, and feed endpoint.
+
+---
+
+### 🛰 Intel Dashboard *(new in v7)*
+
+A full intelligence operations centre rendered as a rich HTML component.
+
+**KPI Strip**
+- High-Risk Nations (instability ≥ 70) · Global Risk Score · Elevated Force Postures · Nuclear CRITICAL sites
+
+**Panels (2-column grid layout)**
+
+- **Country Instability Index** — 50 countries, region-filterable, sorted by score, 4-component bars (U/C/S/I), trend arrows, GDELT live blend indicator
+- **Strategic Risk Overview** — SVG donut gauge (score 58 / ELEVATED), 6-dimension breakdown (Military Conflict, Cyber Threats, Economic Disruption, Political Instability, Climate/Disaster, Pandemic Risk)
+- **Intelligence Feed** — curated intel/military/cyber headlines with source, category badge (ALERT/REPORT/BRIEF), and tag
+- **WMD / Nuclear Posture** — 7-actor tracker (Iran, Russia, DPRK, Israel, Pakistan, China, USA) with risk score, asset description, and status badge
+- **Nuclear Site Alerts** — 8-site alert table (Natanz, Fordow, Zaporizhzhia, Yongbyon, Khushab, Dimona, Bushehr, Seversk) with strike/occupation status
+- **Geopolitical Force Posture** — military activity tracker (carriers, exercises, missile postures) across 10 active situations
+- **Critical Infrastructure Risk** — CII instability by sector with risk bars
+
+---
+
+### 📊 Economic & Markets *(new in v7)*
+
+A full financial intelligence suite rendered as a rich HTML component with live data where possible.
+
+**Live Data Fetchers**
+- Yahoo Finance (via `yfinance` JSON endpoint) — equity indices, forex, defense stocks
+- CoinGecko API — cryptocurrency prices and market caps (5min TTL)
+
+**KPI Strip**: S&P 500 · Brent Crude · VIX · BTC · USDINR
+
+**Market Panels (4-column grid)**
+
+| Panel | Contents |
+|---|---|
+| Indices | S&P 500, Nasdaq, DJIA, FTSE 100, DAX, Nikkei 225, Hang Seng, BSE Sensex |
+| Forex | 20+ currency pairs vs USD, colour-coded by direction |
+| Commodities | Energy (WTI, Brent, NatGas), Precious Metals, Agriculture, Industrial, Nuclear — GEO-tagged where geopolitically driven |
+| Defense & Aerospace | Live prices for Lockheed Martin, Raytheon, BAE Systems, Rheinmetall, Leonardo, Thales |
+
+**Additional Panels (3-column grid)**
+
+| Panel | Contents |
+|---|---|
+| Cryptocurrency | Live CoinGecko prices, % change, market cap (BTC, ETH, BNB, SOL, XRP + more) |
+| Active Sanctions | 10 sanctioned entities with scope, impact rating, and detail |
+| Currency Devaluation Monitor | 8 crisis currencies with YoY depreciation bar and USD rate |
+
+**Full-Width Panels**
+
+- **Geopolitical Risk Premiums** — how active conflicts and tensions are priced into assets
+- **Economic Intelligence** — FRED-style indicators (Fed Funds Rate, CPI, GDP, Unemployment, 10Y-2Y spread)
+- **Trade & Tariffs** — active tariff rates (US→China 145%, China→US 125%, US→EU, US→Mexico)
+- **Supply Chain Disruption** — Suez/Red Sea rerouting, Strait of Hormuz, Bab el-Mandeb
+- **Financial Stress** — Government bonds (10 sovereigns), BTC ETF flows, Tech layoffs tracker
+- **Shipping Rates** — Container (FEU), VLCC oil, Suezmax, BDI, LNG spot rates for 8 routes
+- **Critical Minerals** — Lithium, Cobalt, REE, Nickel, Graphite, Uranium, Copper, Gallium with supply risk scores
+- **Pizza Index (PizzaINT)** — a geopolitical/economic composite tracking cost-of-living stress via real-world pizza prices across 8 cities (modelled on The Economist's Big Mac Index methodology)
 
 ---
 
@@ -216,195 +277,99 @@ Select from six report types and generate an AI-authored intelligence brief, wit
 
 | Source | Endpoint | Cache TTL | What it provides |
 |---|---|---|---|
-| USGS Earthquake | `.../2.5_day.geojson` | 60s | M2.5+ earthquakes, global, last 24h |
-| NASA EONET v3 | `eonet.gsfc.nasa.gov/api/v3/events` | 5 min | Active volcanoes, wildfires, severe storms |
-| NOAA SWPC | `.../noaa-planetary-k-index.json` | 3 min | Kp geomagnetic index, 24h series |
-| RSS Feeds × 16 | Per-source endpoints (see table above) | 10 min | News articles with headline, excerpt, link |
+| USGS Earthquake M2.5+ | `.../2.5_day.geojson` | 60s | Last 24h global earthquakes |
+| USGS Significant (M5+) | `.../significant_month.geojson` | 5min | 30-day M5+ feed |
+| NASA EONET v3 | `eonet.gsfc.nasa.gov/api/v3/events` | 5min | Active volcanoes, wildfires, storms |
+| NOAA SWPC Kp | `.../noaa-planetary-k-index.json` | 3min | Geomagnetic index 24h series |
+| NOAA Solar Wind | `.../solar-wind-speed.json` | 5min | Solar wind speed km/s |
+| NOAA 10cm Flux | `.../10cm-flux.json` | 5min | Solar radio flux sfu |
+| GDELT Doc API (live events) | `api.gdeltproject.org/api/v2/doc/doc` | 90s | Last-hour global events |
+| GDELT (conflict-scoped) | GDELT Doc API | 2min | Theatre-filtered conflict news |
+| GDELT (instability blend) | GDELT tonechart | 60min | Country instability tone signal |
+| NASA FIRMS | `firms.modaps.eosdis.nasa.gov` | 10min | Active fire pixel count |
+| CoinGecko | `/api/v3/coins/markets` | 5min | Crypto prices + market caps |
+| Yahoo Finance | `query1.finance.yahoo.com` | 5min | Equities, forex, defense stocks |
+| RSS Feeds × 16 | Per-source endpoints | 10min | News articles |
 
-### Conflict Data (structured mock, ready for live API)
+### Structured Data (baseline, ready for live API replacement)
 
-The four conflict datasets are structured Python dicts designed to be directly replaced by live API responses. See [Live API Integration](#live-api-integration) for wiring instructions.
+- `CONFLICTS` dict — 5 theatres with factions, incidents, timeline, supply lines, media sources
+- `COUNTRY_INSTABILITY` — 50 countries, 4-component instability model, baseline March 2026
+- `HISTORICAL_EVENTS` — 60+ curated events from 2021–2026
+- `MILITARY_BASES`, `NUCLEAR_SITES`, `INTEL_HOTSPOTS`, `CONFLICT_ZONES` — global intelligence overlays
+- `SHIPPING_RATES`, `CRIT_MIN_DATA`, `NUKE_ALERTS`, `WMD_POSTURE`, `GOV_BONDS` — economic and threat intelligence
+- `PIZZA_INDEX` — 8-city cost-of-living composite with component breakdown
 
 ### Fallback Behaviour
 
-Every live fetcher wraps in `try/except` and returns a synthetic fallback dataset if the network is unavailable. The app is fully functional offline — no blank panels, no crash.
-
----
-
-## AI Setup
-
-Configure an AI provider in the sidebar to enable the AI Analyst tab and the Conflict Sitrep generator.
-
-### Option 1 — Groq (recommended: fastest, free tier)
-
-1. Create an account at [console.groq.com](https://console.groq.com)
-2. Generate an API key
-3. Select **groq** in the sidebar, paste your key
-4. Default model: `llama-3.1-8b-instant` (8,000 tok/s, free tier)
-
-```python
-# To change model, edit this line in app.py:
-"model": "llama-3.1-8b-instant"
-# Other options: "llama3-70b-8192", "mixtral-8x7b-32768"
-```
-
-### Option 2 — Ollama (fully offline, no key needed)
-
-1. Install Ollama: [ollama.com](https://ollama.com)
-2. Pull a model and start the server:
-
-```bash
-ollama pull llama3
-ollama serve
-```
-
-3. Select **ollama** in the sidebar — no API key required
-4. Default model: `llama3` (editable in `call_ai()`)
-
-### Option 3 — OpenRouter (widest model selection)
-
-1. Create an account at [openrouter.ai](https://openrouter.ai)
-2. Generate an API key
-3. Select **openrouter** in the sidebar, paste your key
-4. Default model: `meta-llama/llama-3.1-8b-instruct:free`
-
-```python
-# Swap to any OpenRouter model:
-"model": "anthropic/claude-3.5-sonnet"
-"model": "google/gemini-flash-1.5"
-"model": "mistralai/mistral-7b-instruct:free"
-```
+Every live fetcher wraps in `try/except` and returns a synthetic fallback dataset if the network is unavailable. The app is fully functional offline.
 
 ---
 
 ## Tech Stack
 
-### WorldMonitor → OSINT Arena Mapping
-
-| WorldMonitor Original | OSINT Arena Equivalent |
-|---|---|
-| Vanilla TypeScript + Vite | Python 3.12 + Streamlit |
-| globe.gl + Three.js | PyDeck `ScatterplotLayer` (3D globe-capable via pitch) |
-| deck.gl + MapLibre GL | PyDeck (official Python deck.gl bindings) |
-| Tauri 2 (Rust desktop) | `streamlit run` / Docker / Railway / PWA |
-| Ollama / Groq / OpenRouter | Direct HTTP calls — same APIs, provider-switchable in sidebar |
-| Protocol Buffers (92 protos) | Python dataclasses + Pandas DataFrames |
-| Vercel Edge Functions (60+) | `@st.cache_data(ttl=…)` per-feed caching |
-| Redis Upstash 3-tier cache | Tiered TTLs: 60s → 180s → 300s → 600s |
-| CDN + service worker | Streamlit built-in asset caching |
-| AISStream / OpenSky | Extendable — add `fetch_ais()` / `fetch_opensky()` |
-
 ### Python Dependencies
 
 ```
-streamlit>=1.35.0   # UI framework
-pydeck>=0.9.0       # deck.gl maps (ScatterplotLayer, HeatmapLayer, ArcLayer)
-plotly>=5.20.0      # Charts (gauge, donut, scatter, bar, histogram, sparkline)
-pandas>=2.0.0       # DataFrames
-numpy>=1.26.0       # Synthetic data generation
-requests>=2.31.0    # HTTP fetching (APIs + RSS)
+streamlit>=1.35.0        # UI framework
+streamlit-autorefresh    # Periodic rerun for live data
+pydeck>=0.9.0            # deck.gl maps (ScatterplotLayer, HeatmapLayer, ArcLayer)
+plotly>=5.20.0           # Charts (gauge, scatter, bar, histogram, sparkline)
+pandas>=2.0.0            # DataFrames
+numpy>=1.26.0            # Synthetic data generation
+requests>=2.31.0         # HTTP (APIs + RSS)
 ```
 
-No additional dependencies. No `feedparser` required — RSS is parsed with standard `re` and `html`.
+No `feedparser` required — RSS is parsed with the standard library (`xml.etree.ElementTree`).
 
 ### Typography & Design System
 
 | Role | Font | Usage |
 |---|---|---|
-| Display / Numbers | Bebas Neue | Headlines, metric values, leaderboard scores |
-| Data / Code | IBM Plex Mono | Coordinates, times, API output, terminal |
-| UI / Body | DM Sans | Labels, descriptions, buttons |
+| Display / Numbers | Bebas Neue | Headlines, metric values, conflict duration clock |
+| Data / Code | IBM Plex Mono | Coordinates, times, API output, labels |
+| UI / Body | DM Sans | Descriptions, buttons, body copy |
 
-Colour system (CSS variables):
+Colour palette (CSS variables):
 
 ```css
---cyan:   #00c8ff   /* Primary accent — seismic, info */
+--cyan:   #00c8ff   /* Primary accent — seismic, live, info */
 --amber:  #ffb400   /* Warning — Kp, medium severity */
 --red:    #ff3d5a   /* Critical — conflict, high magnitude */
---green:  #00e676   /* Safe — correct answers, ceasefire */
---violet: #9d6eff   /* OSINT challenges, XP system */
+--green:  #00e676   /* Safe — ceasefire, low risk */
+--violet: #9d6eff   /* Intel, nuclear, cyber */
 --orange: #ff8c42   /* High severity, faction labels */
+```
+
+### Map Layers Reference
+
+| PyDeck Layer | Used for |
+|---|---|
+| `ScatterplotLayer` | Seismic, EONET, conflicts, civil movements, all intelligence overlays |
+| `ArcLayer` | Supply lines, undersea cables, pipelines, trade routes, displacement flows |
+| `HeatmapLayer` | Seismic density heatmap |
+
+Base map: CARTO Dark Matter (`dark-matter-gl-style`)
+
+---
+
+## Sidebar Map Layer Groups
+
+```
+🌍 Core Layers          (8 toggles — on by default)
+🎯 Intelligence         (8 toggles — off by default)
+🏗 Infrastructure       (7 toggles)
+🌊 Maritime & Trade     (3 toggles)
+🌐 Environment & People (8 toggles)
+🏙 Economic Overlays    (3 toggles)
+📡 Signals & Space      (4 toggles)
 ```
 
 ---
 
 ## Live API Integration
 
-To replace mock conflict data with live feeds, implement the following integrations:
-
-### ACLED (Armed Conflict Location & Event Data)
-
-The gold standard for conflict event data. Free with registration.
-
-```python
-import requests
-
-@st.cache_data(ttl=300, show_spinner=False)
-def fetch_acled(country: str, api_key: str, email: str) -> pd.DataFrame:
-    """
-    Fetch recent ACLED events for a given country.
-    Register at: developer.acleddata.com
-    """
-    url = "https://api.acleddata.com/acled/read"
-    params = {
-        "key": api_key,
-        "email": email,
-        "country": country,
-        "limit": 50,
-        "fields": "event_date|event_type|sub_event_type|location|latitude|longitude|fatalities|notes",
-    }
-    r = requests.get(url, params=params, timeout=10)
-    r.raise_for_status()
-    return pd.DataFrame(r.json()["data"])
-```
-
-### GDELT Project (Global events, 15-min updates)
-
-```python
-@st.cache_data(ttl=900, show_spinner=False)
-def fetch_gdelt_conflict() -> pd.DataFrame:
-    """
-    GDELT GKG — real-time global event data.
-    No API key required.
-    """
-    url = "https://api.gdeltproject.org/api/v2/doc/doc"
-    params = {
-        "query": "conflict war military",
-        "mode": "artlist",
-        "maxrecords": 25,
-        "format": "json",
-    }
-    r = requests.get(url, params=params, timeout=12)
-    return pd.DataFrame(r.json().get("articles", []))
-```
-
-### ReliefWeb API (UN humanitarian data)
-
-```python
-@st.cache_data(ttl=600, show_spinner=False)
-def fetch_reliefweb(country: str) -> list:
-    """
-    ReliefWeb — UN OCHA humanitarian reports.
-    No API key required.
-    """
-    url = "https://api.reliefweb.int/v1/reports"
-    params = {
-        "filter[field]": "country.name",
-        "filter[value]": country,
-        "limit": 10,
-        "fields[include][]": ["title", "body", "date", "source"],
-    }
-    r = requests.get(url, params=params, timeout=10)
-    return r.json().get("data", [])
-```
-
-### ISW (Institute for the Study of War) — daily Ukraine updates
-
-ISW publishes daily narrative updates. Fetch via their RSS feed (already configured in `NEWS_SOURCES`) or scrape the daily PDF via their API. The `fetch_rss()` function already handles `https://understandingwar.org/rss.xml`.
-
-### Replacing the `CONFLICTS` dict
-
-The `CONFLICTS` dictionary schema is designed to accept live API data. Minimum required fields per theatre:
+To replace mock conflict data with live feeds, the `CONFLICTS` dict schema is designed to accept live API data directly. Minimum required fields per theatre match the ACLED, GDELT, and ReliefWeb response schemas:
 
 ```python
 {
@@ -425,6 +390,39 @@ The `CONFLICTS` dictionary schema is designed to accept live API data. Minimum r
 }
 ```
 
+### ACLED — Armed Conflict Location & Event Data
+
+```python
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_acled(country: str, api_key: str, email: str) -> pd.DataFrame:
+    url = "https://api.acleddata.com/acled/read"
+    params = {
+        "key": api_key, "email": email, "country": country, "limit": 50,
+        "fields": "event_date|event_type|location|latitude|longitude|fatalities|notes",
+    }
+    r = requests.get(url, params=params, timeout=10)
+    r.raise_for_status()
+    return pd.DataFrame(r.json()["data"])
+```
+
+### GDELT Project (already integrated for live events and instability blending)
+
+The app already uses GDELT for the live events layer (90s TTL), conflict-scoped news (2min TTL), and the country instability blending (1h TTL). To extend GDELT conflict tracking, see `fetch_gdelt_conflict()` and `fetch_live_instability()` in `app.py`.
+
+### ReliefWeb API (UN humanitarian data)
+
+```python
+@st.cache_data(ttl=600, show_spinner=False)
+def fetch_reliefweb(country: str) -> list:
+    url = "https://api.reliefweb.int/v1/reports"
+    params = {
+        "filter[field]": "country.name", "filter[value]": country,
+        "limit": 10, "fields[include][]": ["title", "body", "date", "source"],
+    }
+    r = requests.get(url, params=params, timeout=10)
+    return r.json().get("data", [])
+```
+
 ---
 
 ## Deployment
@@ -434,41 +432,27 @@ The `CONFLICTS` dictionary schema is designed to accept live API data. Minimum r
 1. Push to a public GitHub repository
 2. Go to [share.streamlit.io](https://share.streamlit.io)
 3. Connect repo → select `app.py` → deploy
-4. Add secrets in the Streamlit Cloud dashboard (optional for AI keys)
 
 ### Docker
 
 ```dockerfile
 FROM python:3.12-slim
-
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
 COPY app.py .
 EXPOSE 8501
-
 CMD ["streamlit", "run", "app.py", \
      "--server.port=8501", \
      "--server.address=0.0.0.0", \
      "--server.headless=true"]
 ```
 
-```bash
-docker build -t osint-arena .
-docker run -p 8501:8501 osint-arena
-```
-
-### Railway (mirrors WorldMonitor's Railway relay)
+### Railway
 
 ```bash
-# Install Railway CLI
 npm install -g @railway/cli
-
-# Deploy
-railway login
-railway init
-railway up
+railway login && railway init && railway up
 ```
 
 Add a `Procfile`:
@@ -476,82 +460,62 @@ Add a `Procfile`:
 web: streamlit run app.py --server.port=$PORT --server.address=0.0.0.0
 ```
 
-### Environment Variables (for AI keys in production)
-
-```bash
-# .env or deployment secrets
-GROQ_API_KEY=gsk_...
-OPENROUTER_API_KEY=sk-or-...
-```
-
-Read in `app.py`:
-```python
-import os
-groq_key = os.environ.get("GROQ_API_KEY", "")
-```
-
 ---
 
 ## Project Structure
 
 ```
-osint-arena/
-├── app.py              # Main application (1,378 lines)
+geo-locator/
+├── app.py              # Entire application (~6,400 lines)
 ├── requirements.txt    # Python dependencies
 └── README.md           # This file
 ```
 
-The entire application is intentionally single-file to mirror Streamlit's deployment simplicity. For a production architecture, consider splitting into:
+The application is intentionally single-file for Streamlit deployment simplicity. For a production split:
 
 ```
-osint-arena/
+geo-locator/
 ├── app.py
 ├── requirements.txt
 ├── data/
-│   ├── conflicts.py    # CONFLICTS dict + ACLED fetcher
-│   ├── earth.py        # USGS, EONET, NOAA fetchers
-│   └── news.py         # RSS sources + fetch_rss()
+│   ├── conflicts.py      # CONFLICTS dict + ACLED fetcher
+│   ├── earth.py          # USGS, EONET, NOAA, FIRMS fetchers
+│   ├── instability.py    # COUNTRY_INSTABILITY + GDELT blending
+│   ├── intel.py          # Static intel overlays (bases, nuclear, cyber…)
+│   ├── news.py           # RSS sources + fetch_rss()
+│   ├── markets.py        # Yahoo Finance + CoinGecko fetchers
+│   └── historical.py     # HISTORICAL_EVENTS + HLS_CHANNELS
 ├── ui/
-│   ├── charts.py       # All Plotly chart builders
-│   ├── maps.py         # All PyDeck layer builders
-│   └── styles.py       # CSS string
-└── config.py           # Constants, tier thresholds, source registry
+│   ├── charts.py         # All Plotly chart builders
+│   ├── maps.py           # build_global_map() + layer helpers
+│   ├── intel_panel.py    # _render_intelligence_panel()
+│   ├── econ_tab.py       # Economic & Markets HTML component
+│   └── styles.py         # CSS string
+└── config.py             # Constants, colour palette, layer groups
 ```
 
 ---
 
 ## Roadmap
 
-Features planned for v4:
+Features planned for v8:
 
 - [ ] **Live ACLED integration** — real conflict event data replacing mock incidents
-- [ ] **GDELT streaming** — 15-minute event updates via GDELT 2.0
-- [ ] **AIS vessel tracking** — shipping lane monitoring (AISStream.io)
+- [ ] **AIS vessel tracking** — live ship positions (AISStream.io)
 - [ ] **OpenSky Network** — live airspace / military aviation overlay
 - [ ] **Telegram channel monitor** — open-source conflict reporting channels
-- [ ] **SIGINT frequency map** — radio spectrum anomaly visualisation
 - [ ] **Export to PDF** — one-click situation report export
-- [ ] **User authentication** — persistent XP scores, team leaderboards
+- [ ] **User authentication** — persistent session data, saved map configurations
 - [ ] **Alert webhooks** — push notifications for CRITICAL events to Slack / Discord
 - [ ] **Historical playback** — scrub through conflict timelines with animated map
-
----
-
-## Contributing
-
-Pull requests welcome. Please open an issue first for significant changes.
-
-Areas most in need of contribution:
-- Additional conflict theatres (Sahel, South China Sea, Taiwan Strait)
-- Live API integrations (ACLED, GDELT, ReliefWeb)
-- Additional OSINT challenge questions
-- Mobile layout optimisation
+- [ ] **Additional conflict theatres** — Sahel, South China Sea, Taiwan Strait
+- [ ] **FRED API integration** — replace static economic indicators with live FRED data
 
 ---
 
 ## Disclaimer
 
-OSINT Arena is an educational and analytical tool. Conflict data presented in the dashboard is a combination of public open-source intelligence and structured mock data for demonstration purposes. Casualty and displacement figures are approximations drawn from public reporting and should not be used as authoritative counts. The AI-generated situation reports are LLM outputs and do not constitute professional intelligence assessments.
+The Geo-Locator is an educational and analytical tool built on open-source intelligence. Conflict data is a combination of public OSINT and structured baseline data. Casualty and displacement figures are approximations drawn from public reporting and should not be used as authoritative counts. Economic data combines live feeds (Yahoo Finance, CoinGecko) with structured baseline values. Country instability scores are a model output, not official assessments.
 
 ---
 
@@ -562,7 +526,7 @@ MIT — see `LICENSE` for details.
 ---
 
 <p align="center">
-  Built with Streamlit · PyDeck · Plotly · IBM Plex Mono · Bebas Neue
+  Built with Streamlit · PyDeck · Plotly · GDELT · USGS · NASA EONET · NOAA SWPC
   <br/>
-  <sub>OSINT ARENA v3 — Global Intelligence Operations Center</sub>
+  <sub>THE GEO-LOCATOR v7 — Global Intelligence Operations Center</sub>
 </p>
