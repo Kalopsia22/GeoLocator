@@ -4647,57 +4647,186 @@ MARKET_RADAR = {"label":"CASH","posture":"2/7 bullish","flow":"PASSIVE GAP","liq
 with tab_intel:
     import json as _ij
     import streamlit.components.v1 as _ic
+    from html import escape as _he
 
     _outage_arts = fetch_outage_feed()
 
-    _intel_data = {
-        "instability": COUNTRY_INSTABILITY,
-        "strategic": {
-            "score": 58, "label": "ELEVATED", "trend": "Stable", "color": "#ff8c42",
-            "components": [
-                {"name": "Military Conflict",    "val": 78, "col": "#ff3d5a"},
-                {"name": "Cyber Threats",        "val": 65, "col": "#9d6eff"},
-                {"name": "Economic Disruption",  "val": 61, "col": "#ffb400"},
-                {"name": "Political Instability","val": 54, "col": "#ff8c42"},
-                {"name": "Climate / Disaster",   "val": 42, "col": "#00e676"},
-                {"name": "Pandemic Risk",        "val": 28, "col": "#00c8ff"},
-            ],
-        },
-        "intel_feed": [
+    # ── helpers ──────────────────────────────────────────────────
+    def _bar(pct, col):
+        p = min(int(pct), 100)
+        return f'<div style="height:3px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden;margin:5px 0"><div style="height:100%;width:{p}%;background:{col};border-radius:2px"></div></div>'
+
+    def _rc(r):
+        return "#ff3d5a" if r >= 75 else "#ff8c42" if r >= 55 else "#ffb400" if r >= 38 else "#00c8ff"
+
+    def _bdg(text, col):
+        t = _he(str(text))
+        return f'<span style="display:inline-flex;padding:1px 7px;border-radius:4px;font-size:8px;border:1px solid {col}44;background:{col}18;color:{col}">{t}</span>'
+
+    # ── KPI strip ────────────────────────────────────────────────
+    high_risk  = sum(1 for c in COUNTRY_INSTABILITY if c["score"] >= 70)
+    high_fp    = sum(1 for f in [
+        {"risk":49},{"risk":82},{"risk":65},{"risk":58},{"risk":45},{"risk":72},{"risk":61}
+    ] if f["risk"] >= 60)
+    nuke_crit  = sum(1 for n in NUKE_ALERTS if n["level"] == "CRITICAL")
+    global_risk = 58
+
+    kpi_html = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">'
+    for num, lbl, sub, col in [
+        (high_risk,  "High-Risk Nations",  "Instability \u2265 70",  "#ff3d5a"),
+        (global_risk,"Global Risk Score",  "ELEVATED",               "#ff8c42"),
+        (high_fp,    "Elevated Postures",  "Force risk \u2265 60",   "#ff8c42"),
+        (nuke_crit,  "Nuclear CRITICAL",   "Sites at critical",      "#9d6eff"),
+    ]:
+        kpi_html += f'''<div style="background:#070d16;border:1px solid rgba(0,200,255,.1);border-radius:12px;padding:16px 18px">
+<div style="font-size:9px;color:#3d5a73;text-transform:uppercase;letter-spacing:.15em;margin-bottom:8px">{_he(lbl)}</div>
+<div style="font-size:48px;font-weight:700;color:{col};line-height:1;margin-bottom:6px">{num}</div>
+<div style="font-size:10px;color:#3d5a73">{_he(sub)}</div></div>'''
+    kpi_html += '</div>'
+
+    # ── Country instability panel ─────────────────────────────────
+    def _instability_panel():
+        regions = ["All"] + sorted(set(c["region"] for c in COUNTRY_INSTABILITY))
+        pills = "".join(
+            f'<button onclick="this.closest(\'.panel\').querySelectorAll(\'.pill\').forEach(p=>p.style.color=\'#3d5a73\');this.style.color=\'#00c8ff\';this.closest(\'.panel\').querySelectorAll(\'.pane\').forEach(p=>p.style.display=\'none\');this.closest(\'.panel\').querySelector(\'#ci{i}\').style.display=\'block\'" '
+            f'style="padding:4px 12px;border-radius:20px;font-size:10px;cursor:pointer;background:#0c1a28;border:1px solid rgba(61,90,115,.3);color:{"#00c8ff" if i==0 else "#3d5a73"};margin:0 4px 4px 0">{_he(r)}</button>'
+            for i, r in enumerate(regions)
+        )
+        panes = ""
+        for i, reg in enumerate(regions):
+            items = COUNTRY_INSTABILITY if reg == "All" else [c for c in COUNTRY_INSTABILITY if c["region"] == reg]
+            items = sorted(items, key=lambda x: -x["score"])
+            rows = ""
+            for c in items:
+                col = _rc(c["score"])
+                tc = "#ff8c42" if c["trend"] == "↑" else "#00e676" if c["trend"] == "↓" else "#3d5a73"
+                rows += f'''<div style="border-left:2px solid {col};border-radius:6px;padding:10px 12px;margin-bottom:7px;background:#06101e">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+<span style="font-size:13px;font-weight:600;color:#dce8f5">{_he(c["country"])}</span>
+<div style="display:flex;align-items:center;gap:8px">
+<span style="font-size:9px;color:#3d5a73">U{c["U"]} C{c["C"]} S{c["S"]} I{c["I"]}</span>
+<span style="font-size:9px;color:{tc}">{_he(c["trend"])}</span>
+<span style="font-size:24px;font-weight:700;color:{col}">{c["score"]}</span>
+</div></div>{_bar(c["score"], col)}</div>'''
+            panes += f'<div id="ci{i}" style="display:{"block" if i==0 else "none"}">{rows}</div>'
+        return f'<div class="panel"><div class="stitle">Country Instability Index</div><div style="margin-bottom:12px">{pills}</div><div style="max-height:360px;overflow-y:auto">{panes}</div></div>'
+
+    # ── Strategic risk panel ───────────────────────────────────────
+    def _strategic_panel():
+        score = 58
+        col = "#ff8c42"
+        import math
+        circ = 2 * math.pi * 36
+        dash = circ * (1 - score / 100)
+        comps = [
+            ("Military Conflict", 78, "#ff3d5a"),
+            ("Cyber Threats",     65, "#9d6eff"),
+            ("Economic Disruption",61,"#ffb400"),
+            ("Political Instability",54,"#ff8c42"),
+            ("Climate / Disaster", 42, "#00e676"),
+            ("Pandemic Risk",      28, "#00c8ff"),
+        ]
+        comp_rows = "".join(f'''<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+<div style="min-width:140px;font-size:11px;color:#7fb3cc">{_he(n)}</div>
+<div style="flex:1;height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden">
+<div style="height:100%;width:{v}%;background:{c}"></div></div>
+<span style="font-size:10px;color:{c};min-width:24px;text-align:right">{v}</span></div>''' for n,v,c in comps)
+        return f'''<div class="panel"><div class="stitle">Strategic Risk Overview</div>
+<div style="display:flex;align-items:center;gap:18px;margin-bottom:16px">
+<div style="position:relative;width:80px;height:80px;flex-shrink:0">
+<svg style="width:80px;height:80px;transform:rotate(-90deg)" viewBox="0 0 80 80">
+<circle cx="40" cy="40" r="36" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="6"/>
+<circle cx="40" cy="40" r="36" fill="none" stroke="{col}" stroke-width="6" stroke-dasharray="{circ:.1f}" stroke-dashoffset="{dash:.1f}" stroke-linecap="round"/>
+</svg>
+<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;font-size:26px;font-weight:700;color:{col}">{score}</div>
+</div>
+<div><div style="font-size:11px;color:{col};font-weight:600;margin-bottom:4px">ELEVATED</div>
+<div style="font-size:11px;color:#3d5a73">Stable</div></div></div>
+{comp_rows}</div>'''
+
+    # ── Intel feed panel ──────────────────────────────────────────
+    def _feed_panel():
+        intel_feed = [
             {"source":"ISW","cat":"REPORT","tag":"UKRAINE","title":"Russian forces continue offensive operations near Avdiivka sector","time":"4h ago","url":"https://understandingwar.org"},
             {"source":"Defense One","cat":"ALERT","tag":"MILITARY","title":"Pentagon orders second carrier strike group to Eastern Mediterranean","time":"3h ago","url":"https://defenseone.com"},
             {"source":"CSIS","cat":"ALERT","tag":"IRAN","title":"IRGC drone production facility destroyed in latest Israeli strike","time":"6h ago","url":"https://csis.org"},
-            {"source":"Reuters","cat":"REPORT","tag":"NUCLEAR","title":"IAEA loses monitoring access to Fordow enrichment site after strike","time":"12h ago","url":"https://reuters.com"},
+            {"source":"Reuters","cat":"REPORT","tag":"NUCLEAR","title":"IAEA loses monitoring access to Fordow enrichment site","time":"12h ago","url":"https://reuters.com"},
             {"source":"Foreign Policy","cat":"ALERT","tag":"MILITARY","title":"Six U.S. Troops Killed in Aircraft Crash in Iraq","time":"20h ago","url":"https://foreignpolicy.com"},
-            {"source":"Atlantic Council","cat":"ALERT","tag":"CONFLICT","title":"UN: Putin deportation of Ukrainian children is a crime against humanity","time":"8h ago","url":"https://atlanticcouncil.org"},
-            {"source":"Bellingcat","cat":"REPORT","tag":"OSINT","title":"Geolocated footage confirms new Russian S-400 deployment near Zaporizhzhia","time":"7h ago","url":"https://bellingcat.com"},
-        ],
-        "cyber_feed": [
+            {"source":"Bellingcat","cat":"REPORT","tag":"OSINT","title":"Geolocated footage confirms new Russian S-400 near Zaporizhzhia","time":"7h ago","url":"https://bellingcat.com"},
+        ]
+        cyber_feed = [
             {"source":"Recorded Future","title":"APT41 campaign targeting defence contractors across SE Asia","time":"2h ago","sector":"Cyber"},
             {"source":"WCBM","title":"New cyber-physical attack vector targets ICS/SCADA water systems","time":"21h ago","sector":"Cyber"},
             {"source":"GlobalSecurity","title":"PH Navy contingent now in Australia for joint bilateral exercise","time":"4h ago","sector":"Military"},
             {"source":"IndiaGazette","title":"Iran Army chief: attack on IRIS Dena warship will not go unanswered","time":"7h ago","sector":"Military"},
-            {"source":"Sandworm Track","title":"GRU Sandworm deploys new Industroyer variant targeting Ukraine grid","time":"14h ago","sector":"Cyber"},
-        ],
-        "infra": {
+        ]
+        cat_col = {"ALERT":"#ff3d5a","REPORT":"#ffb400","BRIEF":"#00c8ff"}
+        tag_col = {"MILITARY":"#ff8c42","CONFLICT":"#ff3d5a","UKRAINE":"#00c8ff","IRAN":"#ffb400","NUCLEAR":"#9d6eff","OSINT":"#00e676","Cyber":"#9d6eff","Military":"#ff8c42"}
+        def _rows(items):
+            out = ""
+            for item in items:
+                cc = cat_col.get(item.get("cat",""), "#3d5a73")
+                tc = tag_col.get(item.get("tag", item.get("sector","")), "#3d5a73")
+                out += f'''<div style="border-left:2px solid {cc};border-radius:6px;padding:10px 12px;margin-bottom:7px;background:#06101e">
+<div style="display:flex;gap:5px;align-items:center;margin-bottom:5px">
+<span style="font-size:9px;color:#3d5a73;font-weight:600">{_he(item.get("source","").upper())}</span>
+{_bdg(item.get("cat",""), cc) if item.get("cat") else ""}
+{_bdg(item.get("tag",item.get("sector","")), tc)}
+</div>
+<div style="font-size:12px;font-weight:600;color:#dce8f5;margin-bottom:4px">{_he(item.get("title",""))}</div>
+<div style="font-size:9px;color:#3d5a73">{_he(item.get("time",""))}</div></div>'''
+            return out
+        pill_style_on = "padding:4px 12px;border-radius:20px;font-size:10px;cursor:pointer;background:rgba(0,200,255,.1);border:1px solid rgba(0,200,255,.3);color:#00c8ff;margin-right:4px"
+        pill_style_off = "padding:4px 12px;border-radius:20px;font-size:10px;cursor:pointer;background:#0c1a28;border:1px solid rgba(61,90,115,.3);color:#3d5a73;margin-right:4px"
+        return f'''<div class="panel"><div class="stitle"><span style="width:6px;height:6px;border-radius:50%;background:#ff3d5a;display:inline-block;animation:bl 1.2s ease-in-out infinite;margin-right:4px"></span>Intelligence Feed</div>
+<div style="margin-bottom:12px">
+<button onclick="this.parentNode.querySelectorAll(\'button\').forEach(b=>b.setAttribute(\'style\',\'{pill_style_off}\'));this.setAttribute(\'style\',\'{pill_style_on}\');document.getElementById(\'if0\').style.display=\'block\';document.getElementById(\'if1\').style.display=\'none\'" style="{pill_style_on}">Military / Conflict</button>
+<button onclick="this.parentNode.querySelectorAll(\'button\').forEach(b=>b.setAttribute(\'style\',\'{pill_style_off}\'));this.setAttribute(\'style\',\'{pill_style_on}\');document.getElementById(\'if0\').style.display=\'none\';document.getElementById(\'if1\').style.display=\'block\'" style="{pill_style_off}">Cyber / OSINT</button>
+</div>
+<div style="max-height:360px;overflow-y:auto">
+<div id="if0">{_rows(intel_feed)}</div>
+<div id="if1" style="display:none">{_rows(cyber_feed)}</div>
+</div></div>'''
+
+    # ── Force posture panel ────────────────────────────────────────
+    def _posture_panel():
+        fps = [
+            {"activity":"Combined air-naval activity","actors":"UK/Unknown","signals":860,"risk":49},
+            {"activity":"Missile test/launch","actors":"Iran","signals":12,"risk":82},
+            {"activity":"Troop mobilisation","actors":"Russia","signals":44,"risk":65},
+            {"activity":"Air defence activation","actors":"Israel","signals":31,"risk":58},
+            {"activity":"Naval patrol","actors":"China/SCS","signals":28,"risk":45},
+            {"activity":"Cyber operation","actors":"Unknown/State","signals":77,"risk":72},
+            {"activity":"ICBM/MLRS posture alert","actors":"DPRK","signals":18,"risk":61},
+        ]
+        rows = ""
+        for fp in fps:
+            col = _rc(fp["risk"])
+            rows += f'''<div style="border-left:2px solid {col};border-radius:6px;padding:10px 12px;margin-bottom:7px;background:#06101e;display:flex;align-items:center;gap:10px">
+<div style="flex:1">
+<div style="font-size:12px;font-weight:600;color:#dce8f5;margin-bottom:2px">{_he(fp["activity"])}</div>
+<div style="font-size:9px;color:#3d5a73;margin-bottom:4px">{_he(fp["actors"])} &middot; {fp["signals"]:,} signals</div>
+{_bar(fp["risk"], col)}</div>
+<div style="font-size:28px;font-weight:700;color:{col};flex-shrink:0">{fp["risk"]}</div></div>'''
+        return f'<div class="panel"><div class="stitle">Force Posture Monitor</div><div style="max-height:360px;overflow-y:auto">{rows}</div></div>'
+
+    # ── Infrastructure panel ───────────────────────────────────────
+    def _infra_panel():
+        infra = {
             "cables": {"count":86,"at_risk":12,"items":[
                 {"name":"SEA-ME-WE 4","region":"Indian Ocean","risk":72,"status":"Degraded"},
                 {"name":"Africa Coast to Europe","region":"W Africa","risk":81,"status":"Cut"},
                 {"name":"PEACE Cable","region":"ME/Africa","risk":65,"status":"Degraded"},
                 {"name":"AAE-1","region":"Asia-Europe","risk":55,"status":"Active"},
-                {"name":"FLAG Atlantic-1","region":"Atlantic","risk":45,"status":"Active"},
             ]},
             "pipelines": {"count":88,"at_risk":9,"items":[
                 {"name":"Nord Stream (sabotaged)","region":"Baltic","risk":95,"status":"Sabotaged"},
                 {"name":"Trans-Arabian Pipeline","region":"Middle East","risk":78,"status":"Suspended"},
-                {"name":"Iran-Iraq-Syria Pipeline","region":"Middle East","risk":81,"status":"Disrupted"},
                 {"name":"Druzhba Pipeline","region":"Europe","risk":62,"status":"Reduced"},
-                {"name":"TANAP","region":"Turkey","risk":30,"status":"Active"},
             ]},
             "ports": {"count":62,"at_risk":8,"items":[
                 {"name":"Port of Hodeidah","region":"Yemen","risk":88,"status":"Blockaded"},
                 {"name":"Port Sudan","region":"Sudan","risk":74,"status":"Contested"},
-                {"name":"Hormuz Port Cluster","region":"Iran/UAE","risk":71,"status":"At Risk"},
             ]},
             "chokepoints": {"count":13,"at_risk":4,"items":[
                 {"name":"Strait of Hormuz","risk":82,"status":"At Risk","traffic_pct":20},
@@ -4708,375 +4837,192 @@ with tab_intel:
             "power_grids": {"count":191,"at_risk":22,"items":[
                 {"name":"Ukraine National Grid","region":"Ukraine","risk":88,"status":"Under Attack"},
                 {"name":"Sudan Power Corp","region":"Sudan","risk":75,"status":"Disrupted"},
-                {"name":"Gaza Power Authority","region":"Gaza","risk":98,"status":"Destroyed"},
             ]},
-        },
-        "force_posture": [
-            {"activity":"Combined air-naval activity","actors":"UK/Unknown","signals":860,"risk":49},
-            {"activity":"Combined air-naval activity","actors":"NATO/USA","signals":63,"risk":39},
-            {"activity":"Missile test/launch","actors":"Iran","signals":12,"risk":82},
-            {"activity":"Troop mobilisation","actors":"Russia","signals":44,"risk":65},
-            {"activity":"Air defence activation","actors":"Israel","signals":31,"risk":58},
-            {"activity":"Naval patrol","actors":"China/SCS","signals":28,"risk":45},
-            {"activity":"Cyber operation","actors":"Unknown/State","signals":77,"risk":72},
-            {"activity":"ICBM/MLRS posture alert","actors":"DPRK","signals":18,"risk":61},
-        ],
-        "nuke_alerts": NUKE_ALERTS,
-        "wmd_posture": WMD_POSTURE,
-        "chokepoints": [
-            {"name":"Strait of Hormuz","risk":80,"status":"red","flow":"eastbound/westbound","warnings":0,"ais_disruptions":0,"wow_change":-94.4,"context":"Active conflict - Iran-Israel war. Iranian naval blockade risk elevated. Traffic severely reduced. 20% of global oil transits here.","exports":["Gulf Oil Exports","Qatar LNG","Iran Exports"]},
-            {"name":"Bab el-Mandeb","risk":75,"status":"red","flow":"northbound/southbound","warnings":3,"ais_disruptions":12,"wow_change":-41.0,"context":"Houthi attacks on commercial shipping continue. Red Sea rerouting adding 2-3 weeks and ~110% to Asia-Europe freight costs.","exports":["Suez Canal traffic","EU-Asia trade","Oil tankers"]},
-            {"name":"Suez Canal","risk":52,"status":"amber","flow":"northbound/southbound","warnings":1,"ais_disruptions":3,"wow_change":-18.0,"context":"Reduced traffic due to Red Sea security situation. Some rerouting via Cape of Good Hope continues. Handles 12% of global trade.","exports":["EU-Asia Container","Mediterranean Oil","LNG"]},
-            {"name":"Taiwan Strait","risk":55,"status":"amber","flow":"northbound/southbound","warnings":0,"ais_disruptions":2,"wow_change":-8.4,"context":"PLA military exercises increasing in frequency. Semiconductor supply chain vulnerability elevated. TSMC produces 90% of advanced chips.","exports":["Taiwan Semiconductors","China Exports","Japan Trade"]},
-            {"name":"Strait of Malacca","risk":22,"status":"green","flow":"eastbound/westbound","warnings":0,"ais_disruptions":0,"wow_change":2.1,"context":"Normal operations. 25% of global trade and 300+ vessels per day. No current disruption to commercial shipping.","exports":["SE Asia Trade","China Imports","Japan/Korea Oil"]},
-            {"name":"Kerch Strait","risk":70,"status":"red","flow":"northbound/southbound","warnings":0,"ais_disruptions":0,"wow_change":37.5,"context":"Active conflict zone. Russia controls Kerch Bridge. Ukraine grain exports via Azov Sea severely restricted.","exports":["Ukraine Grain","Russian Coal","Azov Steel"]},
-        ],
-        "outage_live": _outage_arts[:8],
-        "outage_known": [
+        }
+        status_col = {"Cut":"#ff3d5a","Sabotaged":"#ff3d5a","Blockaded":"#ff3d5a","Under Attack":"#ff3d5a",
+                      "Destroyed":"#ff3d5a","Contested":"#ffb400","Degraded":"#ffb400","Suspended":"#ffb400",
+                      "Reduced":"#ffb400","At Risk":"#ffb400","Threatened":"#ffb400","Disrupted":"#ffb400","Active":"#00e676"}
+        keys   = ["cables","pipelines","ports","chokepoints","power_grids"]
+        labels = ["Cables","Pipelines","Ports","Chokepoints","Power Grids"]
+        pill_style_on  = "padding:4px 12px;border-radius:20px;font-size:10px;cursor:pointer;background:rgba(0,200,255,.1);border:1px solid rgba(0,200,255,.3);color:#00c8ff;margin-right:4px"
+        pill_style_off = "padding:4px 12px;border-radius:20px;font-size:10px;cursor:pointer;background:#0c1a28;border:1px solid rgba(61,90,133,.3);color:#3d5a73;margin-right:4px"
+        pills = "".join(
+            f'<button onclick="this.parentNode.querySelectorAll(\'button\').forEach(b=>b.setAttribute(\'style\',\'{pill_style_off}\'));this.setAttribute(\'style\',\'{pill_style_on}\');[\'cables\',\'pipelines\',\'ports\',\'chokepoints\',\'power_grids\'].forEach(k=>document.getElementById(\'ic_\'+k).style.display=\'none\');document.getElementById(\'ic_{k}\').style.display=\'block\'" style="{pill_style_on if i==0 else pill_style_off}">{_he(lbl)}</button>'
+            for i,(k,lbl) in enumerate(zip(keys,labels))
+        )
+        panes = ""
+        for i,(k,lbl) in enumerate(zip(keys,labels)):
+            d = infra[k]
+            items = d["items"]
+            rp = round(d["at_risk"]/d["count"]*100) if d["count"] else 0
+            stat_cards = "".join(
+                f'<div style="background:rgba(255,255,255,.02);border-radius:6px;padding:8px;text-align:center">'
+                f'<div style="font-size:8px;color:#3d5a73;text-transform:uppercase;margin-bottom:4px">{lbl2}</div>'
+                f'<div style="font-size:24px;font-weight:700;color:{col2}">{val2}</div></div>'
+                for lbl2,val2,col2 in [("Total",d["count"],"#00c8ff"),("At Risk",d["at_risk"],"#ff3d5a"),("Risk%",f"{rp}%","#ffb400")]
+            )
+            item_rows = ""
+            for item in items:
+                r = item["risk"]
+                col = _rc(r)
+                sc  = status_col.get(item.get("status",""), "#3d5a73")
+                extra = f'{item["traffic_pct"]}% global trade' if item.get("traffic_pct") else item.get("region","")
+                item_rows += f'''<div style="border-left:2px solid {col};border-radius:6px;padding:10px 12px;margin-bottom:7px;background:#06101e">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+<span style="font-size:12px;font-weight:600;color:#dce8f5">{_he(item["name"])}</span>
+<div style="display:flex;align-items:center;gap:6px">
+{_bdg(item.get("status",""), sc)}
+<span style="font-size:18px;font-weight:700;color:{col}">{r}</span>
+</div></div>{_bar(r, col)}
+<div style="font-size:9px;color:#3d5a73;margin-top:2px">{_he(extra)}</div></div>'''
+            panes += f'<div id="ic_{k}" style="display:{"block" if i==0 else "none"}"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">{stat_cards}</div><div style="max-height:280px;overflow-y:auto">{item_rows}</div></div>'
+        return f'<div class="panel"><div class="stitle">Infrastructure Cascade</div><div style="margin-bottom:12px">{pills}</div>{panes}</div>'
+
+    # ── Nuclear / WMD panel ────────────────────────────────────────
+    def _nuclear_panel():
+        pill_style_on  = "padding:4px 12px;border-radius:20px;font-size:10px;cursor:pointer;background:rgba(0,200,255,.1);border:1px solid rgba(0,200,255,.3);color:#00c8ff;margin-right:4px"
+        pill_style_off = "padding:4px 12px;border-radius:20px;font-size:10px;cursor:pointer;background:#0c1a28;border:1px solid rgba(61,90,115,.3);color:#3d5a73;margin-right:4px"
+        nuke_rows = ""
+        for n in NUKE_ALERTS:
+            lc = "#ff3d5a" if n["level"]=="CRITICAL" else "#ff8c42" if n["level"]=="HIGH" else "#ffb400"
+            nuke_rows += f'''<div style="border-left:2px solid {n.get("col",lc)};border-radius:6px;padding:10px 12px;margin-bottom:7px;background:#06101e">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+<span style="font-size:12px;font-weight:600;color:#dce8f5">{_he(n["site"])}</span>
+{_bdg(n["status"], lc)}</div>
+<div style="font-size:11px;color:#7fb3cc;line-height:1.5">{_he(n["detail"])}</div></div>'''
+        wmd_rows = ""
+        for w in WMD_POSTURE:
+            col = _rc(w["risk"])
+            wmd_rows += f'''<div style="border-left:2px solid {col};border-radius:6px;padding:10px 12px;margin-bottom:7px;background:#06101e">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+<div><span style="font-size:12px;font-weight:600;color:#dce8f5">{_he(w["actor"])}</span>
+<span style="font-size:9px;color:#3d5a73;margin-left:8px">{_he(w["type"])}</span></div>
+<span style="font-size:24px;font-weight:700;color:{col}">{w["risk"]}</span></div>
+{_bar(w["risk"], col)}
+<div style="font-size:10px;color:#3d5a73;margin-top:2px">{_he(w["assets"][:70])}</div></div>'''
+        return f'''<div class="panel"><div class="stitle">Nuclear &amp; WMD Status</div>
+<div style="margin-bottom:12px">
+<button onclick="this.parentNode.querySelectorAll(\'button\').forEach(b=>b.setAttribute(\'style\',\'{pill_style_off}\'));this.setAttribute(\'style\',\'{pill_style_on}\');document.getElementById(\'nw0\').style.display=\'block\';document.getElementById(\'nw1\').style.display=\'none\'" style="{pill_style_on}">Nuclear Sites</button>
+<button onclick="this.parentNode.querySelectorAll(\'button\').forEach(b=>b.setAttribute(\'style\',\'{pill_style_off}\'));this.setAttribute(\'style\',\'{pill_style_on}\');document.getElementById(\'nw0\').style.display=\'none\';document.getElementById(\'nw1\').style.display=\'block\'" style="{pill_style_off}">WMD Posture</button>
+</div>
+<div style="max-height:360px;overflow-y:auto">
+<div id="nw0">{nuke_rows}</div>
+<div id="nw1" style="display:none">{wmd_rows}</div>
+</div></div>'''
+
+    # ── Chokepoints panel ──────────────────────────────────────────
+    def _chokepoints_panel():
+        cps = [
+            {"name":"Strait of Hormuz","risk":80,"status":"red","flow":"eastbound/westbound","warnings":0,"ais":0,"wow":-94.4,"context":"Active conflict - Iran-Israel war. Iranian naval blockade risk elevated. 20% of global oil transits here.","exports":["Gulf Oil Exports","Qatar LNG","Iran Exports"]},
+            {"name":"Bab el-Mandeb","risk":75,"status":"red","flow":"northbound/southbound","warnings":3,"ais":12,"wow":-41.0,"context":"Houthi attacks continuing. Red Sea rerouting adding 2-3 weeks to Asia-Europe routes.","exports":["Suez traffic","EU-Asia trade","Oil tankers"]},
+            {"name":"Suez Canal","risk":52,"status":"amber","flow":"northbound/southbound","warnings":1,"ais":3,"wow":-18.0,"context":"Reduced traffic due to Red Sea security. Some rerouting via Cape of Good Hope continues.","exports":["EU-Asia Container","Mediterranean Oil","LNG"]},
+            {"name":"Taiwan Strait","risk":55,"status":"amber","flow":"northbound/southbound","warnings":0,"ais":2,"wow":-8.4,"context":"PLA military exercises increasing. Semiconductor supply chain vulnerability elevated.","exports":["Taiwan Semiconductors","China Exports","Japan Trade"]},
+            {"name":"Strait of Malacca","risk":22,"status":"green","flow":"eastbound/westbound","warnings":0,"ais":0,"wow":2.1,"context":"Normal operations. 25% of global trade and 300+ vessels per day.","exports":["SE Asia Trade","China Imports","Japan/Korea Oil"]},
+        ]
+        rows = ""
+        for cp in cps:
+            col = "#ff3d5a" if cp["status"]=="red" else "#ffb400" if cp["status"]=="amber" else "#00e676"
+            wc  = "#ff3d5a" if cp["wow"] < 0 else "#00e676"
+            wow_str = f'+{cp["wow"]}' if cp["wow"] > 0 else str(cp["wow"])
+            exps = " ".join(_bdg(e, "#3d5a73") for e in cp["exports"])
+            rows += f'''<div style="border-left:2px solid {col};border-radius:6px;padding:12px 14px;margin-bottom:10px;background:#06101e">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">
+<div>
+<div style="font-size:13px;font-weight:700;color:#dce8f5;margin-bottom:2px">{_he(cp["name"])}</div>
+<div style="font-size:9px;color:#3d5a73">{cp["warnings"]} warnings &middot; {cp["ais"]} AIS &middot; {_he(cp["flow"])}</div>
+</div>
+<div style="text-align:right;flex-shrink:0;margin-left:12px">
+<div style="font-size:28px;font-weight:700;color:{col}">{cp["risk"]}</div>
+<div style="font-size:9px;color:{wc}">WoW {wow_str}%</div>
+</div></div>
+{_bar(cp["risk"], col)}
+<div style="font-size:11px;color:#7fb3cc;line-height:1.55;margin:6px 0">{_he(cp["context"][:140])}</div>
+<div>{exps}</div></div>'''
+        return f'<div class="panel"><div class="stitle">Supply Chain Chokepoints</div><div style="max-height:400px;overflow-y:auto">{rows}</div></div>'
+
+    # ── Outages panel ──────────────────────────────────────────────
+    def _outages_panel():
+        pill_style_on  = "padding:4px 12px;border-radius:20px;font-size:10px;cursor:pointer;background:rgba(0,200,255,.1);border:1px solid rgba(0,200,255,.3);color:#00c8ff;margin-right:4px"
+        pill_style_off = "padding:4px 12px;border-radius:20px;font-size:10px;cursor:pointer;background:#0c1a28;border:1px solid rgba(61,90,115,.3);color:#3d5a73;margin-right:4px"
+        known = [
             {"name":"Gaza - Total Blackout","severity":"Total","cause":"Infrastructure destruction"},
             {"name":"Sudan - Partial","severity":"Partial","cause":"Conflict/Power"},
             {"name":"Myanmar - Targeted Shutdown","severity":"Targeted","cause":"Junta censorship"},
             {"name":"Iran - Throttled","severity":"Throttled","cause":"Government restriction"},
             {"name":"Russia - Selective Block","severity":"Selective","cause":"Censorship"},
             {"name":"Ukraine - Disrupted","severity":"Disrupted","cause":"Missile strikes"},
-        ],
-    }
+        ]
+        if _outage_arts:
+            live_rows = ""
+            for o in _outage_arts[:8]:
+                live_rows += f'''<div style="border-left:2px solid #ff8c42;border-radius:6px;padding:10px 12px;margin-bottom:7px;background:#06101e">
+<div style="display:flex;justify-content:space-between;margin-bottom:3px">
+<span style="font-size:9px;color:#ff8c42;font-weight:600">{_he((o.get("source","")).upper()[:28])}</span>
+<span style="font-size:9px;color:#3d5a73">{_he(o.get("time",""))}</span></div>
+<div style="font-size:12px;color:#dce8f5;margin-bottom:3px">{_he(o.get("title","")[:85])}</div>
+{"" if not o.get("url") else f'<a href="{_he(o["url"])}" target="_blank" style="font-size:9px;color:#00c8ff;text-decoration:none">Read &#8594;</a>'}</div>'''
+        else:
+            live_rows = '<div style="font-size:10px;color:#3d5a73;padding:10px 0">No live outage alerts in the last 6 hours.</div>'
+        known_rows = ""
+        for io in known:
+            ic = "#ff3d5a" if io["severity"]=="Total" else "#ff8c42" if io["severity"] in ("Partial","Disrupted") else "#ffb400"
+            known_rows += f'''<div style="border-left:2px solid {ic};border-radius:6px;padding:10px 12px;margin-bottom:7px;background:#06101e">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+<span style="font-size:12px;font-weight:600;color:#dce8f5">{_he(io["name"])}</span>
+{_bdg(io["severity"], ic)}</div>
+<div style="font-size:9px;color:#3d5a73">{_he(io["cause"])}</div></div>'''
+        return f'''<div class="panel"><div class="stitle"><span style="width:6px;height:6px;border-radius:50%;background:#ff8c42;display:inline-block;animation:bl 1.2s ease-in-out infinite;margin-right:4px"></span>Internet Outages &amp; Censorship</div>
+<div style="margin-bottom:12px">
+<button onclick="this.parentNode.querySelectorAll(\'button\').forEach(b=>b.setAttribute(\'style\',\'{pill_style_off}\'));this.setAttribute(\'style\',\'{pill_style_on}\');document.getElementById(\'io0\').style.display=\'block\';document.getElementById(\'io1\').style.display=\'none\'" style="{pill_style_on}">Live Feed</button>
+<button onclick="this.parentNode.querySelectorAll(\'button\').forEach(b=>b.setAttribute(\'style\',\'{pill_style_off}\'));this.setAttribute(\'style\',\'{pill_style_on}\');document.getElementById(\'io0\').style.display=\'none\';document.getElementById(\'io1\').style.display=\'block\'" style="{pill_style_off}">Known Outages</button>
+</div>
+<div style="max-height:360px;overflow-y:auto">
+<div id="io0">{live_rows}</div>
+<div id="io1" style="display:none">{known_rows}</div>
+</div></div>'''
 
-    # Inject data as a <script> tag, keep all JS as a plain (non-f-string) literal.
-    # This completely eliminates all Python/JS escaping conflicts.
-    _intel_html  = """<!DOCTYPE html>
+    # ── Assemble all panels ────────────────────────────────────────
+    def _grid(*panels):
+        inner = "".join(panels)
+        n = len(panels)
+        cols = f"repeat({n},1fr)"
+        return f'<div style="display:grid;grid-template-columns:{cols};gap:14px;margin-bottom:20px">{inner}</div>'
+
+    _p_instab  = _instability_panel()
+    _p_strat   = _strategic_panel()
+    _p_feed    = _feed_panel()
+    _p_posture = _posture_panel()
+    _p_infra   = _infra_panel()
+    _p_nuclear = _nuclear_panel()
+    _p_choke   = _chokepoints_panel()
+    _p_outages = _outages_panel()
+
+    _intel_html = f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-*{margin:0;padding:0;box-sizing:border-box;}
-body{background:#030609;font-family:'Inter',system-ui,sans-serif;color:#dce8f5;padding:20px 18px 48px;}
-.fm{font-family:'IBM Plex Mono',monospace;}
-.fd{font-family:'Bebas Neue',sans-serif;}
-.overline{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:#3d5a73;}
-.sec{display:flex;align-items:center;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:#3d5a73;margin-bottom:18px;}
-.sec::after{content:'';flex:1;height:1px;background:rgba(61,90,115,.25);}
-.row{display:grid;gap:16px;margin-bottom:24px;}
-.row-4{grid-template-columns:1fr 1fr 1fr 1fr;}
-.row-25{grid-template-columns:2fr 3fr;}
-.row-2{grid-template-columns:1fr 1fr;}
-@media(max-width:1100px){.row-4{grid-template-columns:1fr 1fr;}}
-@media(max-width:700px){.row-4,.row-25,.row-2{grid-template-columns:1fr;}}
-.panel{background:#070d16;border:1px solid rgba(0,200,255,.07);border-radius:14px;padding:20px 22px;position:relative;overflow:hidden;}
-.panel::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,200,255,.08),transparent);}
-.pills{display:flex;gap:5px;margin-bottom:14px;flex-wrap:wrap;}
-.pill{padding:4px 12px;border-radius:20px;font-size:10px;font-weight:500;cursor:pointer;background:#0c1a28;border:1px solid rgba(61,90,115,.35);color:#3d5a73;transition:all .14s;}
-.pill.on{background:rgba(0,200,255,.08);border-color:rgba(0,200,255,.28);color:#00c8ff;}
-.pane{display:none;}.pane.on{display:block;}
-.cr{border-left:2px solid;border-radius:8px;padding:10px 14px;margin-bottom:8px;background:#070d16;border-top:1px solid rgba(255,255,255,.03);border-right:1px solid rgba(255,255,255,.02);border-bottom:1px solid rgba(255,255,255,.02);}
-.cr:last-child{margin-bottom:0;}
-.scroll{max-height:380px;overflow-y:auto;padding-right:4px;}
-.scroll::-webkit-scrollbar{width:3px;}
-.scroll::-webkit-scrollbar-thumb{background:rgba(0,200,255,.12);border-radius:2px;}
-.bt{height:3px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden;margin:5px 0;}
-.bf{height:100%;border-radius:2px;}
-.bdg{display:inline-flex;align-items:center;padding:2px 7px;border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:500;letter-spacing:.05em;border:1px solid;}
-.b-r{color:#ff3d5a;border-color:rgba(255,61,90,.3);background:rgba(255,61,90,.07);}
-.b-a{color:#ffb400;border-color:rgba(255,180,0,.3);background:rgba(255,180,0,.07);}
-.b-o{color:#ff8c42;border-color:rgba(255,140,66,.3);background:rgba(255,140,66,.07);}
-.b-c{color:#00c8ff;border-color:rgba(0,200,255,.3);background:rgba(0,200,255,.07);}
-.b-g{color:#00e676;border-color:rgba(0,230,118,.3);background:rgba(0,230,118,.07);}
-.b-v{color:#9d6eff;border-color:rgba(157,110,255,.3);background:rgba(157,110,255,.07);}
-.b-m{color:#3d5a73;border-color:rgba(61,90,115,.3);background:rgba(61,90,115,.06);}
-.pulse{width:6px;height:6px;border-radius:50%;display:inline-block;animation:bl 1.4s ease-in-out infinite;}
-@keyframes bl{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.25;transform:scale(.65)}}
-.bn{font-family:'Bebas Neue',sans-serif;letter-spacing:-.01em;line-height:.9;}
-.rw{position:relative;width:90px;height:90px;flex-shrink:0;}
-.rs{width:90px;height:90px;transform:rotate(-90deg);}
-.rl{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;}
-.ks{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
-.kc{background:#070d16;border:1px solid rgba(0,200,255,.07);border-radius:12px;padding:16px 18px;position:relative;overflow:hidden;}
-.kt{position:absolute;top:0;left:0;right:0;height:2px;}
-@media(max-width:700px){.ks{grid-template-columns:1fr 1fr;}}
-</style>"""
-    _intel_html += "\n<script>const D="
-    _intel_html += _ij.dumps(_intel_data)
-    _intel_html += ";</script>"
-    _intel_html += """
+*{{margin:0;padding:0;box-sizing:border-box;}}
+body{{background:#030609;font-family:sans-serif;color:#dce8f5;padding:20px;}}
+.panel{{background:#070d16;border:1px solid rgba(0,200,255,.08);border-radius:12px;padding:18px 20px;}}
+.stitle{{font-size:9px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#3d5a73;display:flex;align-items:center;gap:10px;margin-bottom:16px;}}
+.stitle::after{{content:"";flex:1;height:1px;background:rgba(61,90,115,.2);}}
+@keyframes bl{{0%,100%{{opacity:1}}50%{{opacity:.2}}}}
+@media(max-width:900px){{.g4{{grid-template-columns:1fr 1fr!important;}}}}
+@media(max-width:700px){{.g4,.g25,.g2{{grid-template-columns:1fr!important;}}}}
+</style>
 </head>
 <body>
-<div id="root"></div>
-<script>
-var esc=function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
-var bar=function(p,c){return '<div class="bt"><div class="bf" style="width:'+Math.min(p,100)+'%;background:'+c+'"></div></div>';};
-var rcol=function(r){return r>=75?'#ff3d5a':r>=55?'#ff8c42':r>=38?'#ffb400':'#00c8ff';};
-
-function sw(g,i,el){
-  var card=el.closest('.panel');
-  var pills=card.querySelectorAll('.pill');
-  for(var j=0;j<pills.length;j++) pills[j].classList.remove('on');
-  el.classList.add('on');
-  var panes=card.querySelectorAll('.pane');
-  for(var j=0;j<panes.length;j++) panes[j].classList.remove('on');
-  var t=card.querySelector('#'+g+i);
-  if(t) t.classList.add('on');
-}
-
-function kpiStrip(){
-  var ci=D.instability;
-  var highRisk=ci.filter(function(c){return c.score>=70;}).length;
-  var sr=D.strategic;
-  var highFP=D.force_posture.filter(function(f){return f.risk>=60;}).length;
-  var nA=D.nuke_alerts.filter(function(n){return n.level==='CRITICAL';}).length;
-  var kpis=[
-    {n:highRisk,lbl:'High-Risk Nations',sub:'Instability \u2265 70',col:'#ff3d5a',top:'linear-gradient(90deg,#ff3d5a,transparent)'},
-    {n:sr.score,lbl:'Global Risk Score',sub:sr.label,col:sr.color,top:'linear-gradient(90deg,'+sr.color+',transparent)'},
-    {n:highFP,lbl:'Elevated Postures',sub:'Force risk \u2265 60',col:'#ff8c42',top:'linear-gradient(90deg,#ff8c42,transparent)'},
-    {n:nA,lbl:'Nuclear CRITICAL',sub:'Sites at CRITICAL',col:'#9d6eff',top:'linear-gradient(90deg,#9d6eff,transparent)'},
-  ];
-  var h='<div class="ks">';
-  for(var i=0;i<kpis.length;i++){
-    var k=kpis[i];
-    h+='<div class="kc"><div class="kt" style="background:'+k.top+'"></div>';
-    h+='<div class="overline" style="margin-bottom:8px">'+esc(k.lbl)+'</div>';
-    h+='<div class="bn" style="font-size:52px;color:'+k.col+';margin-bottom:4px">'+k.n+'</div>';
-    h+='<div class="fm" style="font-size:9px;color:#3d5a73">'+esc(k.sub)+'</div></div>';
-  }
-  return h+'</div>';
-}
-
-function panelInstability(){
-  var all=D.instability;
-  var regions=['All'];
-  for(var i=0;i<all.length;i++) if(regions.indexOf(all[i].region)<0) regions.push(all[i].region);
-  var h='<div class="panel"><div class="sec">Country Instability Index</div><div class="pills">';
-  for(var i=0;i<regions.length;i++){
-    h+='<div class="pill'+(i===0?' on':'')+'" onclick="sw(\'ci\',\''+i+'\',this)">'+esc(regions[i])+'</div>';
-  }
-  h+='</div><div class="scroll">';
-  for(var i=0;i<regions.length;i++){
-    var items=regions[i]==='All'?all:all.filter(function(c){return c.region===regions[i];});
-    var sorted=items.slice().sort(function(a,b){return b.score-a.score;});
-    h+='<div id="ci'+i+'" class="pane'+(i===0?' on':'')+'">';
-    for(var j=0;j<sorted.length;j++){
-      var c=sorted[j];
-      var col=rcol(c.score);
-      var tc=c.trend==='\u2191'?'#ff8c42':c.trend==='\u2193'?'#00e676':'#3d5a73';
-      h+='<div class="cr" style="border-left-color:'+col+'">';
-      h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">';
-      h+='<span style="font-size:13px;font-weight:600;color:#dce8f5">'+esc(c.country)+'</span>';
-      h+='<div style="display:flex;align-items:center;gap:8px">';
-      h+='<span class="fm" style="font-size:9px;color:#3d5a73">U'+c.U+' C'+c.C+' S'+c.S+' I'+c.I+'</span>';
-      h+='<span class="fm" style="font-size:11px;color:'+tc+'">'+esc(c.trend)+'</span>';
-      h+='<span class="bn" style="font-size:26px;color:'+col+'">'+c.score+'</span>';
-      h+='</div></div>'+bar(c.score,col)+'</div>';
-    }
-    h+='</div>';
-  }
-  return h+'</div></div>';
-}
-
-function panelStrategic(){
-  var sr=D.strategic;
-  var col=sr.color||'#ff8c42';
-  var r=sr.score;
-  var circ=2*Math.PI*38;
-  var dash=circ*(1-r/100);
-  var h='<div class="panel"><div class="sec">Strategic Risk Overview</div>';
-  h+='<div style="display:flex;align-items:center;gap:20px;margin-bottom:18px">';
-  h+='<div class="rw"><svg class="rs" viewBox="0 0 90 90">';
-  h+='<circle cx="45" cy="45" r="38" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="7"/>';
-  h+='<circle cx="45" cy="45" r="38" fill="none" stroke="'+col+'" stroke-width="7" stroke-dasharray="'+circ+'" stroke-dashoffset="'+dash+'" stroke-linecap="round"/>';
-  h+='</svg><div class="rl">';
-  h+='<div class="bn" style="font-size:30px;color:'+col+'">'+r+'</div>';
-  h+='<div class="fm" style="font-size:8px;color:#3d5a73">/ 100</div>';
-  h+='</div></div>';
-  h+='<div><div class="fm" style="font-size:11px;font-weight:500;color:'+col+';margin-bottom:4px">'+esc(sr.label)+'</div>';
-  h+='<div style="font-size:11px;color:#3d5a73">Trend <span style="color:#7fb3cc;font-size:13px">'+esc(sr.trend)+'</span></div></div></div>';
-  for(var i=0;i<sr.components.length;i++){
-    var c=sr.components[i];
-    h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">';
-    h+='<div style="font-size:11px;color:#7fb3cc;min-width:140px">'+esc(c.name)+'</div>';
-    h+='<div style="flex:1;height:4px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden">';
-    h+='<div style="height:100%;width:'+c.val+'%;background:'+c.col+';border-radius:2px"></div></div>';
-    h+='<span class="fm" style="font-size:10px;color:'+c.col+';min-width:26px;text-align:right">'+c.val+'</span></div>';
-  }
-  return h+'</div>';
-}
-
-function panelIntelFeed(){
-  var catCol={ALERT:'#ff3d5a',REPORT:'#ffb400',BRIEF:'#00c8ff'};
-  var tagCol={MILITARY:'#ff8c42',CONFLICT:'#ff3d5a',UKRAINE:'#00c8ff',IRAN:'#ffb400',NUCLEAR:'#9d6eff',OSINT:'#00e676',CYBER:'#9d6eff',Cyber:'#9d6eff',Military:'#ff8c42'};
-  function rows(items){
-    var h='';
-    for(var i=0;i<items.length;i++){
-      var item=items[i];
-      var cc=catCol[item.cat||'']||'#3d5a73';
-      var tc=tagCol[item.tag||item.sector||'']||'#3d5a73';
-      h+='<div class="cr" style="border-left-color:'+cc+'">';
-      h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">';
-      h+='<span class="fm" style="font-size:9px;font-weight:600;color:#3d5a73">'+esc((item.source||'').toUpperCase())+'</span>';
-      if(item.cat) h+='<span class="bdg" style="color:'+cc+';border-color:'+cc+'40;background:'+cc+'18">'+esc(item.cat)+'</span>';
-      h+='<span class="bdg" style="color:'+tc+';border-color:'+tc+'40;background:'+tc+'18">'+esc(item.tag||item.sector||'')+'</span>';
-      h+='</div>';
-      h+='<div style="font-size:12px;font-weight:600;color:#dce8f5;line-height:1.5;margin-bottom:5px">'+esc(item.title)+'</div>';
-      h+='<div class="fm" style="font-size:9px;color:#3d5a73">'+esc(item.time)+'</div></div>';
-    }
-    return h;
-  }
-  var h='<div class="panel"><div class="sec"><span class="pulse" style="background:#ff3d5a;margin-right:4px"></span>Intelligence Feed</div>';
-  h+='<div class="pills"><div class="pill on" onclick="sw(\'if\',\'0\',this)">Military / Conflict</div>';
-  h+='<div class="pill" onclick="sw(\'if\',\'1\',this)">Cyber / OSINT</div></div>';
-  h+='<div class="scroll"><div id="if0" class="pane on">'+rows(D.intel_feed)+'</div>';
-  h+='<div id="if1" class="pane">'+rows(D.cyber_feed)+'</div></div></div>';
-  return h;
-}
-
-function panelForcePosture(){
-  var h='<div class="panel"><div class="sec">Force Posture Monitor</div><div class="scroll">';
-  for(var i=0;i<D.force_posture.length;i++){
-    var fp=D.force_posture[i];
-    var col=rcol(fp.risk);
-    h+='<div class="cr" style="border-left-color:'+col+'">';
-    h+='<div style="display:flex;align-items:center;gap:12px">';
-    h+='<div style="flex:1">';
-    h+='<div style="font-size:12px;font-weight:600;color:#dce8f5;margin-bottom:3px">'+esc(fp.activity)+'</div>';
-    h+='<div class="fm" style="font-size:9px;color:#3d5a73;margin-bottom:4px">'+esc(fp.actors)+' \u00b7 '+(fp.signals||0).toLocaleString()+' signals</div>';
-    h+=bar(fp.risk,col);
-    h+='</div><div class="bn" style="font-size:30px;color:'+col+';flex-shrink:0">'+fp.risk+'</div></div></div>';
-  }
-  return h+'</div></div>';
-}
-
-function panelInfra(){
-  var keys=['cables','pipelines','ports','chokepoints','power_grids'];
-  var labels=['Cables','Pipelines','Ports','Chokepoints','Power Grids'];
-  var statusCol={Cut:'#ff3d5a',Sabotaged:'#ff3d5a',Threatened:'#ff3d5a',Blockaded:'#ff3d5a','Under Attack':'#ff3d5a',Destroyed:'#ff3d5a',Contested:'#ffb400',Degraded:'#ffb400',Suspended:'#ffb400',Reduced:'#ffb400','At Risk':'#ffb400',Disrupted:'#ffb400',Active:'#00e676'};
-  var h='<div class="panel"><div class="sec">Infrastructure Cascade</div><div class="pills">';
-  for(var i=0;i<labels.length;i++){
-    h+='<div class="pill'+(i===0?' on':'')+'" onclick="sw(\'ic\',\''+i+'\',this)">'+labels[i]+'</div>';
-  }
-  h+='</div>';
-  for(var i=0;i<keys.length;i++){
-    var d=D.infra[keys[i]]||{};
-    var items=d.items||[];
-    var rp=d.count?Math.round(d.at_risk/d.count*100):0;
-    h+='<div id="ic'+i+'" class="pane'+(i===0?' on':'')+'">';
-    h+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">';
-    var stats=[['Total',d.count,'#00c8ff'],['At Risk',d.at_risk,'#ff3d5a'],['Risk %',rp+'%','#ffb400']];
-    for(var j=0;j<stats.length;j++){
-      h+='<div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.04);border-radius:8px;padding:10px;text-align:center">';
-      h+='<div class="overline" style="margin-bottom:5px">'+stats[j][0]+'</div>';
-      h+='<div class="bn" style="font-size:28px;color:'+stats[j][2]+'">'+stats[j][1]+'</div></div>';
-    }
-    h+='</div><div class="scroll">';
-    for(var j=0;j<items.length;j++){
-      var item=items[j];
-      var r=item.risk||0;
-      var col=rcol(r);
-      var sc=statusCol[item.status||'']||'#3d5a73';
-      var extra=item.traffic_pct?item.traffic_pct+'% global trade':(item.region||'');
-      h+='<div class="cr" style="border-left-color:'+col+'">';
-      h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">';
-      h+='<span style="font-size:12px;font-weight:600;color:#dce8f5">'+esc(item.name)+'</span>';
-      h+='<div style="display:flex;align-items:center;gap:7px">';
-      h+='<span class="bdg" style="color:'+sc+';border-color:'+sc+'40;background:'+sc+'18">'+esc(item.status||'')+'</span>';
-      h+='<span class="bn" style="font-size:20px;color:'+col+'">'+r+'</span></div></div>';
-      h+=bar(r,col);
-      h+='<div class="fm" style="font-size:9px;color:#3d5a73;margin-top:3px">'+esc(extra)+'</div></div>';
-    }
-    h+='</div></div>';
-  }
-  return h+'</div>';
-}
-
-function panelNuclear(){
-  var h='<div class="panel"><div class="sec">Nuclear & WMD Status</div>';
-  h+='<div class="pills"><div class="pill on" onclick="sw(\'nw\',\'0\',this)">Nuclear Sites</div>';
-  h+='<div class="pill" onclick="sw(\'nw\',\'1\',this)">Missile Posture</div></div>';
-  h+='<div class="scroll"><div id="nw0" class="pane on">';
-  for(var i=0;i<D.nuke_alerts.length;i++){
-    var n=D.nuke_alerts[i];
-    var lc=n.level==='CRITICAL'?'#ff3d5a':n.level==='HIGH'?'#ff8c42':'#ffb400';
-    h+='<div class="cr" style="border-left-color:'+(n.col||lc)+'">';
-    h+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">';
-    h+='<span style="font-size:12px;font-weight:600;color:#dce8f5">'+esc(n.site)+'</span>';
-    h+='<span class="bdg" style="color:'+lc+';border-color:'+lc+'40;background:'+lc+'18">'+esc(n.status)+'</span></div>';
-    h+='<div style="font-size:11px;color:#7fb3cc;line-height:1.55">'+esc(n.detail)+'</div></div>';
-  }
-  h+='</div><div id="nw1" class="pane">';
-  for(var i=0;i<D.wmd_posture.length;i++){
-    var w=D.wmd_posture[i];
-    var col=rcol(w.risk);
-    h+='<div class="cr" style="border-left-color:'+col+'">';
-    h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">';
-    h+='<div><span style="font-size:13px;font-weight:600;color:#dce8f5">'+esc(w.actor)+'</span>';
-    h+='<span class="fm" style="font-size:9px;color:#3d5a73;margin-left:8px">'+esc(w.type)+'</span></div>';
-    h+='<div style="display:flex;align-items:center;gap:8px;flex-shrink:0">';
-    h+='<span class="fm" style="font-size:9px;color:'+col+'">'+esc(w.status)+'</span>';
-    h+='<span class="bn" style="font-size:24px;color:'+col+'">'+w.risk+'</span></div></div>';
-    h+=bar(w.risk,col);
-    h+='<div style="font-size:10px;color:#3d5a73;margin-top:4px">'+esc((w.assets||'').substring(0,70))+'</div></div>';
-  }
-  return h+'</div></div></div>';
-}
-
-function panelChokepoints(){
-  var h='<div class="panel"><div class="sec">Supply Chain Chokepoints</div><div class="scroll">';
-  for(var i=0;i<D.chokepoints.length;i++){
-    var cp=D.chokepoints[i];
-    var col=cp.status==='red'?'#ff3d5a':cp.status==='amber'?'#ffb400':'#00e676';
-    var wc=cp.wow_change<0?'#ff3d5a':'#00e676';
-    h+='<div class="cr" style="border-left-color:'+col+';margin-bottom:12px">';
-    h+='<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:7px">';
-    h+='<div><div style="font-size:14px;font-weight:700;color:#dce8f5;margin-bottom:3px">'+esc(cp.name)+'</div>';
-    h+='<div class="fm" style="font-size:9px;color:#3d5a73">'+cp.warnings+' warnings \u00b7 '+cp.ais_disruptions+' AIS \u00b7 '+esc(cp.flow)+'</div></div>';
-    h+='<div style="text-align:right;flex-shrink:0;margin-left:12px">';
-    h+='<div class="bn" style="font-size:32px;color:'+col+'">'+cp.risk+'</div>';
-    h+='<div class="fm" style="font-size:9px;color:'+wc+'">WoW '+(cp.wow_change>0?'+':'')+cp.wow_change+'%</div></div></div>';
-    h+=bar(cp.risk,col);
-    h+='<div style="font-size:11px;color:#7fb3cc;line-height:1.6;margin:8px 0">'+esc((cp.context||'').substring(0,160))+'</div>';
-    var exps=cp.exports||[];
-    for(var j=0;j<exps.length;j++) h+='<span class="bdg b-m" style="font-size:8px;margin-right:4px">'+esc(exps[j])+'</span>';
-    h+='</div>';
-  }
-  return h+'</div></div>';
-}
-
-function panelOutages(){
-  var h='<div class="panel"><div class="sec"><span class="pulse" style="background:#ff8c42;margin-right:4px"></span>Internet Outages & Censorship</div>';
-  h+='<div class="pills"><div class="pill on" onclick="sw(\'io\',\'0\',this)">Live Feed</div>';
-  h+='<div class="pill" onclick="sw(\'io\',\'1\',this)">Known Outages</div></div>';
-  h+='<div class="scroll"><div id="io0" class="pane on">';
-  if(D.outage_live && D.outage_live.length){
-    for(var i=0;i<D.outage_live.length;i++){
-      var o=D.outage_live[i];
-      h+='<div class="cr" style="border-left-color:#ff8c42">';
-      h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
-      h+='<span class="fm" style="font-size:9px;font-weight:600;color:#ff8c42">'+esc((o.source||'').toUpperCase().substring(0,28))+'</span>';
-      h+='<span class="fm" style="font-size:9px;color:#3d5a73">'+esc(o.time||'')+'</span></div>';
-      h+='<div style="font-size:12px;color:#dce8f5;line-height:1.45;margin-bottom:4px">'+esc((o.title||'').substring(0,90))+'</div>';
-      if(o.url) h+='<a href="'+esc(o.url)+'" target="_blank" rel="noopener" style="font-family:monospace;font-size:9px;color:#00c8ff;text-decoration:none">Read \u2192</a>';
-      h+='</div>';
-    }
-  } else {
-    h+='<div class="fm" style="font-size:10px;color:#3d5a73;padding:12px 0">No live outage alerts in the last 6 hours.</div>';
-  }
-  h+='</div><div id="io1" class="pane">';
-  for(var i=0;i<D.outage_known.length;i++){
-    var io=D.outage_known[i];
-    var ic=io.severity==='Total'?'#ff3d5a':io.severity==='Partial'||io.severity==='Disrupted'?'#ff8c42':'#ffb400';
-    h+='<div class="cr" style="border-left-color:'+ic+'">';
-    h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">';
-    h+='<span style="font-size:12px;font-weight:600;color:#dce8f5">'+esc(io.name)+'</span>';
-    h+='<span class="bdg" style="color:'+ic+';border-color:'+ic+'40;background:'+ic+'18">'+esc(io.severity)+'</span></div>';
-    h+='<div class="fm" style="font-size:9px;color:#3d5a73">'+esc(io.cause||'')+'</div></div>';
-  }
-  h+='</div></div></div>';
-  return h;
-}
-
-document.getElementById('root').innerHTML=
-  kpiStrip()+
-  '<div class="row row-4">'+panelInstability()+panelStrategic()+panelIntelFeed()+panelForcePosture()+'</div>'+
-  '<div class="row row-25">'+panelInfra()+panelNuclear()+'</div>'+
-  '<div class="row row-2">'+panelChokepoints()+panelOutages()+'</div>';
-</script>
+{kpi_html}
+<div class="g4" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px">
+{_p_instab}{_p_strat}{_p_feed}{_p_posture}
+</div>
+<div class="g25" style="display:grid;grid-template-columns:2fr 3fr;gap:14px;margin-bottom:20px">
+{_p_infra}{_p_nuclear}
+</div>
+<div class="g2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+{_p_choke}{_p_outages}
+</div>
 </body></html>"""
+
     _ic.html(_intel_html, height=4800, scrolling=True)
 
 
