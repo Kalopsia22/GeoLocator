@@ -4651,19 +4651,129 @@ with tab_intel:
     # Fetch live outage feed
     _outage_arts = fetch_outage_feed()
 
-    # Assemble payload
+    # ── All data defined INLINE to avoid NameError from forward references ──
+    # STRATEGIC_RISK, INTEL_FEED_SOURCES, CYBER_FEED, INFRA_CASCADE,
+    # FORCE_POSTURE, CHOKEPOINTS, INTERNET_OUTAGES are defined later in the file.
     _intel_payload = _ij.dumps({
-        "instability":   COUNTRY_INSTABILITY,
-        "strategic":     STRATEGIC_RISK,
-        "intel_feed":    INTEL_FEED_SOURCES,
-        "cyber_feed":    CYBER_FEED,
-        "infra":         INFRA_CASCADE,
-        "force_posture": FORCE_POSTURE,
-        "nuke_alerts":   NUKE_ALERTS,
-        "wmd_posture":   WMD_POSTURE,
-        "chokepoints":   CHOKEPOINTS,
-        "outage_live":   _outage_arts[:8],
-        "outage_known":  INTERNET_OUTAGES,
+        "instability": COUNTRY_INSTABILITY,
+        "strategic": {
+            "score": 58, "label": "ELEVATED", "trend": "Stable", "color": "#ff8c42",
+            "components": [
+                {"name": "Military Conflict",    "val": 78, "col": "#ff3d5a"},
+                {"name": "Cyber Threats",        "val": 65, "col": "#9d6eff"},
+                {"name": "Economic Disruption",  "val": 61, "col": "#ffb400"},
+                {"name": "Political Instability","val": 54, "col": "#ff8c42"},
+                {"name": "Climate / Disaster",   "val": 42, "col": "#00e676"},
+                {"name": "Pandemic Risk",        "val": 28, "col": "#00c8ff"},
+            ],
+        },
+        "intel_feed": [
+            {"source":"ISW",          "cat":"REPORT","tag":"UKRAINE",  "title":"Russian forces continue offensive operations near Avdiivka sector",                 "time":"4h ago",  "url":"https://understandingwar.org"},
+            {"source":"Defense One",  "cat":"ALERT", "tag":"MILITARY", "title":"Pentagon orders second carrier strike group to Eastern Mediterranean",              "time":"3h ago",  "url":"https://defenseone.com"},
+            {"source":"CSIS",         "cat":"ALERT", "tag":"IRAN",     "title":"IRGC drone production facility destroyed in latest Israeli strike",                 "time":"6h ago",  "url":"https://csis.org"},
+            {"source":"Reuters",      "cat":"REPORT","tag":"NUCLEAR",  "title":"IAEA loses monitoring access to Fordow enrichment site after strike",               "time":"12h ago", "url":"https://reuters.com"},
+            {"source":"Foreign Policy","cat":"ALERT","tag":"MILITARY", "title":"Six U.S. Troops Killed in Aircraft Crash in Iraq",                                  "time":"20h ago", "url":"https://foreignpolicy.com"},
+            {"source":"Atlantic Council","cat":"ALERT","tag":"CONFLICT","title":"UN: Putin deportation of Ukrainian children is a crime against humanity",          "time":"8h ago",  "url":"https://atlanticcouncil.org"},
+            {"source":"Bellingcat",   "cat":"REPORT","tag":"OSINT",    "title":"Geolocated footage confirms new Russian S-400 deployment near Zaporizhzhia",       "time":"7h ago",  "url":"https://bellingcat.com"},
+        ],
+        "cyber_feed": [
+            {"source":"Recorded Future","title":"APT41 campaign targeting defence contractors across SE Asia",           "time":"2h ago",  "sector":"Cyber"},
+            {"source":"WCBM",           "title":"New cyber-physical attack vector targets ICS/SCADA water systems",     "time":"21h ago", "sector":"Cyber"},
+            {"source":"GlobalSecurity", "title":"PH Navy contingent now in Australia for joint bilateral exercise",     "time":"4h ago",  "sector":"Military"},
+            {"source":"IndiaGazette",   "title":"Iran Army chief: attack on IRIS Dena warship will not go unanswered", "time":"7h ago",  "sector":"Military"},
+            {"source":"Sandworm Track", "title":"GRU Sandworm deploys new Industroyer variant targeting Ukraine grid",  "time":"14h ago", "sector":"Cyber"},
+        ],
+        "infra": {
+            "cables": {"count":86, "at_risk":12, "items":[
+                {"name":"SEA-ME-WE 4",            "region":"Indian Ocean", "risk":72, "status":"Degraded"},
+                {"name":"Africa Coast to Europe", "region":"W Africa",     "risk":81, "status":"Cut"},
+                {"name":"PEACE Cable",            "region":"ME/Africa",    "risk":65, "status":"Degraded"},
+                {"name":"AAE-1",                  "region":"Asia-Europe",  "risk":55, "status":"Active"},
+                {"name":"FLAG Atlantic-1",        "region":"Atlantic",     "risk":45, "status":"Active"},
+            ]},
+            "pipelines": {"count":88, "at_risk":9, "items":[
+                {"name":"Nord Stream (sabotaged)",  "region":"Baltic",      "risk":95, "status":"Sabotaged"},
+                {"name":"Trans-Arabian Pipeline",   "region":"Middle East", "risk":78, "status":"Suspended"},
+                {"name":"Iran-Iraq-Syria Pipeline", "region":"Middle East", "risk":81, "status":"Disrupted"},
+                {"name":"Druzhba Pipeline",         "region":"Europe",      "risk":62, "status":"Reduced"},
+                {"name":"TANAP",                    "region":"Turkey",      "risk":30, "status":"Active"},
+            ]},
+            "ports": {"count":62, "at_risk":8, "items":[
+                {"name":"Port of Hodeidah",       "region":"Yemen",    "risk":88, "status":"Blockaded"},
+                {"name":"Port Sudan",             "region":"Sudan",    "risk":74, "status":"Contested"},
+                {"name":"Hormuz Port Cluster",    "region":"Iran/UAE", "risk":71, "status":"At Risk"},
+            ]},
+            "chokepoints": {"count":13, "at_risk":4, "items":[
+                {"name":"Strait of Hormuz",  "risk":82, "status":"At Risk",    "traffic_pct":20},
+                {"name":"Bab el-Mandeb",     "risk":79, "status":"Threatened", "traffic_pct":9},
+                {"name":"Suez Canal",        "risk":52, "status":"Reduced",    "traffic_pct":12},
+                {"name":"Strait of Malacca", "risk":28, "status":"Active",     "traffic_pct":25},
+            ]},
+            "power_grids": {"count":191, "at_risk":22, "items":[
+                {"name":"Ukraine National Grid", "region":"Ukraine", "risk":88, "status":"Under Attack"},
+                {"name":"Sudan Power Corp",      "region":"Sudan",   "risk":75, "status":"Disrupted"},
+                {"name":"Gaza Power Authority",  "region":"Gaza",    "risk":98, "status":"Destroyed"},
+            ]},
+        },
+        "force_posture": [
+            {"activity":"Combined air-naval activity", "actors":"UK/Unknown",   "signals":860, "risk":49, "col":"#ff3d5a"},
+            {"activity":"Combined air-naval activity", "actors":"NATO/USA",     "signals":63,  "risk":39, "col":"#ff8c42"},
+            {"activity":"Missile test/launch",         "actors":"Iran",         "signals":12,  "risk":82, "col":"#ff3d5a"},
+            {"activity":"Troop mobilisation",          "actors":"Russia",       "signals":44,  "risk":65, "col":"#ff8c42"},
+            {"activity":"Air defence activation",      "actors":"Israel",       "signals":31,  "risk":58, "col":"#ffb400"},
+            {"activity":"Naval patrol",                "actors":"China/SCS",    "signals":28,  "risk":45, "col":"#ff8c42"},
+            {"activity":"Cyber operation",             "actors":"Unknown/State","signals":77,  "risk":72, "col":"#9d6eff"},
+            {"activity":"ICBM/MLRS posture alert",     "actors":"DPRK",         "signals":18,  "risk":61, "col":"#ff8c42"},
+        ],
+        "nuke_alerts": NUKE_ALERTS,
+        "wmd_posture": WMD_POSTURE,
+        "chokepoints": [
+            {
+                "name":"Strait of Hormuz","risk":80,"status":"red",
+                "flow":"eastbound/westbound","warnings":0,"ais_disruptions":0,"wow_change":-94.4,
+                "context":"Active conflict — Iran-Israel war. Iranian naval blockade risk elevated. Traffic severely reduced. Mines reported in Persian Gulf. 20% of global oil transits here.",
+                "exports":["Gulf Oil Exports","Qatar LNG","Iran Exports"],
+            },
+            {
+                "name":"Bab el-Mandeb","risk":75,"status":"red",
+                "flow":"northbound/southbound","warnings":3,"ais_disruptions":12,"wow_change":-41.0,
+                "context":"Houthi attacks on commercial shipping continue. Red Sea rerouting adding 2-3 weeks and ~110% to Asia-Europe freight costs. 9% of global trade at risk.",
+                "exports":["Suez Canal traffic","EU-Asia trade","Oil tankers"],
+            },
+            {
+                "name":"Suez Canal","risk":52,"status":"amber",
+                "flow":"northbound/southbound","warnings":1,"ais_disruptions":3,"wow_change":-18.0,
+                "context":"Reduced traffic due to Red Sea security situation. Some rerouting via Cape of Good Hope continues. Handles 12% of global trade.",
+                "exports":["EU-Asia Container","Mediterranean Oil","LNG"],
+            },
+            {
+                "name":"Taiwan Strait","risk":55,"status":"amber",
+                "flow":"northbound/southbound","warnings":0,"ais_disruptions":2,"wow_change":-8.4,
+                "context":"PLA military exercises increasing in frequency. Semiconductor supply chain vulnerability elevated. TSMC produces 90% of advanced chips.",
+                "exports":["Taiwan Semiconductors","China Exports","Japan Trade"],
+            },
+            {
+                "name":"Strait of Malacca","risk":22,"status":"green",
+                "flow":"eastbound/westbound","warnings":0,"ais_disruptions":0,"wow_change":2.1,
+                "context":"Normal operations. 25% of global trade and 300+ vessels per day. China-Taiwan tensions monitored but no current disruption to commercial shipping.",
+                "exports":["SE Asia Trade","China Imports","Japan/Korea Oil"],
+            },
+            {
+                "name":"Kerch Strait","risk":70,"status":"red",
+                "flow":"northbound/southbound","warnings":0,"ais_disruptions":0,"wow_change":37.5,
+                "context":"Active conflict zone. Russia controls Kerch Bridge. Ukraine grain exports via Azov Sea severely restricted. Near-blocked for commercial traffic.",
+                "exports":["Ukraine Grain","Russian Coal","Azov Steel"],
+            },
+        ],
+        "outage_live": _outage_arts[:8],
+        "outage_known": [
+            {"name":"Gaza — Total Blackout",       "severity":"Total",     "cause":"Infrastructure destruction"},
+            {"name":"Sudan — Partial",             "severity":"Partial",   "cause":"Conflict/Power"},
+            {"name":"Myanmar — Targeted Shutdown", "severity":"Targeted",  "cause":"Junta censorship"},
+            {"name":"Iran — Throttled",            "severity":"Throttled", "cause":"Government restriction"},
+            {"name":"Russia — Selective Block",    "severity":"Selective", "cause":"Censorship"},
+            {"name":"Ukraine — Disrupted",         "severity":"Disrupted", "cause":"Missile strikes"},
+        ],
     })
 
     _intel_html = f"""<!DOCTYPE html>
@@ -4681,18 +4791,11 @@ body{{
   color:#dce8f5;
   padding:20px 18px 48px;
 }}
-/* ── Typography ── */
 .fd{{font-family:'Bebas Neue',sans-serif;letter-spacing:.01em;line-height:1;}}
 .fm{{font-family:'IBM Plex Mono',monospace;}}
 .overline{{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:#3d5a73;}}
-.sec{{
-  display:flex;align-items:center;gap:12px;
-  font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;
-  letter-spacing:.22em;text-transform:uppercase;color:#3d5a73;
-  margin-bottom:18px;
-}}
+.sec{{display:flex;align-items:center;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:#3d5a73;margin-bottom:18px;}}
 .sec::after{{content:'';flex:1;height:1px;background:rgba(61,90,115,.25);}}
-/* ── Layout ── */
 .row{{display:grid;gap:16px;margin-bottom:24px;}}
 .row-3{{grid-template-columns:1fr 1fr 1fr;}}
 .row-2{{grid-template-columns:1fr 1fr;}}
@@ -4700,48 +4803,22 @@ body{{
 .row-25{{grid-template-columns:2fr 3fr;}}
 @media(max-width:1100px){{.row-3,.row-4{{grid-template-columns:1fr 1fr;}}}}
 @media(max-width:700px){{.row-3,.row-4,.row-2,.row-25{{grid-template-columns:1fr;}}}}
-/* ── Panels ── */
-.panel{{
-  background:#070d16;border:1px solid rgba(0,200,255,.07);
-  border-radius:14px;padding:20px 22px;position:relative;overflow:hidden;
-}}
-.panel::before{{
-  content:'';position:absolute;top:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent,rgba(0,200,255,.08),transparent);
-}}
-/* ── Pill tabs ── */
+.panel{{background:#070d16;border:1px solid rgba(0,200,255,.07);border-radius:14px;padding:20px 22px;position:relative;overflow:hidden;}}
+.panel::before{{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,200,255,.08),transparent);}}
 .pill-wrap{{display:flex;gap:5px;margin-bottom:14px;flex-wrap:wrap;}}
-.pill{{
-  padding:4px 12px;border-radius:20px;font-size:10px;font-weight:500;cursor:pointer;
-  background:#0c1a28;border:1px solid rgba(61,90,115,.35);color:#3d5a73;
-  transition:all .14s;
-}}
+.pill{{padding:4px 12px;border-radius:20px;font-size:10px;font-weight:500;cursor:pointer;background:#0c1a28;border:1px solid rgba(61,90,115,.35);color:#3d5a73;transition:all .14s;}}
 .pill:hover{{color:#7fb3cc;border-color:rgba(0,200,255,.2);}}
 .pill.on{{background:rgba(0,200,255,.08);border-color:rgba(0,200,255,.28);color:#00c8ff;}}
 .pane{{display:none;}}.pane.on{{display:block;}}
-/* ── Card rows ── */
-.cr{{
-  border-left:2px solid;border-radius:8px;padding:10px 14px;margin-bottom:8px;
-  background:#070d16;border-top:1px solid rgba(255,255,255,.03);
-  border-right:1px solid rgba(255,255,255,.02);border-bottom:1px solid rgba(255,255,255,.02);
-  transition:background .15s;
-}}
+.cr{{border-left:2px solid;border-radius:8px;padding:10px 14px;margin-bottom:8px;background:#070d16;border-top:1px solid rgba(255,255,255,.03);border-right:1px solid rgba(255,255,255,.02);border-bottom:1px solid rgba(255,255,255,.02);transition:background .15s;}}
 .cr:last-child{{margin-bottom:0;}}
 .cr:hover{{background:#0b1726;}}
-/* ── Scroll ── */
 .scroll{{max-height:380px;overflow-y:auto;padding-right:4px;}}
 .scroll::-webkit-scrollbar{{width:3px;}}
 .scroll::-webkit-scrollbar-thumb{{background:rgba(0,200,255,.12);border-radius:2px;}}
-/* ── Bar ── */
 .bar-track{{height:3px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden;margin:5px 0;}}
 .bar-fill{{height:100%;border-radius:2px;}}
-/* ── Badges ── */
-.badge{{
-  display:inline-flex;align-items:center;
-  padding:2px 7px;border-radius:4px;
-  font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:500;
-  letter-spacing:.05em;border:1px solid;
-}}
+.badge{{display:inline-flex;align-items:center;padding:2px 7px;border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:500;letter-spacing:.05em;border:1px solid;}}
 .b-red{{color:#ff3d5a;border-color:rgba(255,61,90,.3);background:rgba(255,61,90,.07);}}
 .b-amber{{color:#ffb400;border-color:rgba(255,180,0,.3);background:rgba(255,180,0,.07);}}
 .b-orange{{color:#ff8c42;border-color:rgba(255,140,66,.3);background:rgba(255,140,66,.07);}}
@@ -4749,27 +4826,15 @@ body{{
 .b-green{{color:#00e676;border-color:rgba(0,230,118,.3);background:rgba(0,230,118,.07);}}
 .b-violet{{color:#9d6eff;border-color:rgba(157,110,255,.3);background:rgba(157,110,255,.07);}}
 .b-muted{{color:#3d5a73;border-color:rgba(61,90,115,.3);background:rgba(61,90,115,.06);}}
-/* ── Dot pulse ── */
 .pulse{{width:6px;height:6px;border-radius:50%;display:inline-block;animation:bl 1.4s ease-in-out infinite;}}
 @keyframes bl{{0%,100%{{opacity:1;transform:scale(1)}}50%{{opacity:.25;transform:scale(.65)}}}}
-/* ── Big number ── */
 .bignum{{font-family:'Bebas Neue',sans-serif;letter-spacing:-.01em;line-height:.9;}}
-/* ── Score ring ── */
 .ring-wrap{{position:relative;width:90px;height:90px;flex-shrink:0;}}
 .ring-svg{{width:90px;height:90px;transform:rotate(-90deg);}}
 .ring-label{{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;}}
-/* ── KPI strip ── */
 .kpi-strip{{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}}
-.kpi-card{{
-  background:#070d16;border:1px solid rgba(0,200,255,.07);
-  border-radius:12px;padding:16px 18px;
-  position:relative;overflow:hidden;
-}}
+.kpi-card{{background:#070d16;border:1px solid rgba(0,200,255,.07);border-radius:12px;padding:16px 18px;position:relative;overflow:hidden;}}
 .kpi-top{{position:absolute;top:0;left:0;right:0;height:2px;}}
-/* ── Sector grid ── */
-.sec-grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}}
-.sec-cell{{border-radius:8px;padding:8px 10px;text-align:center;transition:transform .14s;cursor:default;}}
-.sec-cell:hover{{transform:translateY(-2px);}}
 @media(max-width:700px){{.kpi-strip{{grid-template-columns:1fr 1fr;}}}}
 </style>
 </head>
@@ -4778,340 +4843,258 @@ body{{
 <script>
 const D = {_intel_payload};
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-const bar = (pct,col) => `<div class="bar-track"><div class="bar-fill" style="width:${{Math.min(pct,100)}}%;background:${{col}}"></div></div>`;
-const badge = (t,cls) => `<span class="badge ${{cls}}">${{esc(t)}}</span>`;
-const rcol = s => s>=75?'#ff3d5a':s>=55?'#ff8c42':s>=38?'#ffb400':'#00c8ff';
-const trendCol = t => t==='↑'?'#ff8c42':t==='↓'?'#00e676':'#3d5a73';
+const bar = (pct,col) => '<div class="bar-track"><div class="bar-fill" style="width:'+Math.min(pct,100)+'%;background:'+col+'"></div></div>';
+const rcol = r => r>=75?'#ff3d5a':r>=55?'#ff8c42':r>=38?'#ffb400':'#00c8ff';
+const trendCol = t => t==='\u2191'?'#ff8c42':t==='\u2193'?'#00e676':'#3d5a73';
 
-function sw(g,id,el){{
-  el.closest('.panel').querySelectorAll('.pill').forEach(p=>p.classList.remove('on'));
+/* window-scoped so onclick= attributes in dynamic innerHTML can call it */
+window.sw = function(group, id, el) {{
+  var card = el.closest('.panel');
+  card.querySelectorAll('.pill').forEach(function(p) {{ p.classList.remove('on'); }});
   el.classList.add('on');
-  el.closest('.panel').querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
-  el.closest('.panel').querySelector('#'+g+id).classList.add('on');
-}}
+  card.querySelectorAll('.pane').forEach(function(p) {{ p.classList.remove('on'); }});
+  var target = card.querySelector('#'+group+id);
+  if (target) target.classList.add('on');
+}};
 
-/* ── KPI Summary Strip ────────────────────────────────────────── */
-function kpiStrip(){{
-  const ci = D.instability;
-  const highRisk = ci.filter(c=>c.score>=70).length;
-  const avgScore = Math.round(ci.reduce((s,c)=>s+c.score,0)/ci.length);
-  const sr = D.strategic;
-  const fp = D.force_posture;
-  const highFP = fp.filter(f=>f.risk>=60).length;
-  const nukeAlert = D.nuke_alerts.filter(n=>n.level==='CRITICAL').length;
-  const kpis = [
-    {{n:highRisk, lbl:'High-Risk Nations',  sub:'Instability ≥ 70',    col:'#ff3d5a', top:'linear-gradient(90deg,#ff3d5a,#ff8c4200)'}},
-    {{n:sr.score, lbl:'Global Risk Score',  sub:sr.label,              col:sr.color,  top:`linear-gradient(90deg,${{sr.color}},${{sr.color}}00)`}},
-    {{n:highFP,   lbl:'Elevated Postures',  sub:'Force posture risk ≥ 60', col:'#ff8c42', top:'linear-gradient(90deg,#ff8c42,#ff8c4200)'}},
-    {{n:nukeAlert,lbl:'Nuclear CRITICAL',   sub:'Sites at CRITICAL level', col:'#9d6eff', top:'linear-gradient(90deg,#9d6eff,#9d6eff00)'}},
+function kpiStrip() {{
+  var ci = D.instability;
+  var highRisk = ci.filter(function(c) {{ return c.score>=70; }}).length;
+  var sr = D.strategic;
+  var highFP = D.force_posture.filter(function(f) {{ return f.risk>=60; }}).length;
+  var nukeAlert = D.nuke_alerts.filter(function(n) {{ return n.level==='CRITICAL'; }}).length;
+  var kpis = [
+    {{ n:highRisk,  lbl:'High-Risk Nations',  sub:'Instability \u2265 70', col:'#ff3d5a', top:'linear-gradient(90deg,#ff3d5a,#ff3d5a00)' }},
+    {{ n:sr.score,  lbl:'Global Risk Score',  sub:sr.label,               col:sr.color,  top:'linear-gradient(90deg,'+sr.color+','+sr.color+'00)' }},
+    {{ n:highFP,    lbl:'Elevated Postures',  sub:'Force risk \u2265 60', col:'#ff8c42', top:'linear-gradient(90deg,#ff8c42,#ff8c4200)' }},
+    {{ n:nukeAlert, lbl:'Nuclear CRITICAL',   sub:'Sites at CRITICAL',    col:'#9d6eff', top:'linear-gradient(90deg,#9d6eff,#9d6eff00)' }},
   ];
-  return `<div class="kpi-strip">${{kpis.map(k=>`
-    <div class="kpi-card">
-      <div class="kpi-top" style="background:${{k.top}}"></div>
-      <div class="overline" style="margin-bottom:8px">${{k.lbl}}</div>
-      <div class="bignum" style="font-size:52px;color:${{k.col}};margin-bottom:4px">${{k.n}}</div>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3d5a73">${{esc(k.sub)}}</div>
-    </div>`).join('')}}</div>`;
+  return '<div class="kpi-strip">'+kpis.map(function(k) {{
+    return '<div class="kpi-card"><div class="kpi-top" style="background:'+k.top+'"></div>'+
+      '<div class="overline" style="margin-bottom:8px">'+esc(k.lbl)+'</div>'+
+      '<div class="bignum" style="font-size:52px;color:'+k.col+';margin-bottom:4px">'+k.n+'</div>'+
+      '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#3d5a73">'+esc(k.sub)+'</div></div>';
+  }}).join('')+'</div>';
 }}
 
-/* ── Country Instability Panel ──────────────────────────────── */
-function panelInstability(){{
-  const regions = ['All',...new Set(D.instability.map(c=>c.region))];
-  const panes = regions.map((reg,i)=>{{
-    const items = reg==='All'?D.instability:D.instability.filter(c=>c.region===reg);
-    const rows = items.map(c=>{{
-      const col = rcol(c.score);
-      const tc  = trendCol(c.trend);
-      return `<div class="cr" style="border-left-color:${{col}}">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-          <span style="font-size:13px;font-weight:600;color:#dce8f5">${{esc(c.country)}}</span>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3d5a73">
-              U${{c.U}} C${{c.C}} S${{c.S}} I${{c.I}}
-            </span>
-            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:${{tc}}">${{c.trend}}</span>
-            <span class="bignum" style="font-size:26px;color:${{col}}">${{c.score}}</span>
-          </div>
-        </div>
-        ${{bar(c.score, col)}}
-      </div>`;
+function panelInstability() {{
+  var all = D.instability;
+  var regions = ['All'];
+  all.forEach(function(c) {{ if (regions.indexOf(c.region)<0) regions.push(c.region); }});
+  var panes = regions.map(function(reg,i) {{
+    var items = reg==='All' ? all : all.filter(function(c) {{ return c.region===reg; }});
+    var rows = items.slice().sort(function(a,b) {{ return b.score-a.score; }}).map(function(c) {{
+      var col = rcol(c.score);
+      var tc  = trendCol(c.trend);
+      return '<div class="cr" style="border-left-color:'+col+'">'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">'+
+        '<span style="font-size:13px;font-weight:600;color:#dce8f5">'+esc(c.country)+'</span>'+
+        '<div style="display:flex;align-items:center;gap:8px">'+
+        '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#3d5a73">U'+c.U+' C'+c.C+' S'+c.S+' I'+c.I+'</span>'+
+        '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:'+tc+'">'+esc(c.trend)+'</span>'+
+        '<span class="bignum" style="font-size:26px;color:'+col+'">'+c.score+'</span>'+
+        '</div></div>'+bar(c.score,col)+'</div>';
     }}).join('');
-    return `<div id="ci${{i}}" class="pane ${{i===0?'on':''}}">${{rows}}</div>`;
+    return '<div id="ci'+i+'" class="pane '+(i===0?'on':'')+'">'+rows+'</div>';
   }});
-  const pills = regions.map((r,i)=>`<div class="pill ${{i===0?'on':''}}" onclick="sw('ci','${{i}}',this)">${{r}}</div>`).join('');
-  return `<div class="panel">
-    <div class="sec">Country Instability Index</div>
-    <div class="pill-wrap">${{pills}}</div>
-    <div class="scroll">${{panes.join('')}}</div>
-  </div>`;
+  var pills = regions.map(function(r,i) {{
+    return '<div class="pill '+(i===0?'on':'')+'" onclick="sw(\'ci\',\''+i+'\',this)">'+esc(r)+'</div>';
+  }}).join('');
+  return '<div class="panel"><div class="sec">Country Instability Index</div>'+
+    '<div class="pill-wrap">'+pills+'</div>'+
+    '<div class="scroll">'+panes.join('')+'</div></div>';
 }}
 
-/* ── Strategic Risk Panel ───────────────────────────────────── */
-function panelStrategic(){{
-  const sr = D.strategic;
-  const col = sr.color||'#ff8c42';
-  const r = sr.score;
-  const circ = 2*Math.PI*38;
-  const dash = circ*(1-r/100);
-  const compRows = sr.components.map(c=>`
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
-      <div style="font-size:11px;color:#7fb3cc;min-width:140px">${{esc(c.name)}}</div>
-      <div style="flex:1;height:4px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden">
-        <div style="height:100%;width:${{c.val}}%;background:${{c.col}};border-radius:2px"></div>
-      </div>
-      <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:${{c.col}};min-width:26px;text-align:right">${{c.val}}</span>
-    </div>`).join('');
-  return `<div class="panel">
-    <div class="sec">Strategic Risk Overview</div>
-    <div style="display:flex;align-items:center;gap:20px;margin-bottom:18px">
-      <div class="ring-wrap">
-        <svg class="ring-svg" viewBox="0 0 90 90">
-          <circle cx="45" cy="45" r="38" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="7"/>
-          <circle cx="45" cy="45" r="38" fill="none" stroke="${{col}}" stroke-width="7"
-            stroke-dasharray="${{circ}}" stroke-dashoffset="${{dash}}" stroke-linecap="round"/>
-        </svg>
-        <div class="ring-label">
-          <div class="bignum" style="font-size:30px;color:${{col}}">${{r}}</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#3d5a73">/ 100</div>
-        </div>
-      </div>
-      <div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;color:${{col}};margin-bottom:4px">${{esc(sr.label)}}</div>
-        <div style="font-size:11px;color:#3d5a73">Trend &nbsp;<span style="color:#7fb3cc;font-size:13px">${{esc(sr.trend)}}</span></div>
-      </div>
-    </div>
-    ${{compRows}}
-  </div>`;
+function panelStrategic() {{
+  var sr = D.strategic;
+  var col = sr.color||'#ff8c42';
+  var r = sr.score;
+  var circ = 2*Math.PI*38;
+  var dash = circ*(1-r/100);
+  var compRows = sr.components.map(function(c) {{
+    return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">'+
+      '<div style="font-size:11px;color:#7fb3cc;min-width:140px">'+esc(c.name)+'</div>'+
+      '<div style="flex:1;height:4px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden">'+
+      '<div style="height:100%;width:'+c.val+'%;background:'+c.col+';border-radius:2px"></div></div>'+
+      '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:'+c.col+';min-width:26px;text-align:right">'+c.val+'</span></div>';
+  }}).join('');
+  return '<div class="panel"><div class="sec">Strategic Risk Overview</div>'+
+    '<div style="display:flex;align-items:center;gap:20px;margin-bottom:18px">'+
+    '<div class="ring-wrap"><svg class="ring-svg" viewBox="0 0 90 90">'+
+    '<circle cx="45" cy="45" r="38" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="7"/>'+
+    '<circle cx="45" cy="45" r="38" fill="none" stroke="'+col+'" stroke-width="7" stroke-dasharray="'+circ+'" stroke-dashoffset="'+dash+'" stroke-linecap="round"/>'+
+    '</svg><div class="ring-label"><div class="bignum" style="font-size:30px;color:'+col+'">'+r+'</div>'+
+    '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:8px;color:#3d5a73">/ 100</div></div></div>'+
+    '<div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:500;color:'+col+';margin-bottom:4px">'+esc(sr.label)+'</div>'+
+    '<div style="font-size:11px;color:#3d5a73">Trend &nbsp;<span style="color:#7fb3cc;font-size:13px">'+esc(sr.trend)+'</span></div></div></div>'+
+    compRows+'</div>';
 }}
 
-/* ── Intel Feed Panel ───────────────────────────────────────── */
-function panelIntelFeed(){{
-  const catCol = {{ALERT:'#ff3d5a',REPORT:'#ffb400',BRIEF:'#00c8ff'}};
-  const tagCol = {{MILITARY:'#ff8c42',CONFLICT:'#ff3d5a',UKRAINE:'#00c8ff',IRAN:'#ffb400',NUCLEAR:'#9d6eff',OSINT:'#00e676',CYBER:'#9d6eff',Cyber:'#9d6eff',Military:'#ff8c42',Diplomatic:'#00c8ff'}};
-  function feedRows(items){{
-    return items.map(item=>{{
-      const cc = catCol[item.cat||'']||'#3d5a73';
-      const tc = tagCol[item.tag||item.sector||'']||'#3d5a73';
-      const hasCat = !!item.cat;
-      return `<div class="cr" style="border-left-color:${{cc}}">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;color:#3d5a73">${{esc((item.source||'').toUpperCase())}}</span>
-          ${{hasCat?`<span class="badge" style="color:${{cc}};border-color:${{cc}}40;background:${{cc}}0f">${{esc(item.cat)}}</span>`:''}}<span class="badge" style="color:${{tc}};border-color:${{tc}}40;background:${{tc}}0f">${{esc(item.tag||item.sector||'')}}</span>
-        </div>
-        <div style="font-size:12px;font-weight:600;color:#dce8f5;line-height:1.5;margin-bottom:5px">${{esc(item.title)}}</div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3d5a73">${{esc(item.time)}}</div>
-      </div>`;
+function panelIntelFeed() {{
+  var catCol = {{ALERT:'#ff3d5a',REPORT:'#ffb400',BRIEF:'#00c8ff'}};
+  var tagCol = {{MILITARY:'#ff8c42',CONFLICT:'#ff3d5a',UKRAINE:'#00c8ff',IRAN:'#ffb400',NUCLEAR:'#9d6eff',OSINT:'#00e676',CYBER:'#9d6eff',Cyber:'#9d6eff',Military:'#ff8c42',Diplomatic:'#00c8ff'}};
+  function feedRows(items) {{
+    return items.map(function(item) {{
+      var cc = catCol[item.cat||'']||'#3d5a73';
+      var tc = tagCol[item.tag||item.sector||'']||'#3d5a73';
+      return '<div class="cr" style="border-left-color:'+cc+'">'+
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'+
+        '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;font-weight:600;color:#3d5a73">'+esc((item.source||'').toUpperCase())+'</span>'+
+        (item.cat?'<span class="badge" style="color:'+cc+';border-color:'+cc+'40;background:'+cc+'0f">'+esc(item.cat)+'</span>':'')+
+        '<span class="badge" style="color:'+tc+';border-color:'+tc+'40;background:'+tc+'0f">'+esc(item.tag||item.sector||'')+'</span>'+
+        '</div><div style="font-size:12px;font-weight:600;color:#dce8f5;line-height:1.5;margin-bottom:5px">'+esc(item.title)+'</div>'+
+        '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#3d5a73">'+esc(item.time)+'</div></div>';
     }}).join('');
   }}
-  return `<div class="panel">
-    <div class="sec"><span class="pulse" style="background:#ff3d5a;margin-right:4px"></span>Intelligence Feed</div>
-    <div class="pill-wrap">
-      <div class="pill on" onclick="sw('if','0',this)">Military / Conflict</div>
-      <div class="pill" onclick="sw('if','1',this)">Cyber / OSINT</div>
-    </div>
-    <div class="scroll">
-      <div id="if0" class="pane on">${{feedRows(D.intel_feed)}}</div>
-      <div id="if1" class="pane">${{feedRows(D.cyber_feed)}}</div>
-    </div>
-  </div>`;
+  return '<div class="panel"><div class="sec"><span class="pulse" style="background:#ff3d5a;margin-right:4px"></span>Intelligence Feed</div>'+
+    '<div class="pill-wrap">'+
+    '<div class="pill on" onclick="sw(\'if\',\'0\',this)">Military / Conflict</div>'+
+    '<div class="pill" onclick="sw(\'if\',\'1\',this)">Cyber / OSINT</div></div>'+
+    '<div class="scroll">'+
+    '<div id="if0" class="pane on">'+feedRows(D.intel_feed)+'</div>'+
+    '<div id="if1" class="pane">'+feedRows(D.cyber_feed)+'</div></div></div>';
 }}
 
-/* ── Force Posture Panel ────────────────────────────────────── */
-function panelForcePosture(){{
-  const rows = D.force_posture.map(fp=>{{
-    const col = rcol(fp.risk);
-    return `<div class="cr" style="border-left-color:${{col}}">
-      <div style="display:flex;align-items:center;gap:12px">
-        <div style="flex:1">
-          <div style="font-size:12px;font-weight:600;color:#dce8f5;margin-bottom:3px">
-            ${{esc(fp.activity)}}
-          </div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3d5a73;margin-bottom:4px">
-            ${{esc(fp.actors)}} &nbsp;·&nbsp; ${{(fp.signals||0).toLocaleString()}} signals
-          </div>
-          ${{bar(fp.risk, col)}}
-        </div>
-        <div class="bignum" style="font-size:30px;color:${{col}};flex-shrink:0">${{fp.risk}}</div>
-      </div>
-    </div>`;
+function panelForcePosture() {{
+  var rows = D.force_posture.map(function(fp) {{
+    var col = rcol(fp.risk);
+    return '<div class="cr" style="border-left-color:'+col+'">'+
+      '<div style="display:flex;align-items:center;gap:12px">'+
+      '<div style="flex:1"><div style="font-size:12px;font-weight:600;color:#dce8f5;margin-bottom:3px">'+esc(fp.activity)+'</div>'+
+      '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#3d5a73;margin-bottom:4px">'+esc(fp.actors)+' \u00b7 '+(fp.signals||0).toLocaleString()+' signals</div>'+
+      bar(fp.risk,col)+'</div>'+
+      '<div class="bignum" style="font-size:30px;color:'+col+';flex-shrink:0">'+fp.risk+'</div></div></div>';
   }}).join('');
-  return `<div class="panel">
-    <div class="sec">Force Posture Monitor</div>
-    <div class="scroll">${{rows}}</div>
-  </div>`;
+  return '<div class="panel"><div class="sec">Force Posture Monitor</div><div class="scroll">'+rows+'</div></div>';
 }}
 
-/* ── Infrastructure Cascade Panel ──────────────────────────── */
-function panelInfra(){{
-  const keys = ['cables','pipelines','ports','chokepoints','power_grids'];
-  const labels = ['Cables','Pipelines','Ports','Chokepoints','Power Grids'];
-  const statusCol = {{Cut:'#ff3d5a',Sabotaged:'#ff3d5a',Threatened:'#ff3d5a',Blockaded:'#ff3d5a',Contested:'#ffb400',Degraded:'#ffb400',Suspended:'#ffb400',Reduced:'#ffb400','At Risk':'#ffb400',Active:'#00e676'}};
-  const panes = keys.map((k,i)=>{{
-    const d = D.infra[k]||{{}};
-    const items = d.items||[];
-    const riskPct = d.count?Math.round(d.at_risk/d.count*100):0;
-    const header = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
-      ${{[['Total',d.count,'#00c8ff'],['At Risk',d.at_risk,'#ff3d5a'],['Risk %',riskPct+'%','#ffb400']].map(([l,v,c])=>`
-        <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.04);border-radius:8px;padding:10px;text-align:center">
-          <div class="overline" style="margin-bottom:5px">${{l}}</div>
-          <div class="bignum" style="font-size:28px;color:${{c}}">${{v}}</div>
-        </div>`).join('')}}
-    </div>`;
-    const rows = items.map(item=>{{
-      const r = item.risk||0, col = rcol(r);
-      const sc = statusCol[item.status||'']||'#3d5a73';
-      const extra = item.traffic_pct?`${{item.traffic_pct}}% global trade`:item.region||'';
-      return `<div class="cr" style="border-left-color:${{col}}">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-          <span style="font-size:12px;font-weight:600;color:#dce8f5">${{esc(item.name)}}</span>
-          <div style="display:flex;align-items:center;gap:7px">
-            <span class="badge" style="color:${{sc}};border-color:${{sc}}40;background:${{sc}}0f">${{esc(item.status||'')}}</span>
-            <span class="bignum" style="font-size:20px;color:${{col}}">${{r}}</span>
-          </div>
-        </div>
-        ${{bar(r, col)}}
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3d5a73;margin-top:3px">${{esc(extra)}}</div>
-      </div>`;
+function panelInfra() {{
+  var keys = ['cables','pipelines','ports','chokepoints','power_grids'];
+  var labels = ['Cables','Pipelines','Ports','Chokepoints','Power Grids'];
+  var statusCol = {{Cut:'#ff3d5a',Sabotaged:'#ff3d5a',Threatened:'#ff3d5a',Blockaded:'#ff3d5a','Under Attack':'#ff3d5a',Destroyed:'#ff3d5a',Contested:'#ffb400',Degraded:'#ffb400',Suspended:'#ffb400',Reduced:'#ffb400','At Risk':'#ffb400',Disrupted:'#ffb400',Active:'#00e676'}};
+  var panes = keys.map(function(k,i) {{
+    var d = D.infra[k]||{{}};
+    var items = d.items||[];
+    var riskPct = d.count ? Math.round(d.at_risk/d.count*100) : 0;
+    var header = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">'+
+      [['Total',d.count,'#00c8ff'],['At Risk',d.at_risk,'#ff3d5a'],['Risk %',riskPct+'%','#ffb400']].map(function(x) {{
+        return '<div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.04);border-radius:8px;padding:10px;text-align:center">'+
+          '<div class="overline" style="margin-bottom:5px">'+x[0]+'</div>'+
+          '<div class="bignum" style="font-size:28px;color:'+x[2]+'">'+x[1]+'</div></div>';
+      }}).join('')+'</div>';
+    var rows = items.map(function(item) {{
+      var r = item.risk||0, col = rcol(r);
+      var sc = statusCol[item.status||'']||'#3d5a73';
+      var extra = item.traffic_pct ? item.traffic_pct+'% global trade' : (item.region||'');
+      return '<div class="cr" style="border-left-color:'+col+'">'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'+
+        '<span style="font-size:12px;font-weight:600;color:#dce8f5">'+esc(item.name)+'</span>'+
+        '<div style="display:flex;align-items:center;gap:7px">'+
+        '<span class="badge" style="color:'+sc+';border-color:'+sc+'40;background:'+sc+'0f">'+esc(item.status||'')+'</span>'+
+        '<span class="bignum" style="font-size:20px;color:'+col+'">'+r+'</span></div></div>'+
+        bar(r,col)+
+        '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#3d5a73;margin-top:3px">'+esc(extra)+'</div></div>';
     }}).join('');
-    return `<div id="ic${{i}}" class="pane ${{i===0?'on':''}}">${{header}}<div class="scroll">${{rows}}</div></div>`;
+    return '<div id="ic'+i+'" class="pane '+(i===0?'on':'')+'">'+header+'<div class="scroll">'+rows+'</div></div>';
   }});
-  const pills = labels.map((l,i)=>`<div class="pill ${{i===0?'on':''}}" onclick="sw('ic','${{i}}',this)">${{l}}</div>`).join('');
-  return `<div class="panel">
-    <div class="sec">Infrastructure Cascade</div>
-    <div class="pill-wrap">${{pills}}</div>
-    ${{panes.join('')}}
-  </div>`;
+  var pills = labels.map(function(l,i) {{
+    return '<div class="pill '+(i===0?'on':'')+'" onclick="sw(\'ic\',\''+i+'\',this)">'+l+'</div>';
+  }}).join('');
+  return '<div class="panel"><div class="sec">Infrastructure Cascade</div><div class="pill-wrap">'+pills+'</div>'+panes.join('')+'</div>';
 }}
 
-/* ── Nuclear / WMD Panel ────────────────────────────────────── */
-function panelNuclear(){{
-  const nukeRows = D.nuke_alerts.map(n=>{{
-    const lvlCol = n.level==='CRITICAL'?'#ff3d5a':n.level==='HIGH'?'#ff8c42':'#ffb400';
-    return `<div class="cr" style="border-left-color:${{n.col||lvlCol}}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">
-        <span style="font-size:12px;font-weight:600;color:#dce8f5">${{esc(n.site)}}</span>
-        <div style="display:flex;gap:5px;flex-shrink:0;margin-left:8px">
-          <span class="badge" style="color:${{lvlCol}};border-color:${{lvlCol}}40;background:${{lvlCol}}0f">${{esc(n.status)}}</span>
-        </div>
-      </div>
-      <div style="font-size:11px;color:#7fb3cc;line-height:1.55">${{esc(n.detail)}}</div>
-    </div>`;
+function panelNuclear() {{
+  var nukeRows = D.nuke_alerts.map(function(n) {{
+    var lvlCol = n.level==='CRITICAL'?'#ff3d5a':n.level==='HIGH'?'#ff8c42':'#ffb400';
+    return '<div class="cr" style="border-left-color:'+(n.col||lvlCol)+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">'+
+      '<span style="font-size:12px;font-weight:600;color:#dce8f5">'+esc(n.site)+'</span>'+
+      '<div style="display:flex;gap:5px;flex-shrink:0;margin-left:8px">'+
+      '<span class="badge" style="color:'+lvlCol+';border-color:'+lvlCol+'40;background:'+lvlCol+'0f">'+esc(n.status)+'</span></div></div>'+
+      '<div style="font-size:11px;color:#7fb3cc;line-height:1.55">'+esc(n.detail)+'</div></div>';
   }}).join('');
-  const wmdRows = D.wmd_posture.map(w=>{{
-    const col = rcol(w.risk);
-    return `<div class="cr" style="border-left-color:${{col}}">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-        <div>
-          <span style="font-size:13px;font-weight:600;color:#dce8f5">${{esc(w.actor)}}</span>
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3d5a73;margin-left:8px">${{esc(w.type)}}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:${{col}}">${{esc(w.status)}}</span>
-          <span class="bignum" style="font-size:24px;color:${{col}}">${{w.risk}}</span>
-        </div>
-      </div>
-      ${{bar(w.risk, col)}}
-      <div style="font-size:10px;color:#3d5a73;margin-top:4px">${{esc((w.assets||'').slice(0,70))}}</div>
-    </div>`;
+  var wmdRows = D.wmd_posture.map(function(w) {{
+    var col = rcol(w.risk);
+    return '<div class="cr" style="border-left-color:'+col+'">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">'+
+      '<div><span style="font-size:13px;font-weight:600;color:#dce8f5">'+esc(w.actor)+'</span>'+
+      '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#3d5a73;margin-left:8px">'+esc(w.type)+'</span></div>'+
+      '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0">'+
+      '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:'+col+'">'+esc(w.status)+'</span>'+
+      '<span class="bignum" style="font-size:24px;color:'+col+'">'+w.risk+'</span></div></div>'+
+      bar(w.risk,col)+
+      '<div style="font-size:10px;color:#3d5a73;margin-top:4px">'+esc((w.assets||'').slice(0,70))+'</div></div>';
   }}).join('');
-  return `<div class="panel">
-    <div class="sec">Nuclear &amp; WMD Status</div>
-    <div class="pill-wrap">
-      <div class="pill on" onclick="sw('nw','0',this)">Nuclear Sites</div>
-      <div class="pill" onclick="sw('nw','1',this)">Missile Posture</div>
-    </div>
-    <div class="scroll">
-      <div id="nw0" class="pane on">${{nukeRows}}</div>
-      <div id="nw1" class="pane">${{wmdRows}}</div>
-    </div>
-  </div>`;
+  return '<div class="panel"><div class="sec">Nuclear &amp; WMD Status</div>'+
+    '<div class="pill-wrap">'+
+    '<div class="pill on" onclick="sw(\'nw\',\'0\',this)">Nuclear Sites</div>'+
+    '<div class="pill" onclick="sw(\'nw\',\'1\',this)">Missile Posture</div></div>'+
+    '<div class="scroll">'+
+    '<div id="nw0" class="pane on">'+nukeRows+'</div>'+
+    '<div id="nw1" class="pane">'+wmdRows+'</div></div></div>';
 }}
 
-/* ── Supply Chain Chokepoints Panel ─────────────────────────── */
-function panelChokepoints(){{
-  const rows = D.chokepoints.map(cp=>{{
-    const col = cp.status==='red'?'#ff3d5a':cp.status==='amber'?'#ffb400':'#00e676';
-    const wowCol = cp.wow_change<0?'#ff3d5a':'#00e676';
-    const exports = (cp.exports||[]).map(e=>`<span class="badge b-muted" style="font-size:8px">${{esc(e)}}</span>`).join(' ');
-    return `<div class="cr" style="border-left-color:${{col}}">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:7px">
-        <div>
-          <div style="font-size:14px;font-weight:700;color:#dce8f5;margin-bottom:3px">${{esc(cp.name)}}</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3d5a73">
-            ${{cp.warnings}} warnings &nbsp;·&nbsp; ${{cp.ais_disruptions}} AIS &nbsp;·&nbsp; ${{cp.flow}}
-          </div>
-        </div>
-        <div style="text-align:right;flex-shrink:0;margin-left:12px">
-          <div class="bignum" style="font-size:32px;color:${{col}}">${{cp.risk}}</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:${{wowCol}}">
-            WoW ${{cp.wow_change>0?'+':''}}${{cp.wow_change}}%
-          </div>
-        </div>
-      </div>
-      ${{bar(cp.risk,col)}}
-      <div style="font-size:11px;color:#7fb3cc;line-height:1.6;margin:8px 0 8px">
-        ${{esc((cp.context||'').slice(0,160))}}${{(cp.context||'').length>160?'…':''}}
-      </div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap">${{exports}}</div>
-    </div>`;
+function panelChokepoints() {{
+  var rows = D.chokepoints.map(function(cp) {{
+    var col = cp.status==='red'?'#ff3d5a':cp.status==='amber'?'#ffb400':'#00e676';
+    var wowCol = cp.wow_change<0?'#ff3d5a':'#00e676';
+    var exports = (cp.exports||[]).map(function(e) {{
+      return '<span class="badge b-muted" style="font-size:8px">'+esc(e)+'</span>';
+    }}).join(' ');
+    return '<div class="cr" style="border-left-color:'+col+';margin-bottom:12px">'+
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:7px">'+
+      '<div><div style="font-size:14px;font-weight:700;color:#dce8f5;margin-bottom:3px">'+esc(cp.name)+'</div>'+
+      '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#3d5a73">'+
+      cp.warnings+' warnings \u00b7 '+cp.ais_disruptions+' AIS \u00b7 '+esc(cp.flow)+'</div></div>'+
+      '<div style="text-align:right;flex-shrink:0;margin-left:12px">'+
+      '<div class="bignum" style="font-size:32px;color:'+col+'">'+cp.risk+'</div>'+
+      '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:'+wowCol+'">WoW '+(cp.wow_change>0?'+':'')+cp.wow_change+'%</div></div></div>'+
+      bar(cp.risk,col)+
+      '<div style="font-size:11px;color:#7fb3cc;line-height:1.6;margin:8px 0 8px">'+esc((cp.context||'').slice(0,160))+((cp.context&&cp.context.length>160)?'\u2026':'')+'</div>'+
+      '<div style="display:flex;gap:4px;flex-wrap:wrap">'+exports+'</div></div>';
   }}).join('');
-  return `<div class="panel">
-    <div class="sec">Supply Chain Chokepoints</div>
-    <div class="scroll">${{rows}}</div>
-  </div>`;
+  return '<div class="panel"><div class="sec">Supply Chain Chokepoints</div><div class="scroll">'+rows+'</div></div>';
 }}
 
-/* ── Internet Outage Panel ──────────────────────────────────── */
-function panelOutages(){{
-  const liveRows = (D.outage_live||[]).length
-    ? (D.outage_live||[]).map(o=>`<div class="cr" style="border-left-color:#ff8c42">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;color:#ff8c42">${{esc((o.source||'').toUpperCase().slice(0,28))}}</span>
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3d5a73">${{esc(o.time||'')}}</span>
-        </div>
-        <div style="font-size:12px;color:#dce8f5;line-height:1.45;margin-bottom:4px">${{esc((o.title||'').slice(0,90))}}${{(o.title||'').length>90?'…':''}}</div>
-        ${{o.url?`<a href="${{esc(o.url)}}" target="_blank" rel="noopener" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#00c8ff;text-decoration:none">Read →</a>`:''}}</div>`).join('')
-    : '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:#3d5a73;padding:12px 0">No outage alerts in the last 6 hours.</div>';
-  const knownRows = (D.outage_known||[]).map(io=>{{
-    const ioCol = io.severity==='Total'?'#ff3d5a':io.severity==='Partial'||io.severity==='Disrupted'?'#ff8c42':'#ffb400';
-    return `<div class="cr" style="border-left-color:${{ioCol}}">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
-        <span style="font-size:12px;font-weight:600;color:#dce8f5">${{esc(io.name)}}</span>
-        <span class="badge" style="color:${{ioCol}};border-color:${{ioCol}}40;background:${{ioCol}}0f">${{esc(io.severity)}}</span>
-      </div>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3d5a73">${{esc(io.cause||'')}}</div>
-    </div>`;
+function panelOutages() {{
+  var liveRows = D.outage_live && D.outage_live.length
+    ? D.outage_live.map(function(o) {{
+        return '<div class="cr" style="border-left-color:#ff8c42">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
+          '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;font-weight:600;color:#ff8c42">'+esc((o.source||'').toUpperCase().slice(0,28))+'</span>'+
+          '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#3d5a73">'+esc(o.time||'')+'</span></div>'+
+          '<div style="font-size:12px;color:#dce8f5;line-height:1.45;margin-bottom:4px">'+esc((o.title||'').slice(0,90))+'</div>'+
+          (o.url?'<a href="'+esc(o.url)+'" target="_blank" rel="noopener" style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#00c8ff;text-decoration:none">Read \u2192</a>':'')+
+          '</div>';
+      }}).join('')
+    : '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:#3d5a73;padding:12px 0">No live outage alerts in the last 6 hours.</div>';
+  var knownRows = (D.outage_known||[]).map(function(io) {{
+    var ioCol = io.severity==='Total'?'#ff3d5a':io.severity==='Partial'||io.severity==='Disrupted'?'#ff8c42':'#ffb400';
+    return '<div class="cr" style="border-left-color:'+ioCol+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'+
+      '<span style="font-size:12px;font-weight:600;color:#dce8f5">'+esc(io.name)+'</span>'+
+      '<span class="badge" style="color:'+ioCol+';border-color:'+ioCol+'40;background:'+ioCol+'0f">'+esc(io.severity)+'</span></div>'+
+      '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#3d5a73">'+esc(io.cause||'')+'</div></div>';
   }}).join('');
-  return `<div class="panel">
-    <div class="sec"><span class="pulse" style="background:#ff8c42;margin-right:4px"></span>Internet Outages &amp; Censorship</div>
-    <div class="pill-wrap">
-      <div class="pill on" onclick="sw('io','0',this)">Live Feed</div>
-      <div class="pill" onclick="sw('io','1',this)">Known Outages</div>
-    </div>
-    <div class="scroll">
-      <div id="io0" class="pane on">${{liveRows}}</div>
-      <div id="io1" class="pane">${{knownRows}}</div>
-    </div>
-  </div>`;
+  return '<div class="panel"><div class="sec"><span class="pulse" style="background:#ff8c42;margin-right:4px"></span>Internet Outages &amp; Censorship</div>'+
+    '<div class="pill-wrap">'+
+    '<div class="pill on" onclick="sw(\'io\',\'0\',this)">Live Feed</div>'+
+    '<div class="pill" onclick="sw(\'io\',\'1\',this)">Known Outages</div></div>'+
+    '<div class="scroll">'+
+    '<div id="io0" class="pane on">'+liveRows+'</div>'+
+    '<div id="io1" class="pane">'+knownRows+'</div></div></div>';
 }}
 
-/* ── RENDER ─────────────────────────────────────────────────── */
 document.getElementById('root').innerHTML =
   kpiStrip() +
-  '<div class="row row-4">' +
-    panelInstability() + panelStrategic() + panelIntelFeed() + panelForcePosture() +
-  '</div>' +
-  '<div class="row row-25">' +
-    panelInfra() + panelNuclear() +
-  '</div>' +
-  '<div class="row row-2">' +
-    panelChokepoints() + panelOutages() +
-  '</div>';
+  '<div class="row row-4">'+panelInstability()+panelStrategic()+panelIntelFeed()+panelForcePosture()+'</div>' +
+  '<div class="row row-25">'+panelInfra()+panelNuclear()+'</div>' +
+  '<div class="row row-2">'+panelChokepoints()+panelOutages()+'</div>';
 
 </script>
 </body></html>"""
 
-    _ic.html(_intel_html, height=3200, scrolling=True)
+    _ic.html(_intel_html, height=4800, scrolling=True)
 
 
 # ══════════════════════════════════════════════════════════════
