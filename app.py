@@ -6066,6 +6066,55 @@ with tab_econ:
     # Live-update crypto if CoinGecko succeeded
     _crypto_out = _live_crypto if _live_crypto else CRYPTO_DATA
 
+    # ── Live sector ETF heatmap via Yahoo Finance ─────────────
+    _sector_symbols = (
+        "XLK", "XLF", "XLE", "XLV", "XLY", "XLI",
+        "XLP", "XLU", "XLB", "XLRE", "XLC", "SMH",
+    )
+    _sector_quotes = _yahoo_batch(_sector_symbols)
+    _sectors_live = []
+    for _sym in _sector_symbols:
+        _q = _sector_quotes.get(_sym)
+        if _q:
+            _sectors_live.append({"s": _sym, "v": round(_q["chg_pct"], 2)})
+    # Fallback to static if Yahoo unavailable
+    _sectors_out = _sectors_live if len(_sectors_live) >= 6 else SECTOR_HEATMAP
+
+    # ── Dynamic market posture from VIX + breadth ─────────────
+    _vix_data  = next((_x for _x in _live_indices if _x.get("sym") == "^VIX"), None)
+    _sp_data   = next((_x for _x in _live_indices if _x.get("sym") == "^GSPC"), None)
+    _vix_val   = _vix_data["price"] if _vix_data else 0
+    _sp_chg    = _sp_data["chg_pct"] if _sp_data else 0
+    _bull_count = sum(1 for _s in _sectors_out if _s["v"] > 0)
+    _bear_count = len(_sectors_out) - _bull_count
+    if _vix_val >= 30:
+        _mkt_label   = "RISK OFF"
+        _mkt_posture = f"{_bull_count}/{len(_sectors_out)} bullish"
+        _mkt_flow    = "DEFENSIVE MODE"
+        _mkt_col     = "#ff3d5a"
+    elif _vix_val >= 20 or _sp_chg < -1.0:
+        _mkt_label   = "CAUTION"
+        _mkt_posture = f"{_bull_count}/{len(_sectors_out)} bullish"
+        _mkt_flow    = "RISK REDUCTION"
+        _mkt_col     = "#ff8c42"
+    elif _sp_chg > 1.5 and _bull_count > 8:
+        _mkt_label   = "RISK ON"
+        _mkt_posture = f"{_bull_count}/{len(_sectors_out)} bullish"
+        _mkt_flow    = "MOMENTUM CHASE"
+        _mkt_col     = "#00e676"
+    else:
+        _mkt_label   = MARKET_RADAR["label"]
+        _mkt_posture = f"{_bull_count}/{len(_sectors_out)} bullish"
+        _mkt_flow    = MARKET_RADAR["flow"]
+        _mkt_col     = "#ffb400"
+    _market_live = {
+        "label":     _mkt_label,
+        "posture":   _mkt_posture,
+        "flow":      _mkt_flow,
+        "liquidity": MARKET_RADAR.get("liquidity", "NORMAL"),
+        "color":     _mkt_col,
+    }
+
     from datetime import datetime as _dtnow, timezone as _tzutc
     _data_ts   = _dtnow.now(tz=_tzutc.utc).strftime("%H:%M UTC")
     _is_live   = bool(_live_indices or _live_commodities)
@@ -6100,10 +6149,10 @@ with tab_econ:
         "shipping":     SHIPPING_RATES,
         "minerals":     CRIT_MIN_DATA,
         "crypto":       CRYPTO_DATA,
-        "sectors":      SECTOR_HEATMAP,
+        "sectors":      _sectors_out,
         "layoffs":      LAYOFFS,
         "fires":        FIRES_DATA,
-        "market":       MARKET_RADAR,
+        "market":       _market_live,
         "btc_etf":      BTC_ETF,
         "pizza":        fetch_live_pizza_index(),
         "sanctions":    SANCTIONS_DATA,
@@ -6362,26 +6411,50 @@ const rCol = r => r>=75?'var(--rose)':r>=50?'var(--coral)':r>=35?'var(--gold)':'
 
 // ── KPI Strip ─────────────────────────────────────────────────
 function kpiStrip() {{
-  const brent = D.oil.find(o=>o.name.includes('Brent'))||{{}};
-  const wti   = D.oil.find(o=>o.name.includes('WTI'))||{{}};
-  const fed   = D.indicators.find(i=>i.ticker==='FEDFUNDS')||{{}};
-  const btc   = D.crypto.find(c=>c.ticker==='BTC')||{{}};
-  const pz    = D.pizza;
-  const pzCol = pz.score>=75?'var(--rose)':pz.score>=55?'var(--coral)':pz.score>=35?'var(--gold)':'var(--mint)';
+  // Prefer live data; fall back to static oil/crypto
+  const brentLive = D.commodities.find(c=>c.name.includes('Brent')||c.sym==='BZ=F');
+  const wtiLive   = D.commodities.find(c=>c.name.includes('WTI')||c.sym==='CL=F');
+  const brentStatic = D.oil.find(o=>o.name.includes('Brent'))||{{}};
+  const brentVal  = brentLive ? brentLive.price : brentStatic.val;
+  const brentChg  = brentLive ? brentLive.chg_pct : (brentStatic.change||0);
+  const wtiVal    = wtiLive ? wtiLive.price : ((D.oil.find(o=>o.name.includes('WTI'))||{{}}).val||0);
+
+  const fed       = D.indicators.find(i=>i.ticker==='FEDFUNDS')||{{}};
+  const unrate    = D.indicators.find(i=>i.ticker==='UNRATE')||{{}};
+
+  const cryptoSrc = (D.crypto_live && D.crypto_live.length) ? D.crypto_live : (D.crypto||[]);
+  const btc       = cryptoSrc.find(c=>c.ticker==='BTC')||{{}};
+  const eth       = cryptoSrc.find(c=>c.ticker==='ETH')||{{}};
+  const btcPrice  = btc.price !== undefined ? btc.price : (btc.val||0);
+  const ethPrice  = eth.price !== undefined ? eth.price : (eth.val||0);
+  const btcChg    = btc.chg_pct !== undefined ? btc.chg_pct : (btc.change||0);
+
+  const sp        = D.indices.find(i=>i.sym==='^GSPC');
+  const spChg     = sp ? sp.chg_pct : 0;
+  const spCol     = spChg >= 0 ? 'var(--mint)' : 'var(--rose)';
+
+  const pz        = D.pizza;
+  const pzCol     = pz.score>=75?'var(--rose)':pz.score>=55?'var(--coral)':pz.score>=35?'var(--gold)':'var(--mint)';
+  const brentCol  = brentChg >= 0 ? 'var(--coral)' : 'var(--mint)';
+  const btcCol    = btcChg >= 0 ? 'var(--gold)' : 'var(--rose)';
 
   const items = [
-    {{ num: brent.val?`$${{brent.val.toFixed(0)}}`:'-', lbl:'Brent Crude',
-       sub:`WTI $${{wti.val?.toFixed(0)||'-'}} · per barrel`,
-       col:'var(--coral)', glow:'rgba(251,146,60,.14)', bar:'linear-gradient(90deg,transparent,var(--coral),transparent)' }},
-    {{ num: fed.val||'-', lbl:'Fed Funds Rate',
-       sub:`Unemployment ${{(D.indicators.find(i=>i.ticker==='UNRATE')||{{}}).val||'-'}}`,
+    {{ num: brentVal ? `$${{brentVal.toFixed(0)}}` : '-',
+       lbl: 'Brent Crude',
+       sub: `WTI $${{wtiVal ? wtiVal.toFixed(0) : '-'}} · ${{brentChg>=0?'+':''}}${{brentChg.toFixed(1)}}% today`,
+       col: brentCol, glow:'rgba(251,146,60,.14)', bar:`linear-gradient(90deg,transparent,${{brentCol}},transparent)` }},
+    {{ num: fed.val||'-',
+       lbl: 'Fed Funds Rate',
+       sub: `Unemployment ${{unrate.val||'-'}}`,
        col:'var(--sky)', glow:'rgba(56,189,248,.12)', bar:'linear-gradient(90deg,transparent,var(--sky),transparent)' }},
-    {{ num: btc.val?`$${{(btc.val/1000).toFixed(1)}}K`:'-', lbl:'Bitcoin',
-       sub:`ETH $${{(D.crypto.find(c=>c.ticker==='ETH')||{{}}).val?.toFixed(0)||'-'}} · spot`,
-       col:'var(--gold)', glow:'rgba(251,191,36,.12)', bar:'linear-gradient(90deg,transparent,var(--gold),transparent)' }},
-    {{ num: pz.score, lbl:'🍕 Pizza Index',
-       sub:pz.label,
-       col:pzCol, glow:`rgba(251,146,60,.12)`, bar:`linear-gradient(90deg,transparent,${{pzCol}},transparent)` }},
+    {{ num: btcPrice ? `$${{(btcPrice/1000).toFixed(1)}}K` : '-',
+       lbl: 'Bitcoin',
+       sub: `ETH $${{ethPrice ? ethPrice.toFixed(0) : '-'}} · ${{btcChg>=0?'+':''}}${{btcChg.toFixed(1)}}% 24h`,
+       col: btcCol, glow:'rgba(251,191,36,.12)', bar:`linear-gradient(90deg,transparent,${{btcCol}},transparent)` }},
+    {{ num: pz.score,
+       lbl: '🍕 Pizza Index',
+       sub: pz.label,
+       col: pzCol, glow:'rgba(251,146,60,.12)', bar:`linear-gradient(90deg,transparent,${{pzCol}},transparent)` }},
   ];
   return `<div class="kpi-grid">${{items.map(k=>`
     <div class="kpi">
@@ -6392,6 +6465,7 @@ function kpiStrip() {{
       <div class="kpi-sub">${{esc(k.sub)}}</div>
     </div>`).join('')}}</div>`;
 }}
+
 
 // ── Economic Indicators ───────────────────────────────────────
 function econPanel() {{
@@ -6572,41 +6646,54 @@ function supplyPanel() {{
 
 // ── Financial ─────────────────────────────────────────────────
 function finPanel() {{
-  const nfUp=D.btc_etf.net_flow>=0;
-  const nfCol=nfUp?'var(--mint)':'var(--rose)';
-  const mCol=D.market.label==='CASH'?'var(--gold)':'var(--sky)';
+  const nfUp = D.btc_etf.net_flow >= 0;
+  const nfCol = nfUp ? 'var(--mint)' : 'var(--rose)';
+  const mCol  = D.market.label === 'CASH' ? 'var(--gold)' : 'var(--sky)';
 
-  const cryptoRows = D.crypto.map(c=>{{
-    const up=c.change>=0, cc=up?'var(--mint)':'var(--rose)';
-    return `<div class="card-row" style="border-left-color:${{up?'rgba(52,211,153,.4)':'rgba(248,113,113,.4)'}};display:flex;justify-content:space-between;align-items:center">
+  // ── Crypto: prefer live CoinGecko data ───────────────────────
+  const cryptoSrc = (D.crypto_live && D.crypto_live.length) ? D.crypto_live : (D.crypto || []);
+  const cryptoRows = cryptoSrc.map(c => {{
+    const chgV = c.chg_pct !== undefined ? c.chg_pct : (c.change || 0);
+    const price = c.price !== undefined ? c.price : (c.val || 0);
+    const up = chgV >= 0, cc = up ? 'var(--mint)' : 'var(--rose)';
+    const mcap = c.mcap > 1e12 ? `$${{(c.mcap/1e12).toFixed(2)}}T`
+               : c.mcap > 1e9  ? `$${{(c.mcap/1e9).toFixed(1)}}B` : '';
+    return `<div class="card-row" style="border-left-color:${{cc}};display:flex;justify-content:space-between;align-items:center">
       <div>
-        <div style="font-size:13px;font-weight:600;color:var(--ink)">${{c.name}}</div>
-        <div class="mono" style="font-size:9px;color:var(--ink3)">${{c.ticker}}</div>
+        <div style="font-size:13px;font-weight:600;color:var(--ink)">${{esc(c.name)}}</div>
+        <div class="mono" style="font-size:9px;color:var(--ink3)">${{esc(c.ticker)}}${{mcap ? ' · ' + mcap : ''}}</div>
       </div>
       <div style="text-align:right">
-        <div class="mono" style="font-size:13px;color:var(--ink)">$${{c.val.toLocaleString('en-US',{{minimumFractionDigits:2,maximumFractionDigits:2}})}}</div>
-        <div class="mono" style="font-size:10px;color:${{cc}}">${{up?'+':''}}${{c.change.toFixed(2)}}%</div>
+        <div class="mono" style="font-size:13px;color:var(--ink)">$${{price.toLocaleString('en-US',{{minimumFractionDigits:2,maximumFractionDigits:2}})}}</div>
+        <div class="mono" style="font-size:10px;color:${{cc}}">${{up ? '+' : ''}}${{Math.abs(chgV).toFixed(2)}}%</div>
       </div>
     </div>`;
   }}).join('');
 
-  const heatCells = D.sectors.map(s=>{{
-    const up=s.v>=0;
-    const intensity=Math.min(Math.abs(s.v)/8,1);
-    const bg=up?`rgba(52,211,153,${{.08+intensity*.18}})`:`rgba(248,113,113,${{.08+intensity*.18}})`;
-    const col=up?'var(--mint)':'var(--rose)';
+  // ── Sector Heatmap: use live defense/indices if available for context ──
+  const heatCells = D.sectors.map(s => {{
+    const up = s.v >= 0;
+    const intensity = Math.min(Math.abs(s.v) / 8, 1);
+    const bg = up ? `rgba(52,211,153,${{.08 + intensity * .18}})` : `rgba(248,113,113,${{.08 + intensity * .18}})`;
+    const col = up ? 'var(--mint)' : 'var(--rose)';
     return `<div class="sector-cell" style="background:${{bg}}">
       <div class="mono" style="font-size:8px;color:var(--ink3);margin-bottom:3px">${{esc(s.s)}}</div>
-      <div class="mono" style="font-size:12px;font-weight:700;color:${{col}}">${{up?'+':''}}${{s.v}}%</div>
+      <div class="mono" style="font-size:12px;font-weight:700;color:${{col}}">${{up ? '+' : ''}}${{s.v}}%</div>
     </div>`;
   }}).join('');
 
+  // ── Live timestamp badge ──────────────────────────────────────
+  const liveTs = D.ts ? `<span class="mono" style="font-size:8px;color:var(--ink3);margin-left:8px">${{esc(D.ts)}}</span>` : '';
+  const liveBadge = (D.crypto_live && D.crypto_live.length)
+    ? `<span class="live-chip" style="margin-left:6px"><span class="live-dot"></span>CoinGecko</span>`
+    : `<span class="mono" style="font-size:8px;color:var(--ink3);margin-left:6px">static</span>`;
+
   return `<div class="card">
-    <div class="section-title">Financial <span class="live-chip" style="margin-left:4px"><span class="live-dot"></span>Live</span></div>
+    <div class="section-title">Financial${{liveTs}}</div>
 
     <div style="margin-bottom:18px">
-      <div class="overline" style="margin-bottom:10px">Crypto</div>
-      ${{cryptoRows}}
+      <div class="overline" style="margin-bottom:10px">Crypto${{liveBadge}}</div>
+      ${{cryptoRows || '<div class="mono" style="font-size:10px;color:var(--ink3)">Loading…</div>'}}
     </div>
 
     <div style="margin-bottom:18px">
@@ -6624,12 +6711,13 @@ function finPanel() {{
       <div style="background:var(--raised);border:1px solid var(--edge2);border-radius:10px;padding:14px;text-align:center">
         <div class="overline" style="margin-bottom:8px">BTC ETF Flow</div>
         <div class="disp" style="font-size:26px;color:${{nfCol}};margin-bottom:5px">$${{Math.abs(D.btc_etf.net_flow)}}M</div>
-        ${{badge(nfUp?'INFLOW':'OUTFLOW',nfUp?'low':'crit')}}
+        ${{badge(nfUp ? 'INFLOW' : 'OUTFLOW', nfUp ? 'low' : 'crit')}}
         <div class="mono" style="font-size:9px;color:var(--ink3);margin-top:6px">Est. $${{D.btc_etf.est_flow}}M</div>
       </div>
     </div>
   </div>`;
 }}
+
 
 // ── Row 2: Layoffs + Fires ────────────────────────────────────
 function row2() {{
