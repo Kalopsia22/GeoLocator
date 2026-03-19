@@ -647,6 +647,75 @@ CONFLICTS = {
     {"name":"Reuters","bias":"Centre","reliability":91},{"name":"Global New Light","bias":"State/Junta","reliability":22},
   ],
 },
+"Pakistan-Afghanistan Conflict": {
+  "status":"ACTIVE","intensity":"HIGH","start":"2024-03-15","region":"South Asia",
+  "escalation":72,"ceasefire":False,"casualties_total":3200,"displaced":850000,
+  "description":"Escalating cross-border conflict between Pakistan and Taliban-governed Afghanistan. Pakistan conducts regular airstrikes against TTP (Tehrik-i-Taliban Pakistan) hideouts in eastern Afghanistan. Taliban retaliates with cross-border incursions into KPK and Balochistan. Bilateral relations severed; IMF-backed Pakistan economy under stress from security costs.",
+  "factions":[
+    {"name":"Pakistan Armed Forces","side":"PK","color":"#1a9fff","territory_pct":0,"strength":"High","weapons":["F-16","JF-17 Thunder","Al-Khalid MBT","Shaheen MRBM"],"support":["China","Saudi Arabia","USA (limited)"],"status":"Offensive strikes"},
+    {"name":"Tehrik-i-Taliban Pakistan (TTP)","side":"AF","color":"#ff3d5a","territory_pct":0,"strength":"Med","weapons":["Small arms","IEDs","Mortars","Captured equipment"],"support":["Afghan Taliban","Al-Qaeda affiliates"],"status":"Cross-border attacks"},
+    {"name":"Afghan Taliban (IEA)","side":"AF","color":"#ff8c42","territory_pct":0,"strength":"High","weapons":["US-abandoned HMMWVs","Black Hawks","Captured M4s"],"support":["Pakistan (historical)","China (economic)"],"status":"Sheltering TTP / retaliatory"},
+    {"name":"BLA / Baloch insurgents","side":"BL","color":"#ffb400","territory_pct":0,"strength":"Low","weapons":["IEDs","Small arms"],"support":["None confirmed"],"status":"Active in Balochistan"},
+  ],
+  "incidents":[
+    {"type":"airstrike","title":"PAF F-16 strikes TTP compound — Paktika","loc":"Paktika, Afghanistan","lat":32.26,"lon":69.05,"date":"2026-03-12","severity":"HIGH","casualties":28},
+    {"type":"ground","title":"TTP cross-border attack — Khyber Pakhtunkhwa","loc":"KPK, Pakistan","lat":33.91,"lon":70.84,"date":"2026-03-11","severity":"HIGH","casualties":15},
+    {"type":"airstrike","title":"Pakistan drones strike Kunar Province","loc":"Kunar, Afghanistan","lat":34.85,"lon":71.1,"date":"2026-03-10","severity":"HIGH","casualties":22},
+    {"type":"diplomatic","title":"Taliban closes border crossing at Torkham","loc":"Torkham","lat":34.1,"lon":71.1,"date":"2026-03-09","severity":"MED","casualties":0},
+    {"type":"ground","title":"BLA ambush on Makran Coastal Highway","loc":"Balochistan, Pakistan","lat":25.86,"lon":62.72,"date":"2026-03-08","severity":"HIGH","casualties":9},
+    {"type":"airstrike","title":"PAF strikes — Khost Province TTP network","loc":"Khost, Afghanistan","lat":33.33,"lon":69.92,"date":"2026-03-05","severity":"HIGH","casualties":31},
+  ],
+  "timeline":[
+    {"date":"2021-08-15","event":"Taliban seize Kabul — TTP emboldened","type":"escalation"},
+    {"date":"2022-04-01","event":"TTP attacks surge — 20 incidents/month","type":"escalation"},
+    {"date":"2023-11-06","event":"Pakistan formally designates TTP terrorist","type":"milestone"},
+    {"date":"2024-03-15","event":"Pakistan first major air strikes in Afghanistan","type":"escalation"},
+    {"date":"2024-10-28","event":"Afghan Taliban formally backs TTP — Pakistan protests","type":"escalation"},
+    {"date":"2025-02-14","event":"Pakistan expels Afghan ambassador","type":"diplomatic"},
+    {"date":"2025-06-20","event":"Major PAF strike kills 80+ in Khost — Taliban retaliates","type":"escalation"},
+    {"date":"2026-01-18","event":"Pakistan deployes additional corps to NW frontier","type":"escalation"},
+    {"date":"2026-03-12","event":"Active exchanges — border closed at Torkham","type":"ongoing"},
+  ],
+  "supply_lines":[
+    {"from_lat":33.73,"from_lon":73.06,"to_lat":33.91,"to_lon":70.84,"type":"Military Ops","provider":"Pakistan Armed Forces"},
+    {"from_lat":31.52,"from_lon":74.35,"to_lat":33.91,"to_lon":70.84,"type":"Reinforcement","provider":"Pakistan"},
+  ],
+  "media_sources":[
+    {"name":"Dawn","bias":"Pakistani mainstream","reliability":74},{"name":"The News International","bias":"Pakistani","reliability":68},
+    {"name":"Tolo News","bias":"Afghan","reliability":61},{"name":"Reuters","bias":"Centre","reliability":91},
+  ],
+},
+"Haiti Gang War": {
+  "status":"ACTIVE","intensity":"HIGH","start":"2023-02-01","region":"Caribbean",
+  "escalation":80,"ceasefire":False,"casualties_total":5800,"displaced":580000,
+  "description":"Gang coalition Viv Ansanm controls 85%+ of Port-au-Prince. State has collapsed; PM resigned; Kenyan-led Multinational Security Support mission deployed but under-resourced. Famine declared in several regions.",
+  "factions":[
+    {"name":"Viv Ansanm (G9/GPEP coalition)","side":"GA","color":"#ff3d5a","territory_pct":85,"strength":"High","weapons":["Firearms","Armoured vehicles (captured)","50-cal. M2"],"support":["Diaspora funding","Criminal networks"],"status":"Controlling Port-au-Prince"},
+    {"name":"Haiti National Police","side":"HG","color":"#1a9fff","territory_pct":10,"strength":"Low","weapons":["Light arms","Limited armour"],"support":["Kenya-led MSS","USA funding"],"status":"Overwhelmed"},
+    {"name":"Kenyan-led MSS Mission","side":"IN","color":"#00e676","territory_pct":5,"strength":"Med","weapons":["Armoured vehicles","Helicopters"],"support":["USA","UN mandate"],"status":"Deployed — limited capacity"},
+  ],
+  "incidents":[
+    {"type":"ground","title":"Gang siege — Pétion-Ville district","loc":"Port-au-Prince","lat":18.54,"lon":-72.34,"date":"2026-03-14","severity":"CRITICAL","casualties":32},
+    {"type":"humanitarian","title":"MSF: 500,000 facing acute malnutrition","loc":"Haiti","lat":18.7,"lon":-72.5,"date":"2026-03-12","severity":"CRITICAL","casualties":0},
+    {"type":"ground","title":"Gangs seize National Palace perimeter","loc":"Port-au-Prince","lat":18.55,"lon":-72.34,"date":"2026-03-10","severity":"CRITICAL","casualties":18},
+  ],
+  "timeline":[
+    {"date":"2021-07-07","event":"President Jovenel Moïse assassinated","type":"escalation"},
+    {"date":"2023-02-01","event":"Gang coalition Viv Ansanm forms","type":"escalation"},
+    {"date":"2024-03-11","event":"PM Henry resigns — transitional council formed","type":"diplomatic"},
+    {"date":"2024-06-25","event":"Kenya deploys 400 police to Haiti","type":"milestone"},
+    {"date":"2025-01-01","event":"Gang control expands to 85% of PaP","type":"setback"},
+    {"date":"2026-03-14","event":"Ongoing — state effectively collapsed","type":"ongoing"},
+  ],
+  "supply_lines":[
+    {"from_lat":-1.28,"from_lon":36.82,"to_lat":18.54,"to_lon":-72.34,"type":"MSS Support","provider":"Kenya"},
+    {"from_lat":38.9,"from_lon":-77.0,"to_lat":18.54,"to_lon":-72.34,"type":"Funding/Training","provider":"USA"},
+  ],
+  "media_sources":[
+    {"name":"Haiti Libre","bias":"Local","reliability":58},{"name":"Reuters","bias":"Centre","reliability":91},
+    {"name":"AP News","bias":"Centre","reliability":89},{"name":"Al Jazeera","bias":"Centre-Left","reliability":76},
+  ],
+},
 }
 
 INCIDENT_ICONS = {"airstrike":"💥","ground":"⚔️","drone":"🛸","naval":"⚓","rocket":"🚀","cyber":"💻","diplomatic":"🤝","humanitarian":"🏥"}
@@ -658,13 +727,19 @@ INCIDENT_COLORS = {
 SEV_BADGE = {"CRITICAL":"b-red","HIGH":"b-orange","MED":"b-amber","LOW":"b-green","INFO":"b-muted"}
 
 MOVEMENTS = [
-    {"id":"mv1","type":"protest","title":"Anti-austerity rally","location":"Athens, Greece","country":"GR","size":"40,000+","sentiment":"HIGH","scale":82,"lat":37.98,"lon":23.73,"age_h":2},
-    {"id":"mv2","type":"strike","title":"Railway workers strike","location":"Paris, France","country":"FR","size":"National","sentiment":"MED","scale":55,"lat":48.85,"lon":2.35,"age_h":6},
-    {"id":"mv3","type":"civil","title":"Democracy march","location":"Seoul, South Korea","country":"KR","size":"120,000+","sentiment":"HIGH","scale":90,"lat":37.57,"lon":126.98,"age_h":1},
-    {"id":"mv4","type":"protest","title":"Climate blockades","location":"Berlin, Germany","country":"DE","size":"8,000","sentiment":"MED","scale":40,"lat":52.52,"lon":13.41,"age_h":18},
-    {"id":"mv5","type":"strike","title":"Dockworkers walkout","location":"Buenos Aires","country":"AR","size":"Port-wide","sentiment":"MED","scale":48,"lat":-34.61,"lon":-58.38,"age_h":8},
-    {"id":"mv6","type":"civil","title":"Farmers protest","location":"New Delhi, India","country":"IN","size":"200,000+","sentiment":"CRIT","scale":95,"lat":28.61,"lon":77.21,"age_h":3},
-    {"id":"mv7","type":"protest","title":"Cost-of-living rally","location":"London, UK","country":"GB","size":"25,000","sentiment":"MED","scale":50,"lat":51.51,"lon":-0.12,"age_h":14},
+    # ── Active 2025-2026 Civil Movements ──────────────────────
+    {"id":"mv1","type":"protest","title":"Anti-austerity protests","location":"Athens, Greece","country":"GR","size":"45,000+","sentiment":"HIGH","scale":80,"lat":37.98,"lon":23.73,"age_h":3},
+    {"id":"mv2","type":"strike","title":"General strike — pension reform","location":"Paris, France","country":"FR","size":"National","sentiment":"HIGH","scale":72,"lat":48.85,"lon":2.35,"age_h":5},
+    {"id":"mv3","type":"civil","title":"Pro-democracy vigils (post-impeachment)","location":"Seoul, South Korea","country":"KR","size":"80,000+","sentiment":"HIGH","scale":85,"lat":37.57,"lon":126.98,"age_h":2},
+    {"id":"mv4","type":"civil","title":"Anti-junta uprising","location":"Yangon, Myanmar","country":"MM","size":"50,000+","sentiment":"CRIT","scale":92,"lat":16.87,"lon":96.19,"age_h":1},
+    {"id":"mv5","type":"protest","title":"Cost-of-living demonstrations","location":"Nairobi, Kenya","country":"KE","size":"30,000+","sentiment":"HIGH","scale":78,"lat":-1.29,"lon":36.82,"age_h":4},
+    {"id":"mv6","type":"strike","title":"Port workers strike","location":"Hamburg, Germany","country":"DE","size":"Port-wide","sentiment":"MED","scale":55,"lat":53.55,"lon":9.99,"age_h":12},
+    {"id":"mv7","type":"protest","title":"Anti-government protests","location":"Tbilisi, Georgia","country":"GE","size":"100,000+","sentiment":"CRIT","scale":90,"lat":41.69,"lon":44.83,"age_h":6},
+    {"id":"mv8","type":"civil","title":"Pro-EU demonstrations","location":"Belgrade, Serbia","country":"RS","size":"60,000+","sentiment":"HIGH","scale":82,"lat":44.82,"lon":20.46,"age_h":8},
+    {"id":"mv9","type":"protest","title":"Economic protests","location":"Dhaka, Bangladesh","country":"BD","size":"200,000+","sentiment":"CRIT","scale":91,"lat":23.81,"lon":90.41,"age_h":2},
+    {"id":"mv10","type":"protest","title":"IMF austerity protests","location":"Cairo, Egypt","country":"EG","size":"25,000","sentiment":"HIGH","scale":70,"lat":30.06,"lon":31.24,"age_h":14},
+    {"id":"mv11","type":"civil","title":"Maduro opposition rallies","location":"Caracas, Venezuela","country":"VE","size":"40,000+","sentiment":"HIGH","scale":75,"lat":10.48,"lon":-66.87,"age_h":10},
+    {"id":"mv12","type":"protest","title":"Gang violence protests","location":"Port-au-Prince, Haiti","country":"HT","size":"15,000","sentiment":"CRIT","scale":88,"lat":18.54,"lon":-72.34,"age_h":7},
 ]
 
 # News sources registry
@@ -1182,9 +1257,15 @@ HIST_TYPE_ICONS = {
 def fetch_live_global_events(max_records: int = 20) -> list:
     """Fetch the very latest global events from GDELT Doc API."""
     queries = [
-        "war attack military strike conflict",
-        "earthquake flood disaster natural",
-        "nuclear missile launch threat",
+        "war attack military strike airstrike conflict 2026",
+        "Ukraine Russia frontline offensive Avdiivka Kharkiv",
+        "Israel Iran Gaza strike missile Hezbollah Houthi",
+        "Pakistan Afghanistan TTP Taliban border strike",
+        "Sudan RSF SAF Darfur famine displaced",
+        "Haiti gang violence coup insecurity",
+        "earthquake flood disaster volcanic eruption",
+        "nuclear missile launch threat ballistic ICBM DPRK",
+        "Myanmar Tatmadaw junta PDF resistance offensive",
     ]
     all_arts = []
     seen = set()
@@ -1277,6 +1358,95 @@ def fetch_outage_feed():
         return []
 
 # ── Earthquake depth profile for Earth Signals ────────────────
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_news_rss(category: str) -> list:
+    """Server-side RSS fetch for news tab categories — bypasses CORS entirely."""
+    import xml.etree.ElementTree as ET
+    from datetime import datetime, timezone
+
+    CATEGORY_FEEDS = {
+        "conflict": [
+            "https://understandingwar.org/rss.xml",
+            "https://www.csis.org/rss/analysis",
+            "https://acleddata.com/feed/",
+            "https://www.defenseone.com/rss/all/",
+            "https://feeds.reuters.com/reuters/worldNews",
+        ],
+        "geopolitics": [
+            "https://foreignpolicy.com/feed/",
+            "https://thediplomat.com/feed/",
+            "https://www.defenseone.com/rss/all/",
+            "https://www.csis.org/rss/analysis",
+            "https://feeds.reuters.com/reuters/worldNews",
+            "http://feeds.bbci.co.uk/news/world/rss.xml",
+        ],
+        "spaceweather": [
+            "https://spaceweather.com/index.xml",
+            "https://www.swpc.noaa.gov/news/rss.xml",
+            "https://www.jpl.nasa.gov/feeds/news",
+            "https://science.nasa.gov/feeds/rss/news.rss",
+            "https://phys.org/rss-feed/earth-news/",
+        ],
+        "global": [
+            "https://feeds.reuters.com/reuters/worldNews",
+            "http://feeds.bbci.co.uk/news/world/rss.xml",
+            "https://www.aljazeera.com/xml/rss/all.xml",
+            "https://apnews.com/rss",
+        ],
+        "science": [
+            "https://www.jpl.nasa.gov/feeds/news",
+            "https://www.usgs.gov/news/science-news/rss.xml",
+            "https://phys.org/rss-feed/earth-news/",
+        ],
+        "climate": [
+            "https://www.carbonbrief.org/feed",
+        ],
+    }
+
+    feeds = CATEGORY_FEEDS.get(category, CATEGORY_FEEDS["global"])
+    articles = []
+
+    def _parse_date(s):
+        for fmt in ["%a, %d %b %Y %H:%M:%S %z", "%a, %d %b %Y %H:%M:%S %Z",
+                    "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ"]:
+            try: return datetime.strptime(s.strip(), fmt).replace(tzinfo=timezone.utc)
+            except: pass
+        return datetime.now(timezone.utc)
+
+    for url in feeds:
+        try:
+            r = requests.get(url, timeout=8,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; GeoLocator/1.0)"})
+            if r.status_code != 200:
+                continue
+            root = ET.fromstring(r.content)
+            ns = {"atom": "http://www.w3.org/2005/Atom"}
+            # RSS 2.0
+            for item in root.findall(".//item")[:8]:
+                title = (item.findtext("title") or "").strip()
+                link  = (item.findtext("link") or "").strip()
+                pub   = (item.findtext("pubDate") or "").strip()
+                if not title:
+                    continue
+                dt = _parse_date(pub) if pub else datetime.now(timezone.utc)
+                age_s = int((datetime.now(timezone.utc) - dt).total_seconds())
+                if age_s < 60:     age = f"{age_s}s ago"
+                elif age_s < 3600: age = f"{age_s//60}m ago"
+                elif age_s < 86400:age = f"{age_s//3600}h ago"
+                else:              age = f"{age_s//86400}d ago"
+                src_name = url.split("/")[2].replace("www.","").replace("feeds.","").split(".")[0].upper()
+                articles.append({"title":title,"url":link,"time":age,"source":src_name,
+                                  "ts": dt.timestamp()})
+            if articles:
+                break  # Got articles from first working feed
+        except Exception:
+            continue
+
+    # Sort newest first
+    articles.sort(key=lambda x: -x.get("ts", 0))
+    return articles[:20]
+
+
 @st.cache_data(ttl=60, show_spinner=False)
 def fetch_usgs_significant():
     """M5.0+ events in the last 30 days for depth profile chart."""
@@ -1431,35 +1601,122 @@ CONFLICT_ZONES = [
 ]
 
 MILITARY_BASES = [
-    {"name":"Diego Garcia (BIOT)","country":"US/UK","lat":-7.3,"lon":72.4,"type":"Naval/Air","tip":"🏛 MILITARY BASE | Diego Garcia | US/UK | Naval-Air | Indian Ocean hub"},
-    {"name":"Ramstein AFB","country":"USA","lat":49.44,"lon":7.6,"type":"Air","tip":"🏛 MILITARY BASE | Ramstein AFB | USA | Air Command | NATO Europe HQ"},
-    {"name":"Al Udeid AFB","country":"USA","lat":25.11,"lon":51.31,"type":"Air","tip":"🏛 MILITARY BASE | Al Udeid | USA | Air | CENTCOM forward HQ Qatar"},
-    {"name":"Kadena AFB","country":"USA","lat":26.36,"lon":127.77,"type":"Air","tip":"🏛 MILITARY BASE | Kadena | USA | Air | Largest USAF base in Asia"},
-    {"name":"Camp Lemonnier","country":"USA","lat":11.55,"lon":43.15,"type":"Naval/Air","tip":"🏛 MILITARY BASE | Camp Lemonnier | USA | Djibouti | Horn of Africa hub"},
-    {"name":"Guantanamo Bay","country":"USA","lat":19.9,"lon":-75.1,"type":"Naval","tip":"🏛 MILITARY BASE | Guantanamo Bay | USA | Caribbean naval station"},
-    {"name":"Okinawa MCAS","country":"USA","lat":26.18,"lon":127.65,"type":"Air","tip":"🏛 MILITARY BASE | MCAS Okinawa | USMC | Japan"},
-    {"name":"Portsmouth Naval","country":"UK","lat":50.8,"lon":-1.1,"type":"Naval","tip":"🏛 MILITARY BASE | Portsmouth | UK | Main RN surface fleet base"},
-    {"name":"Tartus Naval","country":"Russia","lat":34.9,"lon":35.9,"type":"Naval","tip":"🏛 MILITARY BASE | Tartus | Russia | Only Mediterranean naval base"},
-    {"name":"Hmeimim AFB","country":"Russia","lat":35.4,"lon":35.95,"type":"Air","tip":"🏛 MILITARY BASE | Hmeimim | Russia | Syria air operations"},
-    {"name":"Djibouti PLA Base","country":"China","lat":11.6,"lon":43.2,"type":"Naval","tip":"🏛 MILITARY BASE | PLA Base Djibouti | China | First overseas base"},
-    {"name":"Changi Naval Base","country":"Singapore","lat":1.4,"lon":104.0,"type":"Naval","tip":"🏛 MILITARY BASE | Changi | Singapore/US | Strait of Malacca access"},
-    {"name":"Incirlik AFB","country":"NATO/USA","lat":37.0,"lon":35.4,"type":"Air","tip":"🏛 MILITARY BASE | Incirlik | NATO/USA | Turkey | Nuclear hosting"},
-    {"name":"Suda Bay","country":"USA/NATO","lat":35.49,"lon":24.14,"type":"Naval","tip":"🏛 MILITARY BASE | Suda Bay | US/NATO | Crete | Med operations"},
-    {"name":"Bagram (inactive)","country":"USA/Afghan","lat":34.94,"lon":69.27,"type":"Air","tip":"🏛 MILITARY BASE | Bagram | Abandoned 2021 | Afghanistan"},
-    {"name":"Sevastopol Fleet","country":"Russia","lat":44.6,"lon":33.5,"type":"Naval","tip":"🏛 MILITARY BASE | Sevastopol | Russia | Black Sea Fleet HQ"},
+    # ── USA Global Network ──────────────────────────────────────
+    {"name":"Diego Garcia (BIOT)","country":"US/UK","lat":-7.3,"lon":72.4,"type":"Naval/Air","tip":"🏛 MILITARY BASE | Diego Garcia | US/UK | Naval-Air | Indian Ocean strategic hub"},
+    {"name":"Ramstein AFB","country":"USA","lat":49.44,"lon":7.6,"type":"Air","tip":"🏛 MILITARY BASE | Ramstein AFB | Germany | USAF Air Command | NATO Europe HQ"},
+    {"name":"Al Udeid AFB","country":"USA","lat":25.11,"lon":51.31,"type":"Air","tip":"🏛 MILITARY BASE | Al Udeid | Qatar | USAF | CENTCOM forward HQ | 10,000 personnel"},
+    {"name":"Kadena AFB","country":"USA","lat":26.36,"lon":127.77,"type":"Air","tip":"🏛 MILITARY BASE | Kadena | Okinawa | Largest USAF base in Asia | F-15C/D"},
+    {"name":"Camp Lemonnier","country":"USA","lat":11.55,"lon":43.15,"type":"Naval/Air","tip":"🏛 MILITARY BASE | Camp Lemonnier | Djibouti | USA | Horn of Africa hub | JSOC"},
+    {"name":"Guantanamo Bay","country":"USA","lat":19.9,"lon":-75.1,"type":"Naval","tip":"🏛 MILITARY BASE | Guantanamo Bay | Cuba | USA | Caribbean naval station & detention"},
+    {"name":"Okinawa MCAS","country":"USA","lat":26.18,"lon":127.65,"type":"Air","tip":"🏛 MILITARY BASE | MCAS Futenma | Okinawa | USMC | Japan | F-35B capable"},
+    {"name":"Camp Humphreys","country":"USA","lat":36.98,"lon":127.03,"type":"Army","tip":"🏛 MILITARY BASE | Camp Humphreys | South Korea | USFK HQ | Largest US overseas base"},
+    {"name":"Yokosuka Naval Base","country":"USA","lat":35.28,"lon":139.67,"type":"Naval","tip":"🏛 MILITARY BASE | Yokosuka | Japan | 7th Fleet HQ | USS Ronald Reagan homeport"},
+    {"name":"Misawa AFB","country":"USA","lat":40.7,"lon":141.37,"type":"Air","tip":"🏛 MILITARY BASE | Misawa | Japan | F-16 | ISR | Electronic warfare"},
+    {"name":"Andersen AFB","country":"USA","lat":13.58,"lon":144.93,"type":"Air","tip":"🏛 MILITARY BASE | Andersen | Guam | USAF | B-2 bomber forward base | Pacific hub"},
+    {"name":"Naval Base Guam","country":"USA","lat":13.44,"lon":144.65,"type":"Naval","tip":"🏛 MILITARY BASE | NB Guam | USA | Submarine & surface fleet | Pacific deterrence"},
+    {"name":"Incirlik AFB","country":"NATO/USA","lat":37.0,"lon":35.4,"type":"Air","tip":"🏛 MILITARY BASE | Incirlik | Turkey | NATO/USA | B61 nuclear weapons hosted"},
+    {"name":"Suda Bay","country":"USA/NATO","lat":35.49,"lon":24.14,"type":"Naval","tip":"🏛 MILITARY BASE | Suda Bay | Crete | US/NATO | Mediterranean operations hub"},
+    {"name":"Al-Dhafra AFB","country":"USA","lat":24.25,"lon":54.55,"type":"Air","tip":"🏛 MILITARY BASE | Al-Dhafra | UAE | USAF | F-35A | RQ-4 Global Hawk ISR"},
+    {"name":"Ali Al Salem AFB","country":"USA","lat":29.35,"lon":47.52,"type":"Air","tip":"🏛 MILITARY BASE | Ali Al Salem | Kuwait | USAF | Pre-positioned armour"},
+    {"name":"NSA Bahrain","country":"USA","lat":26.22,"lon":50.59,"type":"Naval","tip":"🏛 MILITARY BASE | NSA Bahrain | 5th Fleet HQ | Gulf maritime operations"},
+    {"name":"AFRICOM Djibouti","country":"USA","lat":11.55,"lon":43.1,"type":"Joint","tip":"🏛 MILITARY BASE | AFRICOM fwd | Djibouti | Drone ops | CT Africa"},
+    {"name":"Thule Air Base","country":"USA","lat":76.53,"lon":-68.7,"type":"Air","tip":"🏛 MILITARY BASE | Pituffik | Greenland | USA | Ballistic missile warning | Arctic"},
+    {"name":"Fort Wainwright","country":"USA","lat":64.83,"lon":-147.63,"type":"Army","tip":"🏛 MILITARY BASE | Fort Wainwright | Alaska | Arctic combat training | 25th Infantry"},
+    {"name":"NAS Sigonella","country":"USA","lat":37.4,"lon":14.92,"type":"Naval/Air","tip":"🏛 MILITARY BASE | NAS Sigonella | Sicily | USA/NATO | P-8 Poseidon | Med hub"},
+    {"name":"NSGA Molesworth","country":"USA","lat":52.37,"lon":-0.44,"type":"Intel","tip":"🏛 MILITARY BASE | Molesworth | UK | USAF | EUCOM Intel fusion centre"},
+    # ── UK ──────────────────────────────────────────────────────
+    {"name":"Portsmouth Naval","country":"UK","lat":50.8,"lon":-1.1,"type":"Naval","tip":"🏛 MILITARY BASE | Portsmouth | UK | RN surface fleet HQ | Queen Elizabeth carriers"},
+    {"name":"HMNB Clyde (Faslane)","country":"UK","lat":56.07,"lon":-4.82,"type":"Naval","tip":"🏛 MILITARY BASE | Faslane | Scotland | Trident nuclear submarine base"},
+    {"name":"RAF Brize Norton","country":"UK","lat":51.75,"lon":-1.58,"type":"Air","tip":"🏛 MILITARY BASE | RAF Brize Norton | UK | Air Transport | Tankers | A400M"},
+    {"name":"RAF Akrotiri","country":"UK","lat":34.59,"lon":32.98,"type":"Air","tip":"🏛 MILITARY BASE | RAF Akrotiri | Cyprus | UK sovereign base | Med operations"},
+    # ── Russia ──────────────────────────────────────────────────
+    {"name":"Tartus Naval","country":"Russia","lat":34.9,"lon":35.9,"type":"Naval","tip":"🏛 MILITARY BASE | Tartus | Syria | Russia | Only Mediterranean naval base"},
+    {"name":"Hmeimim AFB","country":"Russia","lat":35.4,"lon":35.95,"type":"Air","tip":"🏛 MILITARY BASE | Hmeimim | Syria | Russia | Su-35/Su-30 | Syrian campaign hub"},
+    {"name":"Sevastopol Fleet","country":"Russia","lat":44.6,"lon":33.5,"type":"Naval","tip":"🏛 MILITARY BASE | Sevastopol | Crimea | Russia | Black Sea Fleet HQ | Contested"},
+    {"name":"Kaliningrad Base","country":"Russia","lat":54.7,"lon":20.5,"type":"Joint","tip":"🏛 MILITARY BASE | Kaliningrad | Russia | Baltic exclave | Iskander missiles"},
+    {"name":"Kant AFB","country":"Russia","lat":42.85,"lon":74.84,"type":"Air","tip":"🏛 MILITARY BASE | Kant | Kyrgyzstan | Russia | CSTO forward base | Central Asia"},
+    {"name":"Khmeimim Wagner Hub","country":"Russia","lat":16.0,"lon":-0.5,"type":"Air","tip":"🏛 MILITARY BASE | Mali/CAR | Russia (Africa Corps) | Wagner successor operations"},
+    {"name":"Nova Kakhovka (frontline)","country":"Russia","lat":46.76,"lon":33.36,"type":"Ground","tip":"🏛 MILITARY BASE | Nova Kakhovka area | Russia/Ukraine frontline | Occupied territory"},
+    # ── China ──────────────────────────────────────────────────
+    {"name":"Djibouti PLA Base","country":"China","lat":11.6,"lon":43.2,"type":"Naval","tip":"🏛 MILITARY BASE | PLA Base Djibouti | China | First overseas base | Logistics hub"},
+    {"name":"Woody Island (Paracel)","country":"China","lat":16.83,"lon":112.34,"type":"Air/Naval","tip":"🏛 MILITARY BASE | Woody Island | South China Sea | PLA | Runway | SAM batteries"},
+    {"name":"Fiery Cross Reef","country":"China","lat":9.55,"lon":114.23,"type":"Air/Naval","tip":"🏛 MILITARY BASE | Fiery Cross Reef | Spratly Islands | PLA | 3km runway | contested"},
+    {"name":"Mischief Reef","country":"China","lat":9.9,"lon":115.53,"type":"Naval","tip":"🏛 MILITARY BASE | Mischief Reef | Spratlys | PLA | Naval base | SCS control hub"},
+    {"name":"Subi Reef","country":"China","lat":10.93,"lon":114.08,"type":"Air/Naval","tip":"🏛 MILITARY BASE | Subi Reef | Spratlys | PLA | Runway + hangers | ADIZ enforcement"},
+    # ── Other Nations ───────────────────────────────────────────
+    {"name":"Changi Naval Base","country":"Singapore","lat":1.4,"lon":104.0,"type":"Naval","tip":"🏛 MILITARY BASE | Changi | Singapore | RSN + US access | Strait of Malacca key"},
+    {"name":"RAAF Tindal","country":"Australia","lat":-14.52,"lon":132.37,"type":"Air","tip":"🏛 MILITARY BASE | RAAF Tindal | Northern Territory | B-52 capable | AUKUS hub"},
+    {"name":"Pine Gap","country":"USA/Australia","lat":-23.8,"lon":133.74,"type":"Intel","tip":"🏛 MILITARY BASE | Pine Gap | Australia | CIA/NSA signals intelligence | SIGINT"},
+    {"name":"CFB Trenton","country":"Canada","lat":44.12,"lon":-77.53,"type":"Air","tip":"🏛 MILITARY BASE | CFB Trenton | Canada | Largest RCAF base | Strategic airlift"},
+    {"name":"Lajes Field","country":"USA/Portugal","lat":38.76,"lon":-27.09,"type":"Air","tip":"🏛 MILITARY BASE | Lajes | Azores | Portugal/USA | Atlantic crossroads | NATO"},
+    {"name":"Bagram (inactive)","country":"USA/Afghan","lat":34.94,"lon":69.27,"type":"Air","tip":"🏛 MILITARY BASE | Bagram | Afghanistan | Abandoned by USA Aug 2021 | Now Taliban"},
+    {"name":"NSG Aden (UAE)","country":"UAE","lat":12.79,"lon":45.04,"type":"Naval","tip":"🏛 MILITARY BASE | Aden | Yemen | UAE naval hub | Red Sea operations"},
+    {"name":"French Djibouti (Camp Lemonier)","country":"France","lat":11.52,"lon":43.08,"type":"Joint","tip":"🏛 MILITARY BASE | Camp de la Paix | Djibouti | France | Legionnaire base | Africa ops"},
+    {"name":"French Polynesia (Mururoa legacy)","country":"France","lat":-21.86,"lon":-138.88,"type":"Nuclear legacy","tip":"🏛 MILITARY BASE | Mururoa Atoll | French Polynesia | Nuclear test site legacy | monitored"},
+    {"name":"Israeli Air Force Tel Nof","country":"Israel","lat":31.84,"lon":34.82,"type":"Air","tip":"🏛 MILITARY BASE | Tel Nof | Israel | IAF HQ | F-35I | Nuclear-capable squadron"},
+    {"name":"Nevatim AFB","country":"Israel","lat":31.21,"lon":35.01,"type":"Air","tip":"🏛 MILITARY BASE | Nevatim | Israel | F-35I Adir | Primary IAF strike base"},
+    {"name":"INS Karwar (Project Seabird)","country":"India","lat":14.81,"lon":74.12,"type":"Naval","tip":"🏛 MILITARY BASE | INS Karwar | India | Largest naval base in Asia under expansion"},
+    {"name":"INS Varsha (Visakhapatnam)","country":"India","lat":17.69,"lon":83.22,"type":"Naval","tip":"🏛 MILITARY BASE | INS Varsha | India | Nuclear submarine base | Strategic Command"},
+    {"name":"Gwangju Air Base","country":"South Korea","lat":35.12,"lon":126.81,"type":"Air","tip":"🏛 MILITARY BASE | Gwangju | South Korea | ROKAF | F-35A | Combined ops with USAF"},
+    {"name":"JGSDF Camp Kengun","country":"Japan","lat":32.84,"lon":130.89,"type":"Army","tip":"🏛 MILITARY BASE | Camp Kengun | Kumamoto | JGSDF | Amphibious rapid deployment"},
+    {"name":"Turkish Naval Aksaz","country":"Turkey","lat":36.93,"lon":28.3,"type":"Naval","tip":"🏛 MILITARY BASE | Naval Base Aksaz | Turkey | NATO | Aegean submarine hub"},
+    {"name":"Pakistani GHQ Rawalpindi","country":"Pakistan","lat":33.59,"lon":73.06,"type":"Army HQ","tip":"🏛 MILITARY BASE | GHQ Rawalpindi | Pakistan | Army HQ | Nuclear command authority"},
+    {"name":"Nur Khan AFB","country":"Pakistan","lat":33.62,"lon":73.1,"type":"Air","tip":"🏛 MILITARY BASE | PAF Nur Khan | Pakistan | VVIP airlift | Strategic transport"},
+    {"name":"KAF Sargodha","country":"Pakistan","lat":32.05,"lon":72.67,"type":"Air","tip":"🏛 MILITARY BASE | PAF Sargodha | Pakistan | F-16 | Nuclear-capable airbase"},
+    {"name":"Al-Shaybah (Saudi)","country":"Saudi Arabia","lat":22.51,"lon":53.97,"type":"Air","tip":"🏛 MILITARY BASE | Al-Shaybah | Saudi Arabia | RSAF | Patriot batteries | SE Arabia"},
+    {"name":"King Abdulaziz Naval Base","country":"Saudi Arabia","lat":27.42,"lon":49.57,"type":"Naval","tip":"🏛 MILITARY BASE | King Abdulaziz | Jubail | Saudi Arabia | Eastern Fleet HQ"},
+    {"name":"Al-Anad Air Base","country":"Yemen (Houthi zone)","lat":13.18,"lon":44.78,"type":"Air","tip":"🏛 MILITARY BASE | Al-Anad | Yemen | Former US drone hub | Now contested/Houthi zone"},
+    {"name":"HMNB Gibraltar","country":"UK","lat":36.14,"lon":-5.36,"type":"Naval","tip":"🏛 MILITARY BASE | HMNB Gibraltar | UK | Strait of Gibraltar | Submarine support"},
 ]
 
 NUCLEAR_SITES = [
-    {"name":"Natanz","country":"Iran","lat":33.72,"lon":51.73,"type":"Enrichment","status":"Struck","tip":"☢ NUCLEAR | Natanz | Iran | Enrichment facility | Struck by IDF 2026"},
-    {"name":"Fordow","country":"Iran","lat":34.88,"lon":49.93,"type":"Enrichment","status":"Destroyed","tip":"☢ NUCLEAR | Fordow | Iran | Underground enrichment | Destroyed IDF 2026"},
-    {"name":"Bushehr NPP","country":"Iran","lat":28.98,"lon":50.84,"type":"Power Plant","status":"Operational","tip":"☢ NUCLEAR | Bushehr NPP | Iran | 1000MW reactor | IAEA monitored"},
-    {"name":"Zaporizhzhia NPP","country":"Ukraine","lat":47.5,"lon":34.6,"type":"Power Plant","status":"Occupied","tip":"☢ NUCLEAR | Zaporizhzhia | Ukraine (occupied) | 6 reactors | Frontline risk"},
-    {"name":"Dimona","country":"Israel","lat":31.0,"lon":35.15,"type":"Weapons Research","status":"Active","tip":"☢ NUCLEAR | Dimona | Israel | Undeclared arsenal ~90 warheads"},
-    {"name":"Khandaq Site","country":"N.Korea","lat":40.86,"lon":129.68,"type":"Weapons","status":"Active","tip":"☢ NUCLEAR | Yongbyon | DPRK | Plutonium production complex"},
-    {"name":"Cheyenne Mountain","country":"USA","lat":38.74,"lon":-104.85,"type":"Command","status":"Active","tip":"☢ NUCLEAR | Cheyenne Mountain | USA | NORAD command bunker"},
-    {"name":"Seversk","country":"Russia","lat":56.6,"lon":84.86,"type":"Weapons Production","status":"Active","tip":"☢ NUCLEAR | Seversk | Russia | Plutonium-239 production"},
-    {"name":"Khushab","country":"Pakistan","lat":32.05,"lon":71.9,"type":"Weapons","status":"Active","tip":"☢ NUCLEAR | Khushab | Pakistan | Plutonium reactor"},
-    {"name":"Tarapur","country":"India","lat":19.83,"lon":72.66,"type":"Power Plant","status":"Active","tip":"☢ NUCLEAR | Tarapur | India | BWR reactors"},
+    # ── Active Conflict / Struck Sites ─────────────────────────
+    {"name":"Natanz","country":"Iran","lat":33.72,"lon":51.73,"type":"Enrichment","status":"Struck","tip":"☢ NUCLEAR | Natanz | Iran | Main enrichment facility | Struck by IDF Mar 2026 | ~19,000 centrifuges destroyed"},
+    {"name":"Fordow","country":"Iran","lat":34.88,"lon":49.93,"type":"Enrichment","status":"Destroyed","tip":"☢ NUCLEAR | Fordow | Iran | Underground enrichment bunker | Destroyed by B-2/BLU-57 Feb 2026"},
+    {"name":"Bushehr NPP","country":"Iran","lat":28.98,"lon":50.84,"type":"Power Plant","status":"Operational","tip":"☢ NUCLEAR | Bushehr NPP | Iran | 1000MW VVER reactor | Russian-built | IAEA monitored"},
+    {"name":"Isfahan Nuclear Tech","country":"Iran","lat":32.63,"lon":51.66,"type":"Research/Conversion","status":"Struck","tip":"☢ NUCLEAR | Isfahan | Iran | UF6 conversion facility | Struck by IDF strikes 2026"},
+    {"name":"Zaporizhzhia NPP","country":"Ukraine","lat":47.5,"lon":34.6,"type":"Power Plant","status":"Occupied","tip":"☢ NUCLEAR | Zaporizhzhia | Ukraine (occupied) | 6×950MW VVER | Frontline risk | IAEA monitoring disrupted"},
+    {"name":"Chornobyl (exclusion)","country":"Ukraine","lat":51.39,"lon":30.1,"type":"Legacy/Decommissioned","status":"Monitored","tip":"☢ NUCLEAR | Chornobyl | Ukraine | 1986 disaster site | New safe confinement 2016 | Russian-occupied Feb-Mar 2022"},
+    # ── DPRK ───────────────────────────────────────────────────
+    {"name":"Yongbyon","country":"N.Korea","lat":39.81,"lon":125.75,"type":"Weapons Complex","status":"Active","tip":"☢ NUCLEAR | Yongbyon | DPRK | 5MW plutonium reactor + centrifuge hall | Satellite-confirmed expansion 2025"},
+    {"name":"Punggye-ri","country":"N.Korea","lat":41.27,"lon":129.08,"type":"Test Site","status":"Active","tip":"☢ NUCLEAR | Punggye-ri | DPRK | Underground nuclear test site | 6 tests 2006-2017 | Tunnel activity observed 2024"},
+    {"name":"Kangson","country":"N.Korea","lat":38.87,"lon":125.83,"type":"Enrichment (suspected)","status":"Active","tip":"☢ NUCLEAR | Kangson | DPRK | Suspected covert centrifuge enrichment | Identified 2018"},
+    # ── Russia ─────────────────────────────────────────────────
+    {"name":"Seversk","country":"Russia","lat":56.6,"lon":84.86,"type":"Weapons Production","status":"Active","tip":"☢ NUCLEAR | Seversk | Russia | Pu-239 production | Closed city | Rosatom"},
+    {"name":"Sarov (Arzamas-16)","country":"Russia","lat":54.93,"lon":43.32,"type":"Weapons Design","status":"Active","tip":"☢ NUCLEAR | Sarov | Russia | Main nuclear weapons design lab | VNIIEF | 4,000+ warhead designs"},
+    {"name":"Snezhinsk (Chelyabinsk-70)","country":"Russia","lat":56.08,"lon":60.74,"type":"Weapons Design","status":"Active","tip":"☢ NUCLEAR | Snezhinsk | Russia | 2nd nuclear warhead design lab | VNIITF"},
+    {"name":"Novaya Zemlya","country":"Russia","lat":73.4,"lon":55.0,"type":"Test Site","status":"Active","tip":"☢ NUCLEAR | Novaya Zemlya | Russia | Arctic test site | Last test 1990 | Monitoring infrastructure active"},
+    {"name":"Ozersk (Mayak)","country":"Russia","lat":55.77,"lon":60.63,"type":"Reprocessing","status":"Active","tip":"☢ NUCLEAR | Mayak | Ozersk | Russia | Plutonium reprocessing + weapons-grade material | Site of 1957 Kyshtym disaster"},
+    # ── USA ─────────────────────────────────────────────────────
+    {"name":"Cheyenne Mountain","country":"USA","lat":38.74,"lon":-104.85,"type":"Command","status":"Active","tip":"☢ NUCLEAR | Cheyenne Mountain | Colorado | USA | NORAD/USNORTHCOM | Nuclear-hardened command bunker"},
+    {"name":"Y-12 National Security","country":"USA","lat":36.04,"lon":-84.09,"type":"Weapons Production","status":"Active","tip":"☢ NUCLEAR | Y-12 | Oak Ridge | USA | HEU storage + component manufacture | Main warhead production site"},
+    {"name":"Pantex Plant","country":"USA","lat":35.26,"lon":-101.52,"type":"Weapons Assembly","status":"Active","tip":"☢ NUCLEAR | Pantex | Texas | USA | Only US nuclear warhead assembly/disassembly plant"},
+    {"name":"Savannah River Site","country":"USA","lat":33.35,"lon":-81.72,"type":"Production/Tritium","status":"Active","tip":"☢ NUCLEAR | Savannah River | South Carolina | USA | Tritium production for warheads | Pu processing"},
+    {"name":"Nevada Test Site","country":"USA","lat":37.1,"lon":-116.05,"type":"Test Site (legacy)","status":"Monitored","tip":"☢ NUCLEAR | Nevada | USA | 928 nuclear tests 1951-1992 | Now Nevada National Security Site | Subcritical tests"},
+    {"name":"Los Alamos NL","country":"USA","lat":35.88,"lon":-106.3,"type":"Weapons Design","status":"Active","tip":"☢ NUCLEAR | Los Alamos | New Mexico | USA | Primary nuclear weapons design lab | Manhattan Project origin"},
+    # ── Israel (undeclared) ─────────────────────────────────────
+    {"name":"Dimona","country":"Israel","lat":31.0,"lon":35.15,"type":"Weapons Research","status":"Active","tip":"☢ NUCLEAR | Dimona | Israel | Negev Nuclear Research Center | Undeclared ~90 warheads | Not IAEA signatory"},
+    # ── Pakistan ─────────────────────────────────────────────────
+    {"name":"Khushab I-IV","country":"Pakistan","lat":32.05,"lon":71.9,"type":"Weapons Complex","status":"Active","tip":"☢ NUCLEAR | Khushab | Pakistan | 4 plutonium production reactors | ~165 warheads est. | Expanding capacity"},
+    {"name":"Kahuta (KRL)","country":"Pakistan","lat":33.64,"lon":73.37,"type":"Enrichment","status":"Active","tip":"☢ NUCLEAR | Kahuta | Pakistan | Main HEU enrichment plant | A.Q. Khan Research Laboratories"},
+    {"name":"Dera Ghazi Khan","country":"Pakistan","lat":30.04,"lon":70.62,"type":"Uranium Processing","status":"Active","tip":"☢ NUCLEAR | Dera Ghazi Khan | Pakistan | Uranium conversion + yellowcake processing"},
+    # ── India ──────────────────────────────────────────────────
+    {"name":"Tarapur NPP","country":"India","lat":19.83,"lon":72.66,"type":"Power Plant","status":"Active","tip":"☢ NUCLEAR | Tarapur | Maharashtra | India | 2×160MW BWR + 2×540MW PHWR | Oldest Indian NPP"},
+    {"name":"Kaiga NPP","country":"India","lat":14.87,"lon":74.44,"type":"Power Plant","status":"Active","tip":"☢ NUCLEAR | Kaiga | Karnataka | India | 4×220MW PHWR | Operational | IAEA safeguards"},
+    {"name":"Kalpakkam (IGCAR)","country":"India","lat":12.56,"lon":80.18,"type":"Research/Fast Reactor","status":"Active","tip":"☢ NUCLEAR | Kalpakkam | Tamil Nadu | India | Fast breeder reactor + IGCAR research | PFBR 500MW"},
+    {"name":"Bhabha ARC","country":"India","lat":19.02,"lon":72.87,"type":"Research","status":"Active","tip":"☢ NUCLEAR | BARC | Mumbai | India | Nuclear research + weapons design authority | CIRUS/Apsara reactors"},
+    {"name":"Trombay (BARC)","country":"India","lat":19.02,"lon":72.92,"type":"Reprocessing","status":"Active","tip":"☢ NUCLEAR | Trombay | Mumbai | India | Plutonium reprocessing | Unsafeguarded | Weapons-grade Pu source"},
+    # ── China ──────────────────────────────────────────────────
+    {"name":"Lop Nor","country":"China","lat":40.85,"lon":89.5,"type":"Test Site","status":"Monitored","tip":"☢ NUCLEAR | Lop Nor | Xinjiang | China | 45 nuclear tests 1964-1996 | Activity detected 2020-2024"},
+    {"name":"Jianmen 404 Complex","country":"China","lat":38.88,"lon":101.83,"type":"Production","status":"Active","tip":"☢ NUCLEAR | Plant 404 | Gansu | China | Pu production + reprocessing | Warhead component manufacture"},
+    {"name":"Guangyuan NPP","country":"China","lat":32.35,"lon":105.81,"type":"Power Plant","status":"Active","tip":"☢ NUCLEAR | Guangyuan | Sichuan | China | 2×650MW PWR | IAEA safeguarded"},
+    {"name":"CNNC Baotou","country":"China","lat":40.62,"lon":109.84,"type":"Fuel/Weapons","status":"Active","tip":"☢ NUCLEAR | Baotou | Inner Mongolia | China | Nuclear fuel element factory + HEU enrichment"},
+    # ── France ─────────────────────────────────────────────────
+    {"name":"CEA Valduc","country":"France","lat":47.57,"lon":4.97,"type":"Weapons Production","status":"Active","tip":"☢ NUCLEAR | Valduc | Burgundy | France | Primary nuclear warhead production & maintenance | ~290 warheads"},
+    {"name":"Île Longue","country":"France","lat":48.37,"lon":-4.57,"type":"Submarine Base","status":"Active","tip":"☢ NUCLEAR | Île Longue | Brittany | France | SSBN base | 4 Le Triomphant-class | SLBM M51 missiles"},
+    # ── UK ─────────────────────────────────────────────────────
+    {"name":"AWE Aldermaston","country":"UK","lat":51.38,"lon":-1.18,"type":"Weapons Design","status":"Active","tip":"☢ NUCLEAR | AWE Aldermaston | Berkshire | UK | Trident warhead design + manufacture | ~225 warheads"},
+    {"name":"Coulport RNAD","country":"UK","lat":56.05,"lon":-4.86,"type":"Warhead Storage","status":"Active","tip":"☢ NUCLEAR | RNAD Coulport | Scotland | UK | Trident SLBM + warhead storage | Adjacent to Faslane SSBN base"},
 ]
 
 GAMMA_IRRADIATORS = [
@@ -1538,26 +1795,79 @@ MILITARY_ACTIVITY = [
 ]
 
 SHIP_TRAFFIC_ZONES = [
-    {"name":"Strait of Malacca","lat":3.0,"lon":101.0,"traffic":"Extreme","vessels_day":300,"tip":"🚢 SHIP TRAFFIC | Strait of Malacca | 300+ vessels/day | 25% global trade"},
-    {"name":"Strait of Hormuz","lat":26.56,"lon":56.26,"traffic":"Critical/Reduced","vessels_day":21,"tip":"🚢 SHIP TRAFFIC | Hormuz | ~21 tankers/day | 20% global oil | DISRUPTED"},
-    {"name":"Suez Canal","lat":30.42,"lon":32.35,"traffic":"Reduced","vessels_day":44,"tip":"🚢 SHIP TRAFFIC | Suez Canal | ~44 ships/day | Down 35% vs baseline"},
-    {"name":"Bab el-Mandeb","lat":12.58,"lon":43.38,"traffic":"Critical/Disrupted","vessels_day":32,"tip":"🚢 SHIP TRAFFIC | Bab el-Mandeb | Houthi attacks | 32 vessels/day"},
-    {"name":"English Channel","lat":51.0,"lon":1.5,"traffic":"Heavy","vessels_day":500,"tip":"🚢 SHIP TRAFFIC | English Channel | World's busiest sea lane | 500+/day"},
-    {"name":"Dover Strait","lat":51.1,"lon":1.4,"traffic":"Extreme","vessels_day":400,"tip":"🚢 SHIP TRAFFIC | Dover Strait | 400+ vessels/day"},
-    {"name":"Cape of Good Hope","lat":-34.36,"lon":18.48,"traffic":"Increasing","vessels_day":85,"tip":"🚢 SHIP TRAFFIC | Cape of Good Hope | +65% vs 2023 | Suez rerouting"},
-    {"name":"Taiwan Strait","lat":24.5,"lon":119.5,"traffic":"Monitored","vessels_day":180,"tip":"🚢 SHIP TRAFFIC | Taiwan Strait | 180/day | PLA exercise risk"},
-    {"name":"Kerch Strait","lat":45.35,"lon":36.62,"traffic":"Blocked","vessels_day":3,"tip":"🚢 SHIP TRAFFIC | Kerch | Near-blocked | War zone"},
-    {"name":"Singapore Anchorage","lat":1.25,"lon":103.7,"traffic":"Extreme","vessels_day":1000,"tip":"🚢 SHIP TRAFFIC | Singapore | World's 2nd busiest port | 1000+ vessels"},
+    # Each entry has a "path" list of [lon, lat] waypoints for PathLayer rendering
+    {"name":"Strait of Malacca","lat":3.0,"lon":101.0,"traffic":"Extreme","vessels_day":300,
+     "path":[[102.8,1.2],[101.5,2.5],[100.3,3.8],[99.5,5.5]],
+     "tip":"🚢 SHIP TRAFFIC | Strait of Malacca | 300+ vessels/day | 25% global trade"},
+    {"name":"Strait of Hormuz","lat":26.56,"lon":56.26,"traffic":"Critical/Reduced","vessels_day":21,
+     "path":[[56.0,24.5],[56.26,25.8],[56.7,26.56],[57.8,27.2]],
+     "tip":"🚢 SHIP TRAFFIC | Hormuz | ~21 tankers/day | 20% global oil | DISRUPTED"},
+    {"name":"Suez Canal","lat":30.42,"lon":32.35,"traffic":"Reduced","vessels_day":44,
+     "path":[[32.55,30.9],[32.4,30.42],[32.2,29.9],[32.6,29.2],[32.55,28.0]],
+     "tip":"🚢 SHIP TRAFFIC | Suez Canal | ~44 ships/day | Down 35% vs baseline"},
+    {"name":"Bab el-Mandeb","lat":12.58,"lon":43.38,"traffic":"Critical/Disrupted","vessels_day":32,
+     "path":[[43.0,11.5],[43.38,12.58],[43.6,13.5],[44.0,14.5]],
+     "tip":"🚢 SHIP TRAFFIC | Bab el-Mandeb | Houthi attacks | 32 vessels/day"},
+    {"name":"English Channel","lat":51.0,"lon":1.5,"traffic":"Heavy","vessels_day":500,
+     "path":[[-5.5,48.0],[-2.0,49.5],[1.5,51.0],[3.5,51.5],[7.0,52.8]],
+     "tip":"🚢 SHIP TRAFFIC | English Channel | World's busiest sea lane | 500+/day"},
+    {"name":"Cape of Good Hope Reroute","lat":-34.36,"lon":18.48,"traffic":"Increasing","vessels_day":85,
+     "path":[[10.0,-31.0],[18.48,-34.36],[25.0,-33.5],[30.0,-28.0]],
+     "tip":"🚢 SHIP TRAFFIC | Cape of Good Hope | +65% vs 2023 | Suez rerouting"},
+    {"name":"Taiwan Strait","lat":24.5,"lon":119.5,"traffic":"Monitored","vessels_day":180,
+     "path":[[121.5,22.0],[120.5,23.5],[119.5,24.5],[119.0,26.0],[120.0,28.0]],
+     "tip":"🚢 SHIP TRAFFIC | Taiwan Strait | 180/day | PLA exercise risk"},
+    {"name":"Kerch Strait","lat":45.35,"lon":36.62,"traffic":"Blocked","vessels_day":3,
+     "path":[[35.8,44.8],[36.3,45.0],[36.62,45.35],[37.0,45.6]],
+     "tip":"🚢 SHIP TRAFFIC | Kerch | Near-blocked | War zone"},
+    {"name":"Singapore / Malacca Gateway","lat":1.25,"lon":103.7,"traffic":"Extreme","vessels_day":1000,
+     "path":[[103.5,1.0],[103.7,1.25],[104.0,1.5],[104.5,2.0]],
+     "tip":"🚢 SHIP TRAFFIC | Singapore | World's 2nd busiest port | 1000+ vessels"},
+    {"name":"Panama Canal","lat":8.97,"lon":-79.53,"traffic":"Reduced","vessels_day":28,
+     "path":[[-79.9,8.4],[-79.53,8.97],[-79.2,9.3]],
+     "tip":"🚢 SHIP TRAFFIC | Panama Canal | 28/day | Drought reducing capacity 2024"},
+    {"name":"Black Sea Western Entry","lat":43.2,"lon":30.5,"traffic":"Reduced","vessels_day":18,
+     "path":[[28.0,41.8],[30.0,42.5],[31.5,43.0],[33.0,44.2]],
+     "tip":"🚢 SHIP TRAFFIC | Black Sea W Entry | Turkish Straits | Reduced war traffic"},
+    {"name":"Lombok / Sunda Strait Alt","lat":-8.5,"lon":115.87,"traffic":"Normal","vessels_day":40,
+     "path":[[113.5,-8.0],[115.87,-8.5],[116.5,-8.7]],
+     "tip":"🚢 SHIP TRAFFIC | Lombok Strait | Indonesia | Malacca alternate route"},
 ]
 
 TRADE_ROUTE_ARCS = [
-    {"name":"Asia-Europe (pre-Houthi)","from_lat":1.35,"from_lon":103.8,"to_lat":51.5,"to_lon":-0.1,"type":"Container","status":"Rerouted"},
-    {"name":"Trans-Pacific","from_lat":31.23,"from_lon":121.47,"to_lat":33.74,"to_lon":-118.2,"type":"Container","status":"Active"},
-    {"name":"N.America-Europe","from_lat":40.71,"from_lon":-74.0,"to_lat":51.5,"to_lon":-0.1,"type":"Container","status":"Active"},
-    {"name":"ME Oil to Asia","from_lat":26.56,"from_lon":56.26,"to_lat":35.68,"to_lon":139.69,"type":"Oil Tanker","status":"Disrupted"},
-    {"name":"West Africa Oil","from_lat":6.45,"from_lon":3.4,"to_lat":40.71,"to_lon":-74.0,"type":"Oil Tanker","status":"Active"},
-    {"name":"Australia-China Iron","from_lat":-31.95,"from_lon":115.86,"to_lat":31.23,"to_lon":121.47,"type":"Bulk","status":"Active"},
-    {"name":"Cape Reroute","from_lat":1.35,"from_lon":103.8,"to_lat":-34.36,"to_lon":18.48,"type":"Container","status":"Active"},
+    # Multi-waypoint paths — each "path" is [[lon, lat], ...] for PathLayer
+    {"name":"Asia-Europe via Suez","from_lat":1.35,"from_lon":103.8,"to_lat":51.5,"to_lon":-0.1,
+     "type":"Container","status":"Rerouted",
+     "path":[[103.8,1.35],[99.5,3.5],[87.0,7.0],[72.8,18.9],[56.26,12.5],[43.38,12.58],[32.4,30.42],[29.9,31.2],[12.5,37.5],[-0.1,51.5]],
+     "tip":"⚓ TRADE | Asia→Europe via Suez | REROUTED — Houthi disruption | Container"},
+    {"name":"Cape of Good Hope Reroute","from_lat":1.35,"from_lon":103.8,"to_lat":51.5,"to_lon":-0.1,
+     "type":"Container","status":"Active",
+     "path":[[103.8,1.35],[99.0,2.0],[87.0,-2.0],[70.0,-12.0],[50.0,-20.0],[35.0,-26.0],[18.48,-34.36],[0.0,-32.0],[-12.0,-25.0],[-10.0,-3.0],[-9.0,15.0],[-9.5,35.0],[-0.1,51.5]],
+     "tip":"⚓ TRADE | Cape Reroute | Asia→Europe avoiding Red Sea | +$1500/container | Container"},
+    {"name":"Trans-Pacific (Asia→USA)","from_lat":31.23,"from_lon":121.47,"to_lat":33.74,"to_lon":-118.2,
+     "type":"Container","status":"Active",
+     "path":[[121.47,31.23],[135.0,34.0],[150.0,38.0],[165.0,40.0],[180.0,40.5],[-165.0,38.0],[-150.0,35.0],[-130.0,34.5],[-118.2,33.74]],
+     "tip":"⚓ TRADE | Trans-Pacific | Shanghai→LA | 14-16 days | Container"},
+    {"name":"N. Atlantic (USA→Europe)","from_lat":40.71,"from_lon":-74.0,"to_lat":51.5,"to_lon":-0.1,
+     "type":"Container","status":"Active",
+     "path":[[-74.0,40.71],[-60.0,43.0],[-45.0,46.0],[-30.0,48.0],[-15.0,50.0],[-0.1,51.5]],
+     "tip":"⚓ TRADE | N. Atlantic | New York→London | 7-8 days | Container"},
+    {"name":"ME Oil to Asia","from_lat":26.56,"from_lon":56.26,"to_lat":35.68,"to_lon":139.69,
+     "type":"Oil Tanker","status":"Disrupted",
+     "path":[[56.26,26.56],[65.0,22.0],[72.8,18.9],[80.0,12.0],[87.0,5.0],[100.5,3.5],[103.8,1.35],[115.0,10.0],[120.0,20.0],[126.0,28.0],[130.0,32.5],[135.0,34.5],[139.69,35.68]],
+     "tip":"⚓ TRADE | ME Oil→Asia | DISRUPTED Hormuz | Tanker | 20% global oil"},
+    {"name":"West Africa Oil to USA","from_lat":6.45,"from_lon":3.4,"to_lat":40.71,"to_lon":-74.0,
+     "type":"Oil Tanker","status":"Active",
+     "path":[[3.4,6.45],[-5.0,5.0],[-15.0,8.0],[-25.0,12.0],[-40.0,18.0],[-55.0,25.0],[-65.0,32.0],[-74.0,40.71]],
+     "tip":"⚓ TRADE | W. Africa Oil→USA | Nigeria/Angola→Gulf Coast | Oil Tanker"},
+    {"name":"Australia-China Iron Ore","from_lat":-31.95,"from_lon":115.86,"to_lat":31.23,"to_lon":121.47,
+     "type":"Bulk","status":"Active",
+     "path":[[115.86,-31.95],[118.0,-25.0],[118.0,-15.0],[118.0,-5.0],[115.0,5.0],[115.0,12.0],[118.0,20.0],[120.0,26.0],[121.47,31.23]],
+     "tip":"⚓ TRADE | Australia→China | Iron ore/coal | 700Mt/yr | Bulk"},
+    {"name":"Russia-China Energy Corridor","from_lat":55.75,"from_lon":37.61,"to_lat":39.9,"to_lon":116.39,
+     "type":"Oil Tanker","status":"Active",
+     "path":[[37.61,55.75],[55.0,52.0],[65.0,54.0],[80.0,55.0],[100.0,50.0],[110.0,45.0],[116.39,39.9]],
+     "tip":"⚓ TRADE | Russia→China Energy | Power of Siberia 2 | War sanctions bypass | Oil Tanker"},
 ]
 
 GPS_JAMMING_ZONES = [
@@ -1665,16 +1975,42 @@ CRITICAL_MINERALS = [
 ]
 
 STRATEGIC_WATERWAYS = [
-    {"name":"Strait of Hormuz","lat":26.56,"lon":56.26,"tip":"⚓ STRATEGIC WATERWAY | Hormuz | 20% global oil | DISRUPTED"},
-    {"name":"Suez Canal","lat":30.42,"lon":32.35,"tip":"⚓ STRATEGIC WATERWAY | Suez | 12% global trade | Reduced traffic"},
-    {"name":"Bab el-Mandeb","lat":12.58,"lon":43.38,"tip":"⚓ STRATEGIC WATERWAY | Bab el-Mandeb | Houthi zone | 9% global trade"},
-    {"name":"Strait of Malacca","lat":3.0,"lon":101.0,"tip":"⚓ STRATEGIC WATERWAY | Malacca | 25% global trade | Normal"},
-    {"name":"Panama Canal","lat":8.97,"lon":-79.53,"tip":"⚓ STRATEGIC WATERWAY | Panama | Drought reducing capacity | 3-5% global trade"},
-    {"name":"Danish Straits","lat":57.44,"lon":10.0,"tip":"⚓ STRATEGIC WATERWAY | Danish Straits | Baltic access | NATO monitored"},
-    {"name":"Kerch Strait","lat":45.35,"lon":36.62,"tip":"⚓ STRATEGIC WATERWAY | Kerch | Russian control | Near-blocked"},
-    {"name":"Lombok Strait","lat":-8.5,"lon":115.87,"tip":"⚓ STRATEGIC WATERWAY | Lombok | Indonesia | Malacca alternate"},
-    {"name":"Formosa Strait","lat":24.5,"lon":119.5,"tip":"⚓ STRATEGIC WATERWAY | Formosa | PLA tensions | Semiconductor supply"},
-    {"name":"Mozambique Channel","lat":-18.0,"lon":41.0,"tip":"⚓ STRATEGIC WATERWAY | Mozambique Channel | LNG export route"},
+    {"name":"Strait of Hormuz","lat":26.56,"lon":56.26,"status":"red",
+     "path":[[55.0,24.5],[55.8,25.5],[56.26,26.56],[57.2,27.0]],
+     "tip":"⚓ STRATEGIC WATERWAY | Hormuz | 20% global oil | DISRUPTED | Iran-Israel war"},
+    {"name":"Suez Canal","lat":30.42,"lon":32.35,"status":"amber",
+     "path":[[32.55,31.2],[32.4,30.42],[32.3,29.5],[32.55,28.2]],
+     "tip":"⚓ STRATEGIC WATERWAY | Suez | 12% global trade | Reduced traffic"},
+    {"name":"Bab el-Mandeb","lat":12.58,"lon":43.38,"status":"red",
+     "path":[[43.1,11.2],[43.38,12.58],[43.7,13.8]],
+     "tip":"⚓ STRATEGIC WATERWAY | Bab el-Mandeb | Houthi zone | 9% global trade"},
+    {"name":"Strait of Malacca","lat":3.0,"lon":101.0,"status":"green",
+     "path":[[103.8,1.0],[102.0,2.5],[100.5,3.8],[99.5,5.5]],
+     "tip":"⚓ STRATEGIC WATERWAY | Malacca | 25% global trade | Normal"},
+    {"name":"Panama Canal","lat":8.97,"lon":-79.53,"status":"amber",
+     "path":[[-79.95,8.3],[-79.53,8.97],[-79.1,9.35]],
+     "tip":"⚓ STRATEGIC WATERWAY | Panama | Drought capacity − 30% | 3-5% global trade"},
+    {"name":"Danish Straits","lat":57.44,"lon":10.0,"status":"green",
+     "path":[[9.8,56.0],[10.0,57.44],[10.5,58.5]],
+     "tip":"⚓ STRATEGIC WATERWAY | Danish Straits | Baltic access | NATO monitored"},
+    {"name":"Kerch Strait","lat":45.35,"lon":36.62,"status":"red",
+     "path":[[36.0,44.9],[36.62,45.35],[37.1,45.7]],
+     "tip":"⚓ STRATEGIC WATERWAY | Kerch | Russian control | Near-blocked | War zone"},
+    {"name":"Lombok Strait","lat":-8.5,"lon":115.87,"status":"green",
+     "path":[[115.0,-8.1],[115.87,-8.5],[116.5,-8.9]],
+     "tip":"⚓ STRATEGIC WATERWAY | Lombok | Indonesia | Malacca alternate"},
+    {"name":"Taiwan / Formosa Strait","lat":24.5,"lon":119.5,"status":"amber",
+     "path":[[121.8,22.0],[120.5,23.5],[119.5,24.5],[119.0,26.0]],
+     "tip":"⚓ STRATEGIC WATERWAY | Formosa | PLA tensions | Semiconductor supply risk"},
+    {"name":"Mozambique Channel","lat":-18.0,"lon":41.0,"status":"green",
+     "path":[[34.5,-12.0],[36.0,-15.0],[41.0,-18.0],[43.5,-20.5]],
+     "tip":"⚓ STRATEGIC WATERWAY | Mozambique Channel | LNG export route | East Africa"},
+    {"name":"Turkish Straits (Bosphorus)","lat":41.1,"lon":29.05,"status":"amber",
+     "path":[[28.97,40.9],[29.05,41.1],[29.1,41.4]],
+     "tip":"⚓ STRATEGIC WATERWAY | Bosphorus | Black Sea access | Montreux Convention"},
+    {"name":"Gibraltar Strait","lat":35.97,"lon":-5.45,"status":"green",
+     "path":[[-6.0,35.8],[-5.45,35.97],[-4.8,36.2]],
+     "tip":"⚓ STRATEGIC WATERWAY | Gibraltar | Atlantic-Med gateway | UK/Spain sovereign"},
 ]
 
 def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf, show_supply, show_heat,
@@ -1943,34 +2279,45 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
     if show_ships:
-        stdf = pd.DataFrame(SHIP_TRAFFIC_ZONES)
-        stdf["_color"] = stdf["traffic"].apply(lambda t:
-            [255,30,60,200] if "Blocked" in t or "Disrupted" in t
-            else [255,140,66,180] if "Reduced" in t or "Critical" in t
-            else [0,200,255,160] if "Extreme" in t or "Heavy" in t
-            else [0,230,118,140])
-        stdf["_radius"] = stdf["vessels_day"].apply(lambda v: min(int(v * 400), 220000))
-        if "tip" not in stdf.columns:
-            stdf["tip"] = stdf.apply(lambda r: f"🚢 SHIP TRAFFIC\n{r['name']}\n{r['vessels_day']} vessels/day\nStatus: {r['traffic']}", axis=1)
-        layers.append(pdk.Layer("ScatterplotLayer", data=stdf, get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
+        _ship_path_data = []
+        for _z in SHIP_TRAFFIC_ZONES:
+            if "path" not in _z:
+                continue
+            _t = _z["traffic"]
+            _col = ([255,30,60,210] if "Blocked" in _t or "Disrupted" in _t
+                    else [255,140,66,190] if "Reduced" in _t or "Critical" in _t
+                    else [0,200,255,170] if "Extreme" in _t or "Heavy" in _t
+                    else [0,230,118,150])
+            _w = 4 if "Extreme" in _t or "Heavy" in _t else 3 if "Blocked" in _t or "Disrupted" in _t else 2
+            _ship_path_data.append({
+                "path": _z["path"], "_color": _col, "_width": _w,
+                "tip": _z.get("tip", f"🚢 {_z['name']} | {_z['vessels_day']} vessels/day"),
+            })
+        if _ship_path_data:
+            _spdf = pd.DataFrame(_ship_path_data)
+            layers.append(pdk.Layer("PathLayer", data=_spdf,
+                                     get_path="path", get_color="_color", get_width="_width",
+                                     width_min_pixels=2, width_max_pixels=8,
+                                     pickable=True, auto_highlight=True, id="ship_traffic"))
 
     if show_trade:
-        t_colors = {"Container":[0,200,255,130],"Oil Tanker":[255,140,66,150],"Bulk":[157,110,255,130]}
-        t_data = []
-        for r in TRADE_ROUTE_ARCS:
-            col = t_colors.get(r["type"],[74,107,133,100])
-            if r["status"] in ("Rerouted","Disrupted"): col = [255,61,90,160]
-            t_data.append({**r,"_color":col})
-        if t_data:
-            tdf2 = pd.DataFrame(t_data)
-            if "tip" not in tdf2.columns:
-                tdf2["tip"] = tdf2.apply(lambda r: f"⚓ TRADE ROUTE\n{r.get('name','')}\nType: {r.get('type','')} · Status: {r.get('status','')}", axis=1)
-            layers.append(pdk.Layer("ArcLayer", data=tdf2,
-                                     get_source_position=["from_lon","from_lat"],
-                                     get_target_position=["to_lon","to_lat"],
-                                     get_source_color="_color", get_target_color="_color",
-                                     get_width=2, pickable=True, auto_highlight=True))
+        _t_colors = {"Container":[0,200,255,150],"Oil Tanker":[255,140,66,170],"Bulk":[157,110,255,150]}
+        _trade_path_data = []
+        for _r in TRADE_ROUTE_ARCS:
+            _col = _t_colors.get(_r.get("type",[]), [74,107,133,120])
+            if _r.get("status") in ("Rerouted","Disrupted"): _col = [255,61,90,180]
+            _w = 3 if _r.get("status") in ("Rerouted","Disrupted") else 2
+            if "path" in _r:
+                _trade_path_data.append({
+                    "path": _r["path"], "_color": _col, "_width": _w,
+                    "tip": _r.get("tip", f"⚓ TRADE | {_r.get('name','')} | {_r.get('type','')} | {_r.get('status','')}"),
+                })
+        if _trade_path_data:
+            _tpdf = pd.DataFrame(_trade_path_data)
+            layers.append(pdk.Layer("PathLayer", data=_tpdf,
+                                     get_path="path", get_color="_color", get_width="_width",
+                                     width_min_pixels=1, width_max_pixels=6,
+                                     pickable=True, auto_highlight=True, id="trade_routes"))
 
     if show_gps:
         gdf = pd.DataFrame(GPS_JAMMING_ZONES)
@@ -2092,14 +2439,22 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
     if show_waterways:
-        wway_df = pd.DataFrame(STRATEGIC_WATERWAYS)
-        wway_df["_color"] = [[0,200,255,180]]*len(wway_df)
-        wway_df["_radius"] = 120000
-        if "tip" not in wway_df.columns:
-            wway_df["tip"] = wway_df.get("tip", wway_df.apply(lambda r: f"⚓ STRATEGIC WATERWAY\n{r['name']}", axis=1))
-        layers.append(pdk.Layer("ScatterplotLayer", data=wway_df, get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
-
+        _wway_path_data = []
+        _ww_status_col = {"red":[255,30,60,220],"amber":[255,180,0,200],"green":[0,200,255,180]}
+        for _w in STRATEGIC_WATERWAYS:
+            if "path" not in _w:
+                continue
+            _wc = _ww_status_col.get(_w.get("status","green"), [0,200,255,180])
+            _wway_path_data.append({
+                "path": _w["path"], "_color": _wc, "_width": 4,
+                "tip": _w.get("tip", f"⚓ WATERWAY | {_w['name']}"),
+            })
+        if _wway_path_data:
+            _wwdf = pd.DataFrame(_wway_path_data)
+            layers.append(pdk.Layer("PathLayer", data=_wwdf,
+                                     get_path="path", get_color="_color", get_width="_width",
+                                     width_min_pixels=2, width_max_pixels=10,
+                                     pickable=True, auto_highlight=True, id="waterways"))
     if show_fires_layer:
         fire_pts = [{"lat":r["lat"],"lon":r["lon"],"fires":r["fires"]} for r in [
             {"lat":49.0,"lon":32.0,"fires":2162},{"lat":32.0,"lon":51.0,"fires":485},
@@ -2598,6 +2953,80 @@ body{{background:#02040a;font-family:'DM Sans',system-ui,sans-serif;color:#e2ecf
 # LIVE MARKET DATA FETCHERS  (Yahoo Finance · CoinGecko)
 # ═══════════════════════════════════════════════════════════════
 
+@st.cache_data(ttl=1800, show_spinner=False)
+def fetch_live_strategic_risk() -> dict:
+    """Derive a live Strategic Risk score from GDELT tone API + conflict data."""
+    base = STRATEGIC_RISK.copy()
+    try:
+        # Fetch average tone for top conflict keywords from GDELT
+        import urllib.parse
+        queries = [
+            ("war conflict military strike", "Military Conflict"),
+            ("cyber attack hack breach", "Cyber Threats"),
+            ("sanctions trade war economy", "Economic Disruption"),
+            ("coup protest election fraud instability", "Political Instability"),
+            ("earthquake flood drought wildfire climate", "Climate / Disaster"),
+            ("pandemic virus outbreak disease", "Pandemic Risk"),
+        ]
+        component_scores = []
+        for q, name in queries:
+            try:
+                url = ("https://api.gdeltproject.org/api/v2/tv/tv?query="
+                       + urllib.parse.quote(q)
+                       + "&mode=timelinetone&format=json&timespan=7d")
+                r = requests.get(url, timeout=8)
+                if r.status_code == 200:
+                    data = r.json()
+                    series = data.get("timeline", [{}])[0].get("data", []) if data.get("timeline") else []
+                    if series:
+                        tones = [abs(float(p.get("value", 0))) for p in series if p.get("value")]
+                        avg_tone = sum(tones) / len(tones) if tones else 0
+                        # Map tone magnitude (0-10) to risk score (0-100)
+                        risk_score = min(int(avg_tone * 9), 95)
+                        component_scores.append((name, risk_score))
+                    else:
+                        component_scores.append((name, None))
+                else:
+                    component_scores.append((name, None))
+            except Exception:
+                component_scores.append((name, None))
+
+        # Blend live scores with baseline (70% baseline, 30% live)
+        base_comp_map = {c["name"]: c for c in base["components"]}
+        new_comps = []
+        live_vals = []
+        for name, live_val in component_scores:
+            base_c = base_comp_map.get(name, {})
+            base_val = base_c.get("val", 50)
+            if live_val is not None:
+                blended = round(base_val * 0.7 + live_val * 0.3)
+                live_vals.append(blended)
+            else:
+                blended = base_val
+            new_comps.append({
+                "name": name, "val": blended, "col": base_c.get("col", "#ff8c42")
+            })
+
+        if live_vals:
+            new_score = round(sum(live_vals) / len(live_vals))
+            # Clamp to reasonable range
+            new_score = max(30, min(92, new_score))
+        else:
+            new_score = base["score"]
+
+        col = "#ff3d5a" if new_score >= 75 else "#ff8c42" if new_score >= 55 else "#ffb400" if new_score >= 35 else "#00e676"
+        lbl = "CRITICAL" if new_score >= 75 else "ELEVATED" if new_score >= 55 else "MODERATE" if new_score >= 35 else "LOW"
+
+        return {
+            "score": new_score, "label": lbl, "color": col,
+            "trend": base.get("trend", "→"),
+            "components": new_comps if new_comps else base["components"],
+            "is_live": bool(live_vals),
+        }
+    except Exception:
+        return {**base, "is_live": False}
+
+
 @st.cache_data(ttl=300, show_spinner=False)
 def _yahoo_batch(symbols: tuple) -> dict:
     """Batch-fetch Yahoo Finance quotes. Returns {sym: {price, chg_pct, name, currency}}."""
@@ -2621,6 +3050,56 @@ def _yahoo_batch(symbols: tuple) -> dict:
         except Exception:
             continue
     return out
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def fetch_live_pizza_index() -> dict:
+    """Update Pizza Index components with live commodity prices from Yahoo Finance."""
+    base = PIZZA_INDEX.copy()
+    try:
+        # Fetch live prices for pizza ingredients
+        syms = {"ZW=F":"Wheat (CBOT)","NG=F":"Natural Gas","CL=F":"WTI Crude"}
+        quotes = _yahoo_batch(tuple(syms.keys()))
+
+        new_comps = []
+        for c in base["components"]:
+            nc = dict(c)
+            # Update wheat futures
+            if "Wheat" in c["name"] and "ZW=F" in quotes:
+                q = quotes["ZW=F"]
+                nc["val"] = round(q["price"] / 100, 2)  # cents/bu → $/bu
+                pct_chg = q["chg_pct"]
+                nc["change"] = round(pct_chg, 1)
+                # Stress proportional to price (baseline ~5.50/bu)
+                stress = min(int(nc["val"] / 8.0 * 100), 95)
+                nc["stress"] = max(20, stress)
+                nc["note"] = f"Live: ${nc['val']}/bu ({'+' if pct_chg>=0 else ''}{pct_chg:.1f}% 24h) · Ukraine/Russia disruption"
+            # Update energy
+            elif "Energy" in c["name"] and "NG=F" in quotes:
+                q = quotes["NG=F"]
+                nc["val"] = round(q["price"], 2)
+                pct_chg = q["chg_pct"]
+                nc["change"] = round(pct_chg, 1)
+                stress = min(int(nc["val"] / 6.0 * 100), 90)
+                nc["stress"] = max(15, stress)
+                nc["note"] = f"Live: ${nc['val']}/MMBtu ({'+' if pct_chg>=0 else ''}{pct_chg:.1f}% 24h)"
+            new_comps.append(nc)
+
+        # Recalculate overall score
+        all_stress = [c.get("stress", 50) for c in new_comps]
+        new_score = round(sum(all_stress) / len(all_stress))
+        col = "#ff3d5a" if new_score >= 75 else "#ff8c42" if new_score >= 55 else "#ffb400" if new_score >= 35 else "#00e676"
+        lbl = "CRITICAL STRESS" if new_score >= 75 else "ELEVATED STRESS" if new_score >= 55 else "MODERATE" if new_score >= 35 else "LOW STRESS"
+
+        result = base.copy()
+        result["components"] = new_comps
+        result["score"] = new_score
+        result["color"] = col
+        result["label"] = lbl
+        result["is_live"] = True
+        return result
+    except Exception:
+        return {**base, "is_live": False}
 
 
 @st.cache_data(ttl=300, show_spinner=False)
@@ -4700,89 +5179,57 @@ renderGrid();
         st.markdown('<div class="sec-label">📡 Live Article Feed</div>', unsafe_allow_html=True)
         st.caption("Fetched live in your browser via CORS proxy fallbacks.")
 
-        feeds_js = json.dumps([
-            {"name":s["name"],"rss":s["rss"],
-             "color":NEWS_CAT_COLOR.get(s["cat"],"#4a6b85"),"cat":s["cat"]}
-            for s in vis_src[:4]
-        ])
-
-        art_html = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-*{{margin:0;padding:0;box-sizing:border-box;}}
-body{{background:#02040a;font-family:'DM Sans',system-ui,sans-serif;color:#e2ecf8;padding:12px;}}
-#st{{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#4a6b85;margin-bottom:14px;display:flex;align-items:center;gap:8px;min-height:18px;}}
-.dot{{width:6px;height:6px;border-radius:50%;background:#00c8ff;animation:bl 1.2s ease-in-out infinite;flex-shrink:0;}}
-@keyframes bl{{0%,100%{{opacity:1}}50%{{opacity:.2}}}}
-.g{{display:grid;grid-template-columns:1fr 1fr;gap:12px;}}
-@media(max-width:560px){{.g{{grid-template-columns:1fr;}}}}
-.c{{background:#0b1524;border:1px solid rgba(0,200,255,.12);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden;transition:border-color .18s,transform .15s;}}
-.c:hover{{border-color:rgba(0,200,255,.3);transform:translateY(-1px);}}
-.c::after{{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--ac,#00c8ff),transparent);}}
-.s{{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;margin-bottom:6px;}}
-.h{{font-size:13px;font-weight:600;color:#e2ecf8;line-height:1.45;margin-bottom:8px;}}
-.f{{display:flex;align-items:center;justify-content:space-between;}}
-.t{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a6b85;}}
-a.r{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#00c8ff;text-decoration:none;padding:3px 10px;border:1px solid rgba(0,200,255,.28);border-radius:5px;white-space:nowrap;}}
-a.r:hover{{background:rgba(0,200,255,.1);}}
-.err{{color:#ff8c42;font-family:'IBM Plex Mono',monospace;font-size:11px;padding:12px;border:1px solid rgba(255,140,66,.25);border-radius:8px;background:rgba(255,140,66,.05);line-height:1.6;}}
-.sl{{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}}
-.sl a{{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#00c8ff;text-decoration:none;padding:4px 12px;border:1px solid rgba(0,200,255,.25);border-radius:20px;}}
-</style></head><body>
-<div id="st"><div class="dot"></div><span>Loading feeds…</span></div>
-<div id="g" class="g"></div>
-<script>
-const F={feeds_js};
-const P=[
-  u=>`https://api.allorigins.win/get?url=${{encodeURIComponent(u)}}`,
-  u=>`https://corsproxy.io/?${{encodeURIComponent(u)}}`,
-  u=>`https://api.codetabs.com/v1/proxy?quest=${{encodeURIComponent(u)}}`,
-];
-function ta(s){{try{{const d=new Date(s),x=(Date.now()-d)/1000;
-  if(x<60)return Math.round(x)+'s ago';if(x<3600)return Math.round(x/60)+'m ago';
-  return Math.round(x/3600)+'h ago';}}catch{{return '';}}}}
-function esc(s){{return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}}
-function px(xml){{
-  try{{const doc=new DOMParser().parseFromString(xml,'text/xml');
-    if(doc.querySelector('parsererror'))return[];
-    return[...doc.querySelectorAll('item')].slice(0,7).map(it=>{{
-      const g=n=>{{const e=it.querySelector(n);return(e?.textContent||e?.getAttribute('href')||'').split('<![CDATA[').join('').split(']]>').join('').trim();}};
-      return{{ti:g('title'),li:g('link'),pu:g('pubDate')}};
-    }});}}catch{{return[];}}}}
-async function ff(f){{
-  for(const p of P){{try{{
-    const r=await fetch(p(f.rss),{{signal:AbortSignal.timeout(9000)}});
-    if(!r.ok)continue;
-    const ct=r.headers.get('content-type')||'';
-    let xml='';
-    if(ct.includes('json')){{const j=await r.json();xml=j.contents||j.data||'';}}
-    else xml=await r.text();
-    const items=px(xml);
-    if(items.length)return{{f,items}};
-  }}catch{{}}}}
-  return{{f,items:[]}};
-}}
-async function main(){{
-  const se=document.getElementById('st'),ge=document.getElementById('g');
-  const res=await Promise.all(F.map(ff));
-  const arts=[];let n=0;
-  res.forEach(({{f,items}})=>{{if(items.length){{n++;items.forEach(it=>arts.push({{ti:it.ti,li:it.li,tm:ta(it.pu),sr:f.name,co:f.color}}));}}}});
-  if(!arts.length){{
-    se.innerHTML='<span style="color:#ff8c42">All proxies blocked</span>';
-    ge.innerHTML='<div class="err">RSS feeds could not load.<div class="sl">'+
-      F.map(f=>`<a href="https://${{f.rss.split('/').slice(0,3).join('/')}}" target="_blank">${{f.name}}</a>`).join('')+
-      '</div></div>';return;}}
-  se.innerHTML=`<div class="dot" style="background:#00e676"></div><span>${{n}} feed${{n>1?'s':''}} · ${{arts.length}} articles</span>`;
-  ge.innerHTML=arts.slice(0,24).map(a=>`
-    <div class="c" style="--ac:${{a.co}}">
-      <div class="s" style="color:${{a.co}}">${{esc(a.sr)}}</div>
-      <div class="h">${{esc(a.ti).slice(0,120)}}</div>
-      <div class="f"><span class="t">${{a.tm}}</span>
-        ${{a.li?`<a class="r" href="${{a.li}}" target="_blank" rel="noopener">Read →</a>`:''}}
-      </div>
-    </div>`).join('');}}
-main();
-</script></body></html>"""
-
-        components.html(art_html, height=680, scrolling=True)
+        # Server-side RSS fetch — no CORS issues, works on Streamlit Cloud
+        _news_arts = fetch_news_rss(cat_sel.lower() if cat_sel != "ALL" else "global")
+        from html import escape as _nhe
+        _art_cat_col = NEWS_CAT_COLOR.get(cat_sel.lower(), "#00c8ff") if cat_sel != "ALL" else "#00c8ff"
+        if _news_arts:
+            st.markdown(
+                '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:#00e676;'
+                'margin-bottom:12px;display:flex;align-items:center;gap:8px">'
+                '<span style="width:6px;height:6px;border-radius:50%;background:#00e676;'
+                'display:inline-block;animation:pulse 1.2s ease-in-out infinite"></span>'
+                f' {len(_news_arts)} articles — live</div>',
+                unsafe_allow_html=True
+            )
+            _art_cols = st.columns(2)
+            for _ai, _art in enumerate(_news_arts[:24]):
+                with _art_cols[_ai % 2]:
+                    _ac = NEWS_CAT_COLOR.get(
+                        next((s["cat"] for s in NEWS_SOURCES
+                              if s["name"].upper() == _art.get("source","").upper()), "global"),
+                        _art_cat_col)
+                    _art_url = _art.get("url","")
+                    _rbtn = (f'<a href="{_nhe(_art_url)}" target="_blank" rel="noopener" '
+                             'style="font-family:IBM Plex Mono,monospace;font-size:10px;'
+                             'color:#00c8ff;text-decoration:none;padding:3px 10px;'
+                             'border:1px solid rgba(0,200,255,.28);border-radius:5px">Read →</a>'
+                             ) if _art_url else ""
+                    st.markdown(
+                        f'<div style="background:#0b1524;border:1px solid rgba(0,200,255,.12);'
+                        f'border-left:3px solid {_ac};border-radius:10px;padding:14px 16px;margin-bottom:10px">'
+                        f'<div style="font-family:IBM Plex Mono,monospace;font-size:9px;font-weight:600;'
+                        f'letter-spacing:.07em;text-transform:uppercase;color:{_ac};margin-bottom:6px">'
+                        f'{_nhe(_art.get("source",""))}</div>'
+                        f'<div style="font-size:13px;font-weight:600;color:#e2ecf8;line-height:1.45;margin-bottom:8px">'
+                        f'{_nhe((_art.get("title") or "")[:120])}</div>'
+                        f'<div style="display:flex;align-items:center;justify-content:space-between">'
+                        f'<span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:#4a6b85">'
+                        f'{_nhe(_art.get("time",""))}</span>{_rbtn}</div></div>',
+                        unsafe_allow_html=True)
+        else:
+            st.markdown(
+                '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:#ff8c42;'
+                'padding:16px;border:1px solid rgba(255,140,66,.25);border-radius:8px;'
+                'background:rgba(255,140,66,.05)">RSS feeds temporarily unavailable. '
+                'Try again shortly or visit sources directly.</div>',
+                unsafe_allow_html=True)
+            for _fs in vis_src[:6]:
+                st.markdown(
+                    f'<a href="https://{_fs["site"]}" target="_blank" rel="noopener" '
+                    f'style="font-family:IBM Plex Mono,monospace;font-size:10px;color:#00c8ff;'
+                    f'text-decoration:none;margin-right:12px">{_fs["name"]} →</a>',
+                    unsafe_allow_html=True)
 
     # ── SUB-TAB C: SOURCE DIRECTORY ──────────────────────────
     with sub_directory:
@@ -5237,27 +5684,31 @@ with tab_intel:
             panes += f'<div id="ci{i}" class="ipane" style="display:{"block" if i==0 else "none"}">{rows}</div>'
         return f'<div class="panel"><div class="stitle">Country Instability Index</div><div style="margin-bottom:12px">{pills}</div><div class="scroll">{panes}</div></div>'
 
-    # ── Strategic risk panel ───────────────────────────────────────
+    # ── Strategic risk panel — LIVE ──────────────────────────────
+    _live_risk = fetch_live_strategic_risk()
+
     def _strategic_panel():
-        score = 58
-        col = "#ff8c42"
         import math
-        circ = 2 * math.pi * 36
-        dash = circ * (1 - score / 100)
-        comps = [
-            ("Military Conflict", 78, "#ff3d5a"),
-            ("Cyber Threats",     65, "#9d6eff"),
-            ("Economic Disruption",61,"#ffb400"),
-            ("Political Instability",54,"#ff8c42"),
-            ("Climate / Disaster", 42, "#00e676"),
-            ("Pandemic Risk",      28, "#00c8ff"),
-        ]
-        comp_rows = "".join(f'''<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-<div style="min-width:140px;font-size:11px;color:#7fb3cc">{_he(n)}</div>
+        sr     = _live_risk
+        score  = sr["score"]
+        col    = sr["color"]
+        lbl    = sr["label"]
+        trend  = sr.get("trend", "→")
+        is_live = sr.get("is_live", False)
+        comps  = sr.get("components", [])
+        circ   = 2 * math.pi * 36
+        dash   = circ * (1 - score / 100)
+        live_badge = ('<span style="font-family:Courier New,monospace;font-size:8px;padding:1px 7px;' +
+                      'border-radius:10px;background:rgba(0,200,255,.08);border:1px solid rgba(0,200,255,.2);' +
+                      'color:#00c8ff;margin-left:8px">⚡ LIVE</span>') if is_live else ""
+        comp_rows = "".join(
+            f'''<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+<div style="min-width:140px;font-size:11px;color:#7fb3cc">{_he(c["name"])}</div>
 <div style="flex:1;height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden">
-<div style="height:100%;width:{v}%;background:{c}"></div></div>
-<span style="font-size:10px;color:{c};min-width:24px;text-align:right">{v}</span></div>''' for n,v,c in comps)
-        return f'''<div class="panel"><div class="stitle">Strategic Risk Overview</div>
+<div style="height:100%;width:{c["val"]}%;background:{c["col"]}"></div></div>
+<span style="font-size:10px;color:{c["col"]};min-width:24px;text-align:right">{c["val"]}</span></div>'''
+            for c in comps)
+        return f'''<div class="panel"><div class="stitle">Strategic Risk Overview{live_badge}</div>
 <div style="display:flex;align-items:center;gap:18px;margin-bottom:16px">
 <div style="position:relative;width:80px;height:80px;flex-shrink:0">
 <svg style="width:80px;height:80px;transform:rotate(-90deg)" viewBox="0 0 80 80">
@@ -5266,26 +5717,30 @@ with tab_intel:
 </svg>
 <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;font-size:26px;font-weight:700;color:{col}">{score}</div>
 </div>
-<div><div style="font-size:11px;color:{col};font-weight:600;margin-bottom:4px">ELEVATED</div>
-<div style="font-size:11px;color:#3d5a73">Stable</div></div></div>
+<div><div style="font-size:11px;color:{col};font-weight:600;margin-bottom:4px">{_he(lbl)}</div>
+<div style="font-size:11px;color:#3d5a73">Trend: {_he(trend)}</div></div></div>
 {comp_rows}</div>'''
 
-    # ── Intel feed panel ──────────────────────────────────────────
+    # ── Intel feed panel — LIVE ───────────────────────────────────
+    _live_conflict_feed = fetch_news_rss("conflict")
+    _live_cyber_feed    = fetch_news_rss("geopolitics")
+
     def _feed_panel():
-        intel_feed = [
-            {"source":"ISW","cat":"REPORT","tag":"UKRAINE","title":"Russian forces continue offensive operations near Avdiivka sector","time":"4h ago","url":"https://understandingwar.org"},
-            {"source":"Defense One","cat":"ALERT","tag":"MILITARY","title":"Pentagon orders second carrier strike group to Eastern Mediterranean","time":"3h ago","url":"https://defenseone.com"},
-            {"source":"CSIS","cat":"ALERT","tag":"IRAN","title":"IRGC drone production facility destroyed in latest Israeli strike","time":"6h ago","url":"https://csis.org"},
-            {"source":"Reuters","cat":"REPORT","tag":"NUCLEAR","title":"IAEA loses monitoring access to Fordow enrichment site","time":"12h ago","url":"https://reuters.com"},
-            {"source":"Foreign Policy","cat":"ALERT","tag":"MILITARY","title":"Six U.S. Troops Killed in Aircraft Crash in Iraq","time":"20h ago","url":"https://foreignpolicy.com"},
-            {"source":"Bellingcat","cat":"REPORT","tag":"OSINT","title":"Geolocated footage confirms new Russian S-400 near Zaporizhzhia","time":"7h ago","url":"https://bellingcat.com"},
+        intel_feed = _live_conflict_feed if _live_conflict_feed else [
+            {"source":"ISW","cat":"REPORT","tag":"UKRAINE","title":"Russian forces continue offensive near Avdiivka sector","time":"stale","url":"https://understandingwar.org"},
+            {"source":"Defense One","cat":"ALERT","tag":"MILITARY","title":"Pentagon orders carrier strike group to E. Mediterranean","time":"stale","url":"https://defenseone.com"},
+            {"source":"Reuters","cat":"REPORT","tag":"CONFLICT","title":"Check Reuters for latest conflict updates","time":"stale","url":"https://reuters.com"},
         ]
-        cyber_feed = [
-            {"source":"Recorded Future","title":"APT41 campaign targeting defence contractors across SE Asia","time":"2h ago","sector":"Cyber"},
-            {"source":"WCBM","title":"New cyber-physical attack vector targets ICS/SCADA water systems","time":"21h ago","sector":"Cyber"},
-            {"source":"GlobalSecurity","title":"PH Navy contingent now in Australia for joint bilateral exercise","time":"4h ago","sector":"Military"},
-            {"source":"IndiaGazette","title":"Iran Army chief: attack on IRIS Dena warship will not go unanswered","time":"7h ago","sector":"Military"},
+        # Tag live articles appropriately
+        for _it in intel_feed:
+            if "cat" not in _it:   _it["cat"] = "REPORT"
+            if "tag" not in _it:   _it["tag"] = "INTEL"
+        cyber_feed = _live_cyber_feed if _live_cyber_feed else [
+            {"source":"Recorded Future","title":"APT41 campaign targeting defence contractors","time":"stale","sector":"Cyber"},
+            {"source":"WCBM","title":"Cyber-physical attack vector targets ICS/SCADA","time":"stale","sector":"Cyber"},
         ]
+        for _it in cyber_feed:
+            if "sector" not in _it: _it["sector"] = "Geopolitics"
         cat_col = {"ALERT":"#ff3d5a","REPORT":"#ffb400","BRIEF":"#00c8ff"}
         tag_col = {"MILITARY":"#ff8c42","CONFLICT":"#ff3d5a","UKRAINE":"#00c8ff","IRAN":"#ffb400","NUCLEAR":"#9d6eff","OSINT":"#00e676","Cyber":"#9d6eff","Military":"#ff8c42"}
         def _rows(items):
@@ -5531,9 +5986,11 @@ html{{scroll-behavior:smooth;}}
 body{{
   background:#030609;
   background-image:radial-gradient(ellipse 70% 30% at 50% -2%,rgba(0,180,255,.04) 0%,transparent 65%);
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
   color:#d4e5f5;padding:22px 20px 60px;line-height:1.45;
 }}
+.fm{{font-family:"Courier New",Courier,monospace;}}
+.fd{{font-family:Arial,sans-serif;font-weight:700;letter-spacing:.02em;}}
 .panel{{
   background:#070d18;
   border:1px solid rgba(0,200,255,.09);
@@ -5648,7 +6105,7 @@ with tab_econ:
         "fires":        FIRES_DATA,
         "market":       MARKET_RADAR,
         "btc_etf":      BTC_ETF,
-        "pizza":        PIZZA_INDEX,
+        "pizza":        fetch_live_pizza_index(),
         "sanctions":    SANCTIONS_DATA,
         "currency_crisis": CURRENCY_CRISIS,
         "geo_risk":     GEO_RISK_PREMIUMS,
