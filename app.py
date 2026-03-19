@@ -5203,18 +5203,19 @@ with tab_intel:
         (high_fp,    "Elevated Postures",  "Force risk \u2265 60",   "#ff8c42"),
         (nuke_crit,  "Nuclear CRITICAL",   "Sites at critical",      "#9d6eff"),
     ]:
-        kpi_html += f'''<div style="background:#070d16;border:1px solid rgba(0,200,255,.1);border-radius:12px;padding:16px 18px">
-<div style="font-size:9px;color:#3d5a73;text-transform:uppercase;letter-spacing:.15em;margin-bottom:8px">{_he(lbl)}</div>
-<div style="font-size:48px;font-weight:700;color:{col};line-height:1;margin-bottom:6px">{num}</div>
-<div style="font-size:10px;color:#3d5a73">{_he(sub)}</div></div>'''
+        kpi_html += f'''<div style="background:#070d18;border:1px solid rgba(0,200,255,.09);border-radius:13px;padding:18px 20px;position:relative;overflow:hidden">
+<div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,{col},{col}00)"></div>
+<div style="font-size:8.5px;color:#2e4a63;text-transform:uppercase;letter-spacing:.2em;margin-bottom:10px">{_he(lbl)}</div>
+<div style="font-size:50px;font-weight:700;color:{col};line-height:.9;margin-bottom:8px">{num}</div>
+<div style="font-size:9.5px;color:#2e4a63">{_he(sub)}</div></div>'''
     kpi_html += '</div>'
 
     # ── Country instability panel ─────────────────────────────────
     def _instability_panel():
         regions = ["All"] + sorted(set(c["region"] for c in COUNTRY_INSTABILITY))
         pills = "".join(
-            f'<button onclick="this.closest(\'.panel\').querySelectorAll(\'.pill\').forEach(p=>p.style.color=\'#3d5a73\');this.style.color=\'#00c8ff\';this.closest(\'.panel\').querySelectorAll(\'.pane\').forEach(p=>p.style.display=\'none\');this.closest(\'.panel\').querySelector(\'#ci{i}\').style.display=\'block\'" '
-            f'style="padding:4px 12px;border-radius:20px;font-size:10px;cursor:pointer;background:#0c1a28;border:1px solid rgba(61,90,115,.3);color:{"#00c8ff" if i==0 else "#3d5a73"};margin:0 4px 4px 0">{_he(r)}</button>'
+            f'<button class="ipill" data-pane="ci{i}" onclick="var pp=this.closest(\'.panel\');pp.querySelectorAll(\'.ipill\').forEach(b=>{{b.style.color=\'#3d5a73\';b.style.borderColor=\'rgba(61,90,115,.3)\';b.style.background=\'#0c1a28\';}});this.style.color=\'#00c8ff\';this.style.borderColor=\'rgba(0,200,255,.3)\';this.style.background=\'rgba(0,200,255,.08)\';pp.querySelectorAll(\'.ipane\').forEach(p=>p.style.display=\'none\');pp.querySelector(\'#ci{i}\').style.display=\'block\'" '
+            f'style="padding:4px 12px;border-radius:20px;font-size:10px;cursor:pointer;background:{"rgba(0,200,255,.08)" if i==0 else "#0c1a28"};border:1px solid {"rgba(0,200,255,.3)" if i==0 else "rgba(61,90,115,.3)"};color:{"#00c8ff" if i==0 else "#3d5a73"};margin:0 4px 4px 0">{_he(r)}</button>'
             for i, r in enumerate(regions)
         )
         panes = ""
@@ -5225,7 +5226,7 @@ with tab_intel:
             for c in items:
                 col = _rc(c["score"])
                 tc = "#ff8c42" if c["trend"] == "↑" else "#00e676" if c["trend"] == "↓" else "#3d5a73"
-                rows += f'''<div style="border-left:2px solid {col};border-radius:6px;padding:10px 12px;margin-bottom:7px;background:#06101e">
+                rows += f'''<div class="row-item" style="border-left-color:{col}">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
 <span style="font-size:13px;font-weight:600;color:#dce8f5">{_he(c["country"])}</span>
 <div style="display:flex;align-items:center;gap:8px">
@@ -5233,8 +5234,8 @@ with tab_intel:
 <span style="font-size:9px;color:{tc}">{_he(c["trend"])}</span>
 <span style="font-size:24px;font-weight:700;color:{col}">{c["score"]}</span>
 </div></div>{_bar(c["score"], col)}</div>'''
-            panes += f'<div id="ci{i}" style="display:{"block" if i==0 else "none"}">{rows}</div>'
-        return f'<div class="panel"><div class="stitle">Country Instability Index</div><div style="margin-bottom:12px">{pills}</div><div style="max-height:360px;overflow-y:auto">{panes}</div></div>'
+            panes += f'<div id="ci{i}" class="ipane" style="display:{"block" if i==0 else "none"}">{rows}</div>'
+        return f'<div class="panel"><div class="stitle">Country Instability Index</div><div style="margin-bottom:12px">{pills}</div><div class="scroll">{panes}</div></div>'
 
     # ── Strategic risk panel ───────────────────────────────────────
     def _strategic_panel():
@@ -5292,7 +5293,7 @@ with tab_intel:
             for item in items:
                 cc = cat_col.get(item.get("cat",""), "#3d5a73")
                 tc = tag_col.get(item.get("tag", item.get("sector","")), "#3d5a73")
-                out += f'''<div style="border-left:2px solid {cc};border-radius:6px;padding:10px 12px;margin-bottom:7px;background:#06101e">
+                out += f'''<div class="row-item" style="border-left-color:{cc}">
 <div style="display:flex;gap:5px;align-items:center;margin-bottom:5px">
 <span style="font-size:9px;color:#3d5a73;font-weight:600">{_he(item.get("source","").upper())}</span>
 {_bdg(item.get("cat",""), cc) if item.get("cat") else ""}
@@ -5308,7 +5309,7 @@ with tab_intel:
 <button onclick="this.parentNode.querySelectorAll(\'button\').forEach(b=>b.setAttribute(\'style\',\'{pill_style_off}\'));this.setAttribute(\'style\',\'{pill_style_on}\');document.getElementById(\'if0\').style.display=\'block\';document.getElementById(\'if1\').style.display=\'none\'" style="{pill_style_on}">Military / Conflict</button>
 <button onclick="this.parentNode.querySelectorAll(\'button\').forEach(b=>b.setAttribute(\'style\',\'{pill_style_off}\'));this.setAttribute(\'style\',\'{pill_style_on}\');document.getElementById(\'if0\').style.display=\'none\';document.getElementById(\'if1\').style.display=\'block\'" style="{pill_style_off}">Cyber / OSINT</button>
 </div>
-<div style="max-height:360px;overflow-y:auto">
+<div class="scroll">
 <div id="if0">{_rows(intel_feed)}</div>
 <div id="if1" style="display:none">{_rows(cyber_feed)}</div>
 </div></div>'''
@@ -5327,13 +5328,13 @@ with tab_intel:
         rows = ""
         for fp in fps:
             col = _rc(fp["risk"])
-            rows += f'''<div style="border-left:2px solid {col};border-radius:6px;padding:10px 12px;margin-bottom:7px;background:#06101e;display:flex;align-items:center;gap:10px">
+            rows += f'''<div class="row-item" style="border-left-color:{col};display:flex;align-items:center;gap:10px">
 <div style="flex:1">
 <div style="font-size:12px;font-weight:600;color:#dce8f5;margin-bottom:2px">{_he(fp["activity"])}</div>
 <div style="font-size:9px;color:#3d5a73;margin-bottom:4px">{_he(fp["actors"])} &middot; {fp["signals"]:,} signals</div>
 {_bar(fp["risk"], col)}</div>
 <div style="font-size:28px;font-weight:700;color:{col};flex-shrink:0">{fp["risk"]}</div></div>'''
-        return f'<div class="panel"><div class="stitle">Force Posture Monitor</div><div style="max-height:360px;overflow-y:auto">{rows}</div></div>'
+        return f'<div class="panel"><div class="stitle">Force Posture Monitor</div><div class="scroll">{rows}</div></div>'
 
     # ── Infrastructure panel ───────────────────────────────────────
     def _infra_panel():
@@ -5392,7 +5393,7 @@ with tab_intel:
                 col = _rc(r)
                 sc  = status_col.get(item.get("status",""), "#3d5a73")
                 extra = f'{item["traffic_pct"]}% global trade' if item.get("traffic_pct") else item.get("region","")
-                item_rows += f'''<div style="border-left:2px solid {col};border-radius:6px;padding:10px 12px;margin-bottom:7px;background:#06101e">
+                item_rows += f'''<div class="row-item" style="border-left-color:{col}">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
 <span style="font-size:12px;font-weight:600;color:#dce8f5">{_he(item["name"])}</span>
 <div style="display:flex;align-items:center;gap:6px">
@@ -5400,7 +5401,7 @@ with tab_intel:
 <span style="font-size:18px;font-weight:700;color:{col}">{r}</span>
 </div></div>{_bar(r, col)}
 <div style="font-size:9px;color:#3d5a73;margin-top:2px">{_he(extra)}</div></div>'''
-            panes += f'<div id="ic_{k}" style="display:{"block" if i==0 else "none"}"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">{stat_cards}</div><div style="max-height:280px;overflow-y:auto">{item_rows}</div></div>'
+            panes += f'<div id="ic_{k}" style="display:{"block" if i==0 else "none"}"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">{stat_cards}</div><div class="scroll">{item_rows}</div></div>'
         return f'<div class="panel"><div class="stitle">Infrastructure Cascade</div><div style="margin-bottom:12px">{pills}</div>{panes}</div>'
 
     # ── Nuclear / WMD panel ────────────────────────────────────────
@@ -5410,7 +5411,7 @@ with tab_intel:
         nuke_rows = ""
         for n in NUKE_ALERTS:
             lc = "#ff3d5a" if n["level"]=="CRITICAL" else "#ff8c42" if n["level"]=="HIGH" else "#ffb400"
-            nuke_rows += f'''<div style="border-left:2px solid {n.get("col",lc)};border-radius:6px;padding:10px 12px;margin-bottom:7px;background:#06101e">
+            nuke_rows += f'''<div class="row-item" style="border-left-color:{n.get("col",lc)};background:#06101e">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
 <span style="font-size:12px;font-weight:600;color:#dce8f5">{_he(n["site"])}</span>
 {_bdg(n["status"], lc)}</div>
@@ -5418,7 +5419,7 @@ with tab_intel:
         wmd_rows = ""
         for w in WMD_POSTURE:
             col = _rc(w["risk"])
-            wmd_rows += f'''<div style="border-left:2px solid {col};border-radius:6px;padding:10px 12px;margin-bottom:7px;background:#06101e">
+            wmd_rows += f'''<div class="row-item" style="border-left-color:{col}">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
 <div><span style="font-size:12px;font-weight:600;color:#dce8f5">{_he(w["actor"])}</span>
 <span style="font-size:9px;color:#3d5a73;margin-left:8px">{_he(w["type"])}</span></div>
@@ -5430,7 +5431,7 @@ with tab_intel:
 <button onclick="this.parentNode.querySelectorAll(\'button\').forEach(b=>b.setAttribute(\'style\',\'{pill_style_off}\'));this.setAttribute(\'style\',\'{pill_style_on}\');document.getElementById(\'nw0\').style.display=\'block\';document.getElementById(\'nw1\').style.display=\'none\'" style="{pill_style_on}">Nuclear Sites</button>
 <button onclick="this.parentNode.querySelectorAll(\'button\').forEach(b=>b.setAttribute(\'style\',\'{pill_style_off}\'));this.setAttribute(\'style\',\'{pill_style_on}\');document.getElementById(\'nw0\').style.display=\'none\';document.getElementById(\'nw1\').style.display=\'block\'" style="{pill_style_off}">WMD Posture</button>
 </div>
-<div style="max-height:360px;overflow-y:auto">
+<div class="scroll">
 <div id="nw0">{nuke_rows}</div>
 <div id="nw1" style="display:none">{wmd_rows}</div>
 </div></div>'''
@@ -5450,7 +5451,7 @@ with tab_intel:
             wc  = "#ff3d5a" if cp["wow"] < 0 else "#00e676"
             wow_str = f'+{cp["wow"]}' if cp["wow"] > 0 else str(cp["wow"])
             exps = " ".join(_bdg(e, "#3d5a73") for e in cp["exports"])
-            rows += f'''<div style="border-left:2px solid {col};border-radius:6px;padding:12px 14px;margin-bottom:10px;background:#06101e">
+            rows += f'''<div class="row-item" style="border-left-color:{col}">
 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">
 <div>
 <div style="font-size:13px;font-weight:700;color:#dce8f5;margin-bottom:2px">{_he(cp["name"])}</div>
@@ -5463,7 +5464,7 @@ with tab_intel:
 {_bar(cp["risk"], col)}
 <div style="font-size:11px;color:#7fb3cc;line-height:1.55;margin:6px 0">{_he(cp["context"][:140])}</div>
 <div>{exps}</div></div>'''
-        return f'<div class="panel"><div class="stitle">Supply Chain Chokepoints</div><div style="max-height:400px;overflow-y:auto">{rows}</div></div>'
+        return f'<div class="panel"><div class="stitle">Supply Chain Chokepoints</div><div class="scroll">{rows}</div></div>'
 
     # ── Outages panel ──────────────────────────────────────────────
     def _outages_panel():
@@ -5480,7 +5481,7 @@ with tab_intel:
         if _outage_arts:
             live_rows = ""
             for o in _outage_arts[:8]:
-                live_rows += f'''<div style="border-left:2px solid #ff8c42;border-radius:6px;padding:10px 12px;margin-bottom:7px;background:#06101e">
+                live_rows += f'''<div class="row-item" style="border-left-color:#ff8c42">
 <div style="display:flex;justify-content:space-between;margin-bottom:3px">
 <span style="font-size:9px;color:#ff8c42;font-weight:600">{_he((o.get("source","")).upper()[:28])}</span>
 <span style="font-size:9px;color:#3d5a73">{_he(o.get("time",""))}</span></div>
@@ -5491,7 +5492,7 @@ with tab_intel:
         known_rows = ""
         for io in known:
             ic = "#ff3d5a" if io["severity"]=="Total" else "#ff8c42" if io["severity"] in ("Partial","Disrupted") else "#ffb400"
-            known_rows += f'''<div style="border-left:2px solid {ic};border-radius:6px;padding:10px 12px;margin-bottom:7px;background:#06101e">
+            known_rows += f'''<div class="row-item" style="border-left-color:{ic}">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
 <span style="font-size:12px;font-weight:600;color:#dce8f5">{_he(io["name"])}</span>
 {_bdg(io["severity"], ic)}</div>
@@ -5501,7 +5502,7 @@ with tab_intel:
 <button onclick="this.parentNode.querySelectorAll(\'button\').forEach(b=>b.setAttribute(\'style\',\'{pill_style_off}\'));this.setAttribute(\'style\',\'{pill_style_on}\');document.getElementById(\'io0\').style.display=\'block\';document.getElementById(\'io1\').style.display=\'none\'" style="{pill_style_on}">Live Feed</button>
 <button onclick="this.parentNode.querySelectorAll(\'button\').forEach(b=>b.setAttribute(\'style\',\'{pill_style_off}\'));this.setAttribute(\'style\',\'{pill_style_on}\');document.getElementById(\'io0\').style.display=\'none\';document.getElementById(\'io1\').style.display=\'block\'" style="{pill_style_off}">Known Outages</button>
 </div>
-<div style="max-height:360px;overflow-y:auto">
+<div class="scroll">
 <div id="io0">{live_rows}</div>
 <div id="io1" style="display:none">{known_rows}</div>
 </div></div>'''
@@ -5526,11 +5527,44 @@ with tab_intel:
 <html><head><meta charset="utf-8">
 <style>
 *{{margin:0;padding:0;box-sizing:border-box;}}
-body{{background:#030609;font-family:sans-serif;color:#dce8f5;padding:20px;}}
-.panel{{background:#070d16;border:1px solid rgba(0,200,255,.08);border-radius:12px;padding:18px 20px;}}
-.stitle{{font-size:9px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#3d5a73;display:flex;align-items:center;gap:10px;margin-bottom:16px;}}
-.stitle::after{{content:"";flex:1;height:1px;background:rgba(61,90,115,.2);}}
-@keyframes bl{{0%,100%{{opacity:1}}50%{{opacity:.2}}}}
+html{{scroll-behavior:smooth;}}
+body{{
+  background:#030609;
+  background-image:radial-gradient(ellipse 70% 30% at 50% -2%,rgba(0,180,255,.04) 0%,transparent 65%);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  color:#d4e5f5;padding:22px 20px 60px;line-height:1.45;
+}}
+.panel{{
+  background:#070d18;
+  border:1px solid rgba(0,200,255,.09);
+  border-radius:14px;padding:20px 22px;
+  position:relative;overflow:hidden;
+}}
+.panel::before{{
+  content:"";position:absolute;top:0;left:18px;right:18px;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,200,255,.1),transparent);
+}}
+.stitle{{
+  font-size:8.5px;font-weight:700;letter-spacing:.22em;
+  text-transform:uppercase;color:#2e4a63;
+  display:flex;align-items:center;gap:10px;margin-bottom:16px;
+}}
+.stitle::after{{content:"";flex:1;height:1px;background:rgba(46,74,99,.25);}}
+.row-item{{
+  border-left:2px solid;border-radius:8px;padding:11px 13px;
+  margin-bottom:8px;background:#06101e;
+  border-top:1px solid rgba(255,255,255,.025);
+  border-right:1px solid rgba(255,255,255,.025);
+  border-bottom:1px solid rgba(255,255,255,.025);
+  transition:background .13s;
+}}
+.row-item:last-child{{margin-bottom:0;}}
+.row-item:hover{{background:#091525;}}
+.scroll{{max-height:370px;overflow-y:auto;padding-right:2px;}}
+::-webkit-scrollbar{{width:3px;}}
+::-webkit-scrollbar-thumb{{background:rgba(0,200,255,.18);border-radius:2px;}}
+::-webkit-scrollbar-track{{background:transparent;}}
+@keyframes bl{{0%,100%{{opacity:1;transform:scale(1)}}50%{{opacity:.2;transform:scale(.6)}}}}
 @media(max-width:900px){{.g4{{grid-template-columns:1fr 1fr!important;}}}}
 @media(max-width:700px){{.g4,.g25,.g2{{grid-template-columns:1fr!important;}}}}
 </style>
@@ -5548,7 +5582,7 @@ body{{background:#030609;font-family:sans-serif;color:#dce8f5;padding:20px;}}
 </div>
 </body></html>"""
 
-    _ic.html(_intel_html, height=4800, scrolling=True)
+    _ic.html(_intel_html, height=5400, scrolling=True)
 
 
 with tab_econ:
