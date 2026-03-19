@@ -3982,12 +3982,13 @@ st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 # ─────────────────────────────────────────────
 # TABS  (removed Training Arena + AI Analyst)
 # ─────────────────────────────────────────────
-tab_conflict, tab_earth, tab_civil, tab_news, tab_intel, tab_econ = st.tabs([
+tab_conflict, tab_earth, tab_civil, tab_news, tab_intel, tab_sigint, tab_econ = st.tabs([
     "⚔  Conflict Dashboard",
     "🌍  Earth Signals",
     "✊  Civil Movements",
     "📡  Live News",
     "🛰  Intel Dashboard",
+    "📻  SIGINT",
     "📊  Economic & Markets",
 ])
 
@@ -5588,6 +5589,80 @@ GEO_RISK_PREMIUMS = [
     {"name":"US-China Trade War",        "asset":"Tech/Mfg",   "impact":"Semi tariffs +25-50%",           "driver":"Export controls + CHIPS Act","status":"Elevated"},
 ]
 
+# ══════════════════════════════════════════════════════════════
+# SIGINT DASHBOARD DATA
+# ══════════════════════════════════════════════════════════════
+
+# ── COMINT: Known signals / communications intelligence ────────
+COMINT_SIGNALS = [
+    {"id":"C001","actor":"Russia GRU","signal_type":"HF Burst","freq":"9-18 MHz","mode":"FSK","location":"Kaliningrad","target":"NATO Baltic","intercept":"Active","confidence":88,"last_active":"2026-03-19","detail":"High-frequency burst transmissions consistent with GRU Unit 26165 C2 tasking. Observed during Baltic NATO exercise periods."},
+    {"id":"C002","actor":"IRGC","signal_type":"UHF Encrypted","freq":"420-450 MHz","mode":"AES-256","location":"Tehran / Isfahan","target":"IRGC Ground Forces","intercept":"Active","confidence":91,"last_active":"2026-03-19","detail":"Encrypted UHF comms between IRGC Quds Force and proxy networks. Traffic spike correlated with IDF strike responses."},
+    {"id":"C003","actor":"DPRK RGB","signal_type":"Satellite Uplink","freq":"Ku-band","mode":"BPSK","location":"Pyongyang","target":"Overseas agents","intercept":"Active","confidence":75,"last_active":"2026-03-18","detail":"Korean-language encrypted satellite comms attributed to Reconnaissance General Bureau overseas operations."},
+    {"id":"C004","actor":"China MSS","signal_type":"OTH Radar","freq":"5-30 MHz","mode":"FMCW","location":"Xinjiang / Hainan","target":"Pacific Fleet tracking","intercept":"Active","confidence":85,"last_active":"2026-03-19","detail":"Over-the-horizon Skywave radar emissions covering Western Pacific AO. Consistent with PLAN CSG tracking."},
+    {"id":"C005","actor":"Russia SVR","signal_type":"Shortwave","freq":"7-14 MHz","mode":"AM numbers","location":"Moscow","target":"EU embedded assets","intercept":"Intermittent","confidence":70,"last_active":"2026-03-17","detail":"Numbers station transmissions in Czech / German language. Attributed to SVR Line S (illegals support)."},
+    {"id":"C006","actor":"Houthi (IRGC-linked)","signal_type":"VHF Tactical","freq":"136-174 MHz","mode":"FM P25","location":"Hodeidah / Saada","target":"Anti-ship ops","intercept":"Active","confidence":80,"last_active":"2026-03-19","detail":"VHF tactical comms coordinating drone/missile targeting. IRGC advisory signals co-located."},
+]
+
+# ── ELINT: Electronic intelligence ────────────────────────────
+ELINT_SIGNALS = [
+    {"id":"E001","type":"Radar Emission","system":"Nebo-M VHF","actor":"Russia","lat":54.7,"lon":20.5,"status":"Active","freq":"150-180 MHz","range_km":1800,"capability":"Stealth detection","detail":"Nebo-M VHF radar active at Kaliningrad. Effective against F-35/B-2. Coverage extends to Baltic + Poland."},
+    {"id":"E002","type":"SAM Guidance","system":"S-400 Fire Control","actor":"Russia","lat":47.97,"lon":33.58,"status":"Active","freq":"8-10 GHz","range_km":400,"capability":"A2/AD Ukraine","detail":"S-400 engagement radar active near Crimea. Creating A2/AD bubble over southern Ukraine. Multiple Patriot engagements."},
+    {"id":"E003","type":"ABM Radar","system":"Don-2N (Pill Box)","actor":"Russia","lat":55.83,"lon":37.64,"status":"Active","freq":"X-band","range_km":3700,"capability":"ICBM tracking","detail":"Moscow ABM radar active. Tracks US/NATO ICBM trajectories. Part of A-135 Moscow ABM system."},
+    {"id":"E004","type":"Naval Radar","system":"Type 346 AESA","actor":"China","lat":24.0,"lon":122.0,"status":"Active","freq":"S/X-band dual","range_km":500,"capability":"Carrier tracking","detail":"Type 346 AESA on CNS Fujian active during Taiwan Strait exercises. Tracking US CSG movements."},
+    {"id":"E005","type":"EW Suite","system":"Krasukha-4","actor":"Russia","lat":50.5,"lon":30.5,"status":"Active","freq":"Broadband","range_km":300,"capability":"Drone/UAV jamming","detail":"Krasukha-4 EW complex active in Ukraine. Successfully jamming Starlink-dependent drones."},
+    {"id":"E006","type":"OTH Radar","system":"Sunflower OTHR","actor":"Russia","lat":66.0,"lon":30.0,"status":"Active","freq":"3-30 MHz","range_km":3000,"capability":"Stealth detection","detail":"Sunflower OTH radar in northern Russia. Monitoring NATO Arctic operations and stealth aircraft."},
+    {"id":"E007","type":"SIGINT Station","system":"NSA FORNSAT","actor":"USA","lat":25.0,"lon":-77.3,"status":"Active","freq":"Multi-band","range_km":500,"capability":"Comms intercept","detail":"NSA FORNSAT collection covering Middle East / Gulf region. ECHELON derivative. Bahamas facility."},
+    {"id":"E008","type":"Jammer","system":"Murmansk-BN","actor":"Russia","lat":69.0,"lon":33.0,"status":"Active","freq":"3-30 MHz","range_km":5000,"capability":"HF comms disruption","detail":"Murmansk-BN strategic HF jammer. Coverage of N.Atlantic and Arctic. Disrupts NATO HF comms."},
+]
+
+# ── MASINT: Measurement and Signature Intelligence ─────────────
+MASINT_EVENTS = [
+    {"id":"M001","type":"Seismic","event":"Suspected underground detonation","location":"Punggye-ri, DPRK","lat":41.27,"lon":129.08,"magnitude":None,"depth_km":1.2,"confidence":55,"date":"2026-02-28","detail":"Seismic event Mb 2.1 at Punggye-ri. Shallow depth consistent with underground blast. Monitoring continues."},
+    {"id":"M002","type":"Nuclear Radiation","event":"Elevated gamma signature","location":"Natanz, Iran","lat":33.72,"lon":51.73,"magnitude":None,"depth_km":0,"confidence":88,"date":"2026-03-07","detail":"Airborne gamma radiation detected by CTBTO IMS stations following IDF strike. Consistent with Cs-137 / Am-241 release from centrifuge destruction."},
+    {"id":"M003","type":"Acoustic","event":"Underwater explosion signature","location":"Baltic Sea","lat":57.0,"lon":18.0,"magnitude":None,"depth_km":0.08,"confidence":78,"date":"2026-02-14","detail":"SOSUS hydrophone array detected underwater blast event. Possible sabotage of subsea infrastructure. Under investigation."},
+    {"id":"M004","type":"Chemical","event":"Chlorine marker detected","location":"Idlib, Syria","lat":35.93,"lon":36.63,"magnitude":None,"depth_km":0,"confidence":62,"date":"2026-01-30","detail":"Trace chlorine signatures detected by OPCW remote sensors. Assad regime suspected. UN investigation requested."},
+    {"id":"M005","type":"Thermal","event":"Large thermal signature","location":"Yongbyon, DPRK","lat":39.81,"lon":125.75,"magnitude":None,"depth_km":0,"confidence":82,"date":"2026-03-10","detail":"LANDSAT thermal anomaly at Yongbyon reprocessing plant. Consistent with active plutonium separation. Assessed: active production cycle."},
+    {"id":"M006","type":"Seismic","event":"Underground construction","location":"Sanya, Hainan, China","lat":18.25,"lon":109.52,"magnitude":None,"depth_km":0.3,"confidence":74,"date":"2026-03-01","detail":"Persistent seismic signature consistent with major tunnel excavation. Likely expansion of PLAN submarine base."},
+]
+
+# ── OSINT Feeds & Collection Platforms ────────────────────────
+OSINT_PLATFORMS = [
+    {"name":"Sentinel Hub","type":"SAR/Optical Imagery","provider":"ESA/Commercial","coverage":"Global daily","resolution":"1-10m","status":"Active","use_case":"Conflict damage assessment, military movements"},
+    {"name":"Planet Labs","type":"Optical IMINT","provider":"Commercial","coverage":"Global 3x/day","resolution":"3m","status":"Active","use_case":"Change detection, base construction monitoring"},
+    {"name":"Maxar WorldView","type":"High-res IMINT","provider":"Commercial","coverage":"Tasked","resolution":"30cm","status":"Active","use_case":"Equipment ID, personnel counting"},
+    {"name":"MarineTraffic AIS","type":"Vessel tracking","provider":"Commercial","coverage":"Global","resolution":"N/A","status":"Active","use_case":"Naval movements, dark ship detection"},
+    {"name":"FlightRadar24","type":"ADS-B tracking","provider":"Commercial","coverage":"Global","resolution":"N/A","status":"Active","use_case":"Military aircraft movements, escort ops"},
+    {"name":"GDELT Project","type":"Event data/NLP","provider":"Google/Open","coverage":"Global","resolution":"15-min updates","status":"Active","use_case":"Conflict escalation signals, media analysis"},
+    {"name":"FIRMS NASA","type":"Fire/Thermal","provider":"NASA","coverage":"Global","resolution":"375m","status":"Active","use_case":"Conflict hotspots, industrial activity"},
+    {"name":"Bellingcat OSINT","type":"Geolocation","provider":"Independent","coverage":"Conflict zones","resolution":"Street-level","status":"Active","use_case":"War crime documentation, equipment tracking"},
+    {"name":"DigitalGlobe Archive","type":"Historical IMINT","provider":"Maxar","coverage":"Global","resolution":"50cm","status":"Active","use_case":"Before/after analysis, baseline comparison"},
+    {"name":"Radio Free Europe","type":"HUMINT/Media","provider":"US Gov (USAGM)","coverage":"Russia/E.Europe","resolution":"N/A","status":"Active","use_case":"Regime instability signals, public opinion"},
+]
+
+# ── Signals of Interest: Active collection priorities ──────────
+COLLECTION_PRIORITIES = [
+    {"priority":1,"target":"Iran nuclear reconstruction","type":"IMINT/MASINT","status":"Active","collection":["Sentinel Hub","Maxar WV","CTBTO IMS"],"intel_gap":"Post-strike reconstruction timeline","last_update":"2026-03-19"},
+    {"priority":2,"target":"DPRK ICBM preparations","type":"IMINT/SIGINT","status":"Active","collection":["Planet Labs","NSA SIGINT","SOSUS"],"intel_gap":"Hwasong-18 launch readiness","last_update":"2026-03-18"},
+    {"priority":3,"target":"Russian VKS strike patterns","type":"SIGINT/COMINT","status":"Active","collection":["ELINT aircraft","NSA SCS","GCHQ"],"intel_gap":"Kalibr magazine resupply","last_update":"2026-03-19"},
+    {"priority":4,"target":"PLA Taiwan Strait exercises","type":"IMINT/ELINT","status":"Active","collection":["U-2S","RC-135V/W","KH-13"],"intel_gap":"Exercise-to-operation threshold","last_update":"2026-03-17"},
+    {"priority":5,"target":"Houthi missile stockpiles","type":"IMINT/HUMINT","status":"Active","collection":["MQ-9 ISR","Maxar","CIA HUMINT"],"intel_gap":"Iranian resupply routes via Oman","last_update":"2026-03-16"},
+    {"priority":6,"target":"China South China Sea construction","type":"IMINT","status":"Routine","collection":["Planet Labs","Sentinel-1 SAR"],"intel_gap":"Mischief Reef tunnel depth","last_update":"2026-03-15"},
+    {"priority":7,"target":"Wagner/Africa Corps deployment","type":"SIGINT/IMINT","status":"Active","collection":["NSA SIGINT","ELINT aircraft"],"intel_gap":"Mali/Niger operational command structure","last_update":"2026-03-14"},
+    {"priority":8,"target":"Pakistan-Afghanistan border","type":"IMINT/SIGINT","status":"Active","collection":["RQ-4 Global Hawk","NSA SCS"],"intel_gap":"TTP tunnel networks in Paktika","last_update":"2026-03-19"},
+]
+
+# ── Threat Actor Matrix ────────────────────────────────────────
+THREAT_ACTORS = [
+    {"actor":"GRU (Russia)","unit":"Unit 26165 / 74455","domain":["CYBER","ELINT","HUMINT"],"threat_level":95,"operations":["Sandworm Ukraine grid","FANCY BEAR NATO","GPS spoofing Baltic"],"attribution":98,"status":"Highly Active"},
+    {"actor":"MSS (China)","unit":"APT41 / Volt Typhoon","domain":["CYBER","SIGINT","IMINT"],"threat_level":90,"operations":["US logistics pre-positioning","SE Asia defence","5G supply chain"],"attribution":85,"status":"Highly Active"},
+    {"actor":"IRGC (Iran)","unit":"IRGC Cyber / APT33","domain":["CYBER","COMINT","MASINT"],"threat_level":82,"operations":["CII wiper attacks","Satellite comms","Proxy C2"],"attribution":88,"status":"Elevated"},
+    {"actor":"RGB (DPRK)","unit":"Lazarus / APT38","domain":["CYBER","SIGINT"],"threat_level":78,"operations":["Crypto theft","SWIFT attacks","Ransomware funding"],"attribution":80,"status":"Active"},
+    {"actor":"SVR (Russia)","unit":"Cozy Bear / APT29","domain":["CYBER","HUMINT","COMINT"],"threat_level":88,"operations":["SolarWinds legacy","EU gov networks","NATO intel access"],"attribution":90,"status":"Highly Active"},
+    {"actor":"PLA SSF (China)","unit":"Strategic Support Force","domain":["ELINT","CYBER","SPACE"],"threat_level":88,"operations":["GPS jamming SCS","Kill chain space","Taiwan rehearsals"],"attribution":72,"status":"Elevated"},
+    {"actor":"Hezbollah SIGINT","unit":"Unit 1800","domain":["HUMINT","COMINT"],"threat_level":65,"operations":["Israel border surveillance","Lebanon telecom intercept","Iran relay"],"attribution":82,"status":"Active"},
+    {"actor":"Pakistan ISI","unit":"ISI S Wing","domain":["HUMINT","SIGINT"],"threat_level":58,"operations":["Afghanistan TTP coordination","India border intel","Nuclear security"],"attribution":68,"status":"Routine"},
+]
+
 INTEL_FEED_SOURCES = [
     {"source":"Foreign Policy","cat":"ALERT","tag":"MILITARY","title":"Six U.S. Troops Killed in Aircraft Crash in Iraq","time":"20h ago","url":"https://foreignpolicy.com"},
     {"source":"Atlantic Council","cat":"ALERT","tag":"CONFLICT","title":"UN: Putin's deportation of Ukrainian children is a crime against humanity","time":"8h ago","url":"https://atlanticcouncil.org"},
@@ -6040,6 +6115,806 @@ body{{
 </body></html>"""
 
     _ic.html(_intel_html, height=5400, scrolling=True)
+
+
+# ══════════════════════════════════════════════════════════════
+# TAB 7 — SIGINT DASHBOARD
+# ══════════════════════════════════════════════════════════════
+with tab_sigint:
+    import json as _sj
+    import streamlit.components.v1 as _sc
+    from datetime import datetime as _sdt, timezone as _stz
+
+    # ── SIGINT-specific auto-refresh (60 seconds) ─────────────
+    try:
+        from streamlit_autorefresh import st_autorefresh as _sar
+        _sar(interval=60_000, key="sigint_refresh")
+    except ImportError:
+        pass
+
+    # ── Live data collection ───────────────────────────────────
+    _sigint_news   = fetch_news_rss("geopolitics")
+    _sigint_conf   = fetch_news_rss("conflict")
+    _sigint_events = fetch_live_global_events(max_records=25)
+    _sigint_outage = fetch_outage_feed()
+    _sigint_risk   = fetch_live_strategic_risk()
+    _sigint_kp     = fetch_kp()
+    _sigint_usgs   = fetch_usgs()
+
+    # Live GDELT cyber-signal
+    _sigint_cyber_raw = fetch_gdelt_conflict("cyber attack espionage hacking")
+
+    # Seismic events M3.5+ last 24h for MASINT overlay
+    _sig_quakes = []
+    if not _sigint_usgs.empty:
+        import pandas as _spd
+        _q24 = _sigint_usgs[_sigint_usgs["mag"] >= 3.5].nlargest(12, "mag")
+        _sig_quakes = [
+            {"place": str(r["place"]), "mag": float(r["mag"]),
+             "depth_km": float(r["depth_km"]), "time": str(r["time"]),
+             "lat": float(r["lat"]), "lon": float(r["lon"])}
+            for _, r in _q24.iterrows()
+        ]
+
+    # KP index summary
+    _kp_current = 0
+    _kp_status  = "Quiet"
+    if _sigint_kp.get("series"):
+        _kp_vals = [p.get("kp", 0) for p in _sigint_kp["series"][-6:]]
+        _kp_current = round(max(_kp_vals), 1) if _kp_vals else 0
+        _kp_status  = ("EXTREME STORM" if _kp_current >= 8 else
+                       "SEVERE STORM"  if _kp_current >= 7 else
+                       "STRONG STORM"  if _kp_current >= 6 else
+                       "MODERATE STORM"if _kp_current >= 5 else
+                       "MINOR STORM"   if _kp_current >= 4 else
+                       "Unsettled"     if _kp_current >= 3 else "Quiet")
+
+    # Active internet outages from live feed
+    _outage_live = _sigint_outage[:10] if _sigint_outage else []
+
+    # Build enriched GDELT cyber events
+    _cyber_live = []
+    for _ev in (_sigint_cyber_raw or [])[:8]:
+        _cyber_live.append({
+            "title":  _ev.get("title", ""),
+            "source": _ev.get("source", ""),
+            "time":   _ev.get("time", ""),
+            "url":    _ev.get("url", ""),
+        })
+
+    # Live GDELT global events for threat tracking
+    _live_events_sigint = []
+    for _gev in (_sigint_events or [])[:15]:
+        _live_events_sigint.append({
+            "title":  _gev.get("title", ""),
+            "source": _gev.get("source", ""),
+            "time":   _gev.get("time", ""),
+            "url":    _gev.get("url", ""),
+            "cat":    _gev.get("cat", ""),
+        })
+
+    _sig_ts = _sdt.now(tz=_stz.utc).strftime("%H:%M:%S UTC")
+
+    _sigint_payload = _sj.dumps({
+        # Static baseline data
+        "comint":          COMINT_SIGNALS,
+        "elint":           ELINT_SIGNALS,
+        "masint":          MASINT_EVENTS,
+        "osint_platforms": OSINT_PLATFORMS,
+        "collection":      COLLECTION_PRIORITIES,
+        "actors":          THREAT_ACTORS,
+        "orbital":         ORBITAL_SURVEILLANCE,
+        "gps_jamming":     GPS_JAMMING_ZONES,
+        "cyber_threats":   CYBER_THREATS_GEO,
+        "cii":             CII_INSTABILITY,
+        "mil_activity":    MILITARY_ACTIVITY,
+        "internet_static": INTERNET_OUTAGES,
+        # Live data
+        "live_feed":       (_sigint_news  or [])[:15],
+        "live_conflict":   (_sigint_conf  or [])[:10],
+        "live_events":     _live_events_sigint,
+        "live_cyber":      _cyber_live,
+        "live_outages":    _outage_live,
+        "live_quakes":     _sig_quakes,
+        "live_risk":       _sigint_risk,
+        "kp_current":      _kp_current,
+        "kp_status":       _kp_status,
+        "kp_series":       (_sigint_kp.get("series") or [])[-24:],
+        "ts":              _sig_ts,
+        "refresh_interval": 60,
+    })
+
+    _sigint_html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{{margin:0;padding:0;box-sizing:border-box;}}
+html{{scroll-behavior:smooth;}}
+body{{
+  background:#010509;font-family:'Rajdhani',system-ui,sans-serif;color:#b8d4e8;
+  padding:18px 16px 56px;
+  background-image:
+    radial-gradient(ellipse 60% 25% at 50% 0%,rgba(0,255,136,.03) 0%,transparent 70%),
+    repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(0,255,136,.015) 40px),
+    repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(0,255,136,.015) 40px);
+}}
+.mono{{font-family:'Share Tech Mono',monospace;}}
+body::after{{content:'';pointer-events:none;position:fixed;top:0;left:0;right:0;bottom:0;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.025) 0px,rgba(0,0,0,.025) 1px,transparent 1px,transparent 4px);z-index:9999;}}
+.sec{{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:#00ff88;
+  display:flex;align-items:center;gap:12px;margin-bottom:14px;}}
+.sec::before{{content:'// ';color:#1a4a2e;}}
+.sec::after{{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(0,255,136,.3),transparent);}}
+.card{{background:#040d14;border:1px solid rgba(0,255,136,.1);border-radius:4px;padding:16px 18px;position:relative;overflow:hidden;}}
+.card::before{{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,255,136,.25),transparent);}}
+.scroll{{max-height:360px;overflow-y:auto;padding-right:2px;}}
+.scroll::-webkit-scrollbar{{width:3px;}}
+.scroll::-webkit-scrollbar-thumb{{background:rgba(0,255,136,.2);border-radius:2px;}}
+.row{{border-left:2px solid;border-radius:2px;padding:10px 12px;margin-bottom:6px;
+  background:rgba(0,255,136,.02);
+  border-top:1px solid rgba(0,255,136,.04);border-right:1px solid rgba(0,255,136,.04);border-bottom:1px solid rgba(0,255,136,.04);
+  transition:background .12s;}}
+.row:last-child{{margin-bottom:0;}}
+.row:hover{{background:rgba(0,255,136,.06);}}
+.g4{{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}}
+.g3{{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px;}}
+.g2{{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;}}
+.g21{{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:18px;}}
+.g13{{display:grid;grid-template-columns:1fr 3fr;gap:14px;margin-bottom:18px;}}
+@media(max-width:1000px){{.g4{{grid-template-columns:1fr 1fr;}}.g3{{grid-template-columns:1fr 1fr;}}}}
+@media(max-width:640px){{.g4,.g3,.g2,.g21,.g13{{grid-template-columns:1fr;}}}}
+.kpi{{background:#040d14;border:1px solid rgba(0,255,136,.12);border-radius:4px;padding:16px 18px;position:relative;}}
+.kpi::before{{content:'';position:absolute;top:0;left:0;bottom:0;width:2px;background:var(--ac,#00ff88);}}
+.badge{{display:inline-flex;align-items:center;padding:1px 7px;border-radius:2px;
+  font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:.06em;text-transform:uppercase;border:1px solid;}}
+.b-crit{{color:#ff3355;border-color:rgba(255,51,85,.4);background:rgba(255,51,85,.08);}}
+.b-high{{color:#ff8c00;border-color:rgba(255,140,0,.4);background:rgba(255,140,0,.08);}}
+.b-med{{color:#ffcc00;border-color:rgba(255,204,0,.4);background:rgba(255,204,0,.08);}}
+.b-low{{color:#00ff88;border-color:rgba(0,255,136,.4);background:rgba(0,255,136,.08);}}
+.b-act{{color:#00ccff;border-color:rgba(0,204,255,.4);background:rgba(0,204,255,.08);}}
+.b-intm{{color:#8888ff;border-color:rgba(136,136,255,.4);background:rgba(136,136,255,.08);}}
+.bar{{height:3px;background:rgba(0,255,136,.08);border-radius:1px;overflow:hidden;margin:5px 0;}}
+.fill{{height:100%;border-radius:1px;}}
+/* live indicator */
+.live-dot{{width:6px;height:6px;border-radius:50%;background:#00ff88;display:inline-block;animation:bl 1.2s ease-in-out infinite;margin-right:5px;}}
+.live-chip{{display:inline-flex;align-items:center;padding:2px 8px;border-radius:2px;font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:.1em;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.3);color:#00ff88;margin-left:8px;}}
+@keyframes bl{{0%,100%{{opacity:1;transform:scale(1)}}50%{{opacity:.2;transform:scale(.6)}}}}
+/* ticker */
+.ticker-wrap{{overflow:hidden;background:rgba(0,255,136,.03);border:1px solid rgba(0,255,136,.1);border-radius:2px;padding:7px 12px;margin-bottom:18px;white-space:nowrap;}}
+.ticker-inner{{display:inline-block;animation:tick 80s linear infinite;}}
+@keyframes tick{{0%{{transform:translateX(0)}}100%{{transform:translateX(-50%)}}}}
+.t-item{{display:inline-block;margin-right:48px;font-family:'Share Tech Mono',monospace;font-size:10px;color:rgba(0,255,136,.55);}}
+.t-item b{{color:#00ff88;}}
+/* header bar */
+.hbar{{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding:10px 14px;background:#040d14;border:1px solid rgba(0,255,136,.15);border-radius:4px;}}
+/* kp bar */
+.kp-seg{{height:14px;flex:1;margin:0 1px;border-radius:1px;display:flex;align-items:center;justify-content:center;}}
+</style>
+</head>
+<body>
+<div id="R"></div>
+<script>
+var D={_sigint_payload};
+function esc(s){{return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}}
+function bar(p,c){{return '<div class="bar"><div class="fill" style="width:'+Math.min(p,100)+'%;background:'+c+'"></div></div>';}}
+function tlvl(v){{return v>=85?'#ff3355':v>=70?'#ff8c00':v>=50?'#ffcc00':'#00ff88';}}
+var _refreshSecs = D.refresh_interval||60;
+var _elapsed = 0;
+
+// ── Header bar ──────────────────────────────────────────────
+function headerBar(){{
+  var rs = D.live_risk||{{}};
+  var rCol = rs.color||'#ff8c00';
+  var kpCol = D.kp_current>=5?'#ff3355':D.kp_current>=3?'#ff8c00':'#00ff88';
+  return '<div class="hbar" style="display:flex;align-items:center;justify-content:space-between;'+
+    'padding:10px 16px;background:rgba(0,255,136,.03);border:1px solid rgba(0,255,136,.1);'+
+    'border-radius:3px;margin-bottom:14px;flex-wrap:wrap;gap:8px">'+
+    '<div style="display:flex;align-items:center;gap:16px">'+
+    '<div class="mono" style="font-size:9px;color:#00ff88;letter-spacing:.2em">SIGINT DASHBOARD</div>'+
+    '<div class="mono" style="font-size:9px;color:rgba(0,255,136,.5)">GLOBAL RISK: '+
+      '<span id="hbar-risk" style="color:'+rCol+'">'+esc((rs.score||D.live_risk&&D.live_risk.score)||'—')+' '+(rs.label||'')+'</span></div>'+
+    '<div class="mono" style="font-size:9px;color:rgba(0,255,136,.5)">KP: '+
+      '<span style="color:'+kpCol+'">'+D.kp_current+' ('+esc(D.kp_status)+')</span></div>'+
+    '</div>'+
+    '<div style="display:flex;align-items:center;gap:12px">'+
+    '<span id="live-ts" class="mono" style="font-size:8px;color:rgba(0,255,136,.4)">'+esc(D.ts)+'</span>'+
+    '<span id="poll-status" class="mono" style="font-size:8px;color:#00ff88">'+
+      '<span class="pulse" style="background:#00ff88;margin-right:3px"></span>LIVE</span>'+
+    '<span class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">Next: <span id="cd">60</span>s</span>'+
+    '</div></div>';
+}}
+
+
+// ── Ticker ───────────────────────────────────────────────────
+function ticker(){{
+  var all = (D.live_events||[]).concat(D.live_conflict||[]).concat(D.live_feed||[]).slice(0,24);
+  if(!all.length) return '';
+  var inner=all.map(function(a){{
+    return '<span class="t-item"><b>▶ '+esc((a.source||'').toUpperCase().slice(0,20))+'</b> '+esc((a.title||'').slice(0,90))+'</span>';
+  }}).join('');
+  return '<div class="ticker-wrap"><div class="ticker-inner" id="ticker-inner">'+inner+inner+'</div></div>';
+}}
+
+// ── KPI strip ─────────────────────────────────────────────────
+function kpis(){{
+  var activeJam  = (D.gps_jamming||[]).filter(function(z){{return z.severity==='High';}}).length;
+  var critActors = (D.actors||[]).filter(function(a){{return a.threat_level>=85;}}).length;
+  var liveEvents = (D.live_events||[]).length;
+  var outages    = (D.live_outages||[]).length;
+  var data=[
+    {{v:activeJam,  l:'GPS Jamming Zones',   s:'High severity active',c:'#ff8c00',live:false}},
+    {{v:critActors, l:'Critical APT Actors', s:'Threat level \u226585',c:'#ff3355',live:false}},
+    {{v:liveEvents, l:'Live GDELT Events',   s:'Last 90s window',     c:'#00ccff',live:true}},
+    {{v:outages,    l:'Internet Disruptions',s:'Live outage feed',    c:'#ff8c00',live:true}},
+  ];
+  return '<div class="g4">'+data.map(function(k){{
+    var liveTag=k.live?'<span class="live-chip"><span class="live-dot"></span>LIVE</span>':'';
+    return '<div class="kpi" style="--ac:'+k.c+'">'+
+      '<div class="mono" style="font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:rgba(0,255,136,.38);margin-bottom:6px">'+k.l+liveTag+'</div>'+
+      '<div style="font-size:44px;font-weight:700;color:'+k.c+';line-height:.9;margin-bottom:4px">'+k.v+'</div>'+
+      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.28)">'+k.s+'</div></div>';
+  }}).join('')+'</div>';
+}}
+
+// ── Live Events Feed ──────────────────────────────────────────
+function panelLiveFeed(){{
+  var all=(D.live_events||[]).concat(D.live_conflict||[]).concat(D.live_feed||[]).slice(0,25);
+  var rows=all.length?all.map(function(a){{
+    var catCol={{CONFLICT:'#ff3355',MILITARY:'#ff8c00',NUCLEAR:'#ff3355',OSINT:'#00ccff',CYBER:'#8888ff'}};
+    var col=catCol[a.cat||'']||'#00ff88';
+    return '<div class="row" style="border-left-color:'+col+'">'+
+      '<div style="display:flex;justify-content:space-between;margin-bottom:3px">'+
+      '<span class="mono" style="font-size:8px;color:'+col+';font-weight:600">'+esc((a.source||'').toUpperCase().slice(0,22))+'</span>'+
+      '<span class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">'+esc(a.time||'')+'</span>'+
+      '</div>'+
+      '<div style="font-size:12px;font-weight:500;color:#d4eaf7;line-height:1.45">'+esc((a.title||'').slice(0,110))+'</div>'+
+      (a.url?'<a href="'+esc(a.url)+'" target="_blank" rel="noopener" class="mono" style="font-size:8px;color:rgba(0,204,255,.6);text-decoration:none;display:inline-block;margin-top:3px">READ \u2192</a>':'')+
+      '</div>';
+  }}).join(''):'<div class="mono" style="font-size:10px;color:rgba(0,255,136,.35);padding:12px 0">Fetching live signals...</div>';
+  return '<div class="card"><div class="sec"><span class="live-dot"></span>Live OSINT / SIGINT Feed <span class="mono" style="font-size:8px;color:rgba(0,255,136,.4)">('+all.length+' signals)</span></div>'+
+    '<div class="scroll" id="live-feed-inner">'+rows+'</div></div>';
+}}
+
+// ── Live Cyber Events ─────────────────────────────────────────
+function panelLiveCyber(){{
+  var all=(D.live_cyber||[]);
+  var baseRows=(D.cyber_threats||[]).map(function(c){{
+    var col=c.actor.includes('Russia')?'#ff3355':c.actor.includes('China')?'#ff8c00':c.actor.includes('Iran')?'#ffcc00':c.actor.includes('DPRK')?'#8888ff':'#00ff88';
+    return '<div class="row" style="border-left-color:'+col+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'+
+      '<span style="font-size:12px;font-weight:600;color:#d4eaf7">'+esc(c.name)+'</span>'+
+      '<span class="badge" style="color:'+col+';border-color:'+col+'50;background:'+col+'12">'+esc(c.actor)+'</span>'+
+      '</div>'+
+      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">TARGETS: '+esc(c.targets)+'</div>'+
+      '</div>';
+  }}).join('');
+  var liveRows=all.length?'<div class="sec" style="margin-top:12px"><span class="live-dot"></span>GDELT Cyber Signals</div>'+all.map(function(a){{
+    return '<div class="row" style="border-left-color:#8888ff">'+
+      '<div style="display:flex;justify-content:space-between;margin-bottom:3px">'+
+      '<span class="mono" style="font-size:8px;color:#8888ff">'+esc((a.source||'').toUpperCase().slice(0,22))+'</span>'+
+      '<span class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">'+esc(a.time||'')+'</span>'+
+      '</div>'+
+      '<div style="font-size:11px;color:#d4eaf7;line-height:1.4">'+esc((a.title||'').slice(0,100))+'</div>'+
+      '</div>';
+  }}).join(''):'';
+  return '<div class="card"><div class="sec">CYBINT — Threat Actors <span class="live-chip"><span class="live-dot"></span>GDELT</span></div>'+
+    '<div class="scroll" id="live-cyber-inner">'+baseRows+liveRows+'</div></div>';
+}}
+
+// ── Live Seismic MASINT ───────────────────────────────────────
+function panelMASINT(){{
+  var baseRows=(D.masint||[]).map(function(m){{
+    var typeCol={{Seismic:'#ffcc00','Nuclear Radiation':'#ff3355',Acoustic:'#00ccff',Chemical:'#ff8c00',Thermal:'#ff8c00'}};
+    var col=typeCol[m.type]||'#00ff88';
+    return '<div class="row" style="border-left-color:'+col+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">'+
+      '<div><div style="font-size:12px;font-weight:600;color:#d4eaf7">'+esc(m.event)+'</div>'+
+      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.38);margin-top:2px">'+esc(m.id)+' · '+esc(m.type)+' · '+esc(m.location)+'</div></div>'+
+      '<div style="display:flex;gap:5px;flex-shrink:0;margin-left:8px">'+
+      '<span class="badge" style="color:'+col+';border-color:'+col+'50;background:'+col+'12">'+esc(m.type)+'</span>'+
+      '<span class="mono" style="font-size:9px;color:rgba(0,255,136,.45)">'+m.confidence+'%</span>'+
+      '</div></div>'+
+      bar(m.confidence,col)+
+      '<div style="font-size:11px;color:rgba(184,212,232,.6);line-height:1.45;margin-top:4px">'+esc(m.detail)+'</div>'+
+      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.3);margin-top:3px">'+esc(m.date)+'</div>'+
+      '</div>';
+  }}).join('');
+  var quakeRows=(D.live_quakes||[]).length?
+    '<div class="sec" style="margin-top:12px"><span class="live-dot"></span>USGS Live M3.5+ Seismic</div>'+
+    (D.live_quakes||[]).map(function(q){{
+      var col=q.mag>=5.5?'#ff3355':q.mag>=4.5?'#ff8c00':'#ffcc00';
+      return '<div class="row" style="border-left-color:'+col+'">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center">'+
+        '<div><div style="font-size:11px;color:#d4eaf7">'+esc(q.place)+'</div>'+
+        '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">Depth: '+q.depth_km+'km · '+esc(q.time)+'</div></div>'+
+        '<div style="font-size:22px;font-weight:700;color:'+col+';flex-shrink:0;margin-left:8px">M'+q.mag.toFixed(1)+'</div>'+
+        '</div></div>';
+    }}).join(''):'';
+  return '<div class="card"><div class="sec">MASINT — Measurement &amp; Signature</div>'+
+    '<div class="scroll">'+baseRows+quakeRows+'</div></div>';
+}}
+
+// ── Live Internet Outages ─────────────────────────────────────
+function panelOutages(){{
+  var liveRows=(D.live_outages||[]).length?
+    (D.live_outages||[]).map(function(o){{
+      return '<div class="row" style="border-left-color:#ff8c00">'+
+        '<div style="display:flex;justify-content:space-between;margin-bottom:3px">'+
+        '<span class="mono" style="font-size:8px;color:#ff8c00">'+esc((o.source||'').toUpperCase().slice(0,25))+'</span>'+
+        '<span class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">'+esc(o.time||'')+'</span>'+
+        '</div>'+
+        '<div style="font-size:11px;color:#d4eaf7;line-height:1.4;margin-bottom:3px">'+esc((o.title||'').slice(0,100))+'</div>'+
+        (o.url?'<a href="'+esc(o.url)+'" target="_blank" rel="noopener" class="mono" style="font-size:8px;color:rgba(0,204,255,.6);text-decoration:none">READ \u2192</a>':'')+
+        '</div>';
+    }}).join(''):
+    '<div class="mono" style="font-size:10px;color:rgba(0,255,136,.35);padding:8px 0">No live outage signals in feed.</div>';
+  var staticRows=(D.internet_static||[]).map(function(io){{
+    var col=io.severity==='Total'?'#ff3355':io.severity==='Partial'||io.severity==='Disrupted'?'#ff8c00':'#ffcc00';
+    return '<div class="row" style="border-left-color:'+col+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'+
+      '<span style="font-size:12px;font-weight:600;color:#d4eaf7">'+esc(io.name)+'</span>'+
+      '<span class="badge b-'+(io.severity==='Total'?'crit':io.severity==='Partial'||io.severity==='Disrupted'?'high':'med')+'">'+esc(io.severity)+'</span>'+
+      '</div>'+
+      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">'+esc(io.cause||'')+'</div>'+
+      '</div>';
+  }}).join('');
+  return '<div class="card"><div class="sec"><span class="live-dot"></span>Internet Outages &amp; Censorship</div>'+
+    '<div class="scroll">'+liveRows+'<div class="sec" style="margin-top:10px">Known Active Disruptions</div>'+staticRows+'</div></div>';
+}}
+
+// ── GPS / GNSS Jamming ────────────────────────────────────────
+function panelJamming(){{
+  var rows=(D.gps_jamming||[]).map(function(z){{
+    var col=z.severity==='High'?'#ff3355':'#ffcc00';
+    return '<div class="row" style="border-left-color:'+col+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
+      '<span style="font-size:12px;font-weight:600;color:#d4eaf7">'+esc(z.name)+'</span>'+
+      '<div style="display:flex;gap:6px;align-items:center">'+
+      '<span class="mono" style="font-size:8px;color:rgba(0,255,136,.4)">r='+z.radius_km+'km</span>'+
+      '<span class="badge '+(z.severity==='High'?'b-crit':'b-med')+'">'+esc(z.severity)+'</span>'+
+      '</div></div>'+bar(z.severity==='High'?88:55,col)+
+      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35);margin-top:3px">SOURCE: '+esc(z.source)+'</div>'+
+      '</div>';
+  }}).join('');
+  return '<div class="card"><div class="sec">GPS / GNSS Jamming &amp; Spoofing</div>'+
+    '<div class="scroll">'+rows+'</div></div>';
+}}
+
+// ── ELINT ─────────────────────────────────────────────────────
+function panelELINT(){{
+  var rows=(D.elint||[]).map(function(e){{
+    var col=e.actor.includes('Russia')?'#ff3355':e.actor.includes('China')?'#ff8c00':e.actor.includes('USA')?'#00ccff':'#00ff88';
+    return '<div class="row" style="border-left-color:'+col+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">'+
+      '<div><div style="font-size:12px;font-weight:600;color:#d4eaf7">'+esc(e.system)+'</div>'+
+      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.38);margin-top:2px">'+esc(e.type)+' · '+esc(e.freq)+' · '+e.range_km+'km</div></div>'+
+      '<div style="text-align:right;flex-shrink:0;margin-left:8px">'+
+      '<span class="badge" style="color:'+col+';border-color:'+col+'50;background:'+col+'12">'+esc(e.actor)+'</span>'+
+      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35);margin-top:2px">'+esc(e.capability)+'</div></div></div>'+
+      '<div style="font-size:11px;color:rgba(184,212,232,.6);line-height:1.45">'+esc(e.detail)+'</div></div>';
+  }}).join('');
+  return '<div class="card"><div class="sec">ELINT — Electronic Intelligence <span class="mono" style="font-size:8px;color:rgba(0,255,136,.4)">('+D.elint.length+' tracked)</span></div>'+
+    '<div class="scroll">'+rows+'</div></div>';
+}}
+
+// ── COMINT ────────────────────────────────────────────────────
+function panelCOMINT(){{
+  var rows=(D.comint||[]).map(function(s){{
+    var col=s.intercept==='Active'?'#ff8c00':'#8888ff';
+    var bc=s.intercept==='Active'?'b-high':'b-intm';
+    return '<div class="row" style="border-left-color:'+col+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">'+
+      '<div><div style="font-size:13px;font-weight:600;color:#d4eaf7">'+esc(s.actor)+'</div>'+
+      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.38);margin-top:2px">'+esc(s.id)+' · '+esc(s.signal_type)+' · '+esc(s.freq)+'</div></div>'+
+      '<div style="display:flex;gap:5px;flex-shrink:0;margin-left:8px">'+
+      '<span class="badge '+bc+'">'+esc(s.intercept)+'</span>'+
+      '<span class="mono" style="font-size:9px;color:rgba(0,255,136,.45)">'+s.confidence+'%</span>'+
+      '</div></div>'+
+      '<div style="font-size:11px;color:rgba(184,212,232,.6);line-height:1.5;margin-bottom:4px">'+esc(s.detail)+'</div>'+
+      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.3)">TARGET: '+esc(s.target)+' · '+esc(s.last_active)+'</div>'+
+      '</div>';
+  }}).join('');
+  return '<div class="card"><div class="sec">COMINT — Communications Intelligence</div>'+
+    '<div class="scroll">'+rows+'</div></div>';
+}}
+
+// ── Orbital ISR ───────────────────────────────────────────────
+function panelOrbital(){{
+  var rows=(D.orbital||[]).map(function(o){{
+    var col=o.operator.includes('USA')?'#00ccff':o.operator.includes('Russia')?'#ff3355':o.operator.includes('China')?'#ff8c00':o.operator.includes('Israel')?'#ffcc00':'#00ff88';
+    return '<div class="row" style="border-left-color:'+col+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'+
+      '<span style="font-size:12px;font-weight:600;color:#d4eaf7">'+esc(o.name)+'</span>'+
+      '<span class="badge" style="color:'+col+';border-color:'+col+'50;background:'+col+'12">'+esc(o.operator)+'</span>'+
+      '</div>'+
+      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">TYPE: '+esc(o.type)+'</div>'+
+      '</div>';
+  }}).join('');
+  return '<div class="card"><div class="sec">Orbital ISR / IMINT Constellation</div>'+
+    '<div class="scroll">'+rows+'</div></div>';
+}}
+
+// ── Threat Actor Matrix ───────────────────────────────────────
+function panelActors(){{
+  var sorted=(D.actors||[]).slice().sort(function(a,b){{return b.threat_level-a.threat_level;}});
+  var rows=sorted.map(function(a){{
+    var col=tlvl(a.threat_level);
+    var domBadges=a.domain.map(function(d){{return '<span class="badge b-act" style="font-size:7px;margin-right:3px">'+esc(d)+'</span>';}}).join('');
+    var ops=a.operations.map(function(o){{return '<span class="mono" style="font-size:8px;color:rgba(0,255,136,.42);margin-right:8px">\u25cf '+esc(o)+'</span>';}}).join('');
+    return '<div class="row" style="border-left-color:'+col+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">'+
+      '<div><div style="font-size:13px;font-weight:700;color:#d4eaf7">'+esc(a.actor)+'</div>'+
+      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.38);margin-top:2px">'+esc(a.unit)+'</div></div>'+
+      '<div style="text-align:right;flex-shrink:0;margin-left:10px">'+
+      '<div style="font-size:28px;font-weight:700;color:'+col+';line-height:1">'+a.threat_level+'</div>'+
+      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">ATTR: '+a.attribution+'%</div></div></div>'+
+      bar(a.threat_level,col)+
+      '<div style="margin:5px 0 4px">'+domBadges+'</div>'+
+      '<div style="flex-wrap:wrap">'+ops+'</div></div>';
+  }}).join('');
+  return '<div class="card"><div class="sec">Threat Actor Matrix <span class="live-chip"><span class="live-dot"></span>ASSESSED</span></div>'+
+    '<div class="scroll">'+rows+'</div></div>';
+}}
+
+// ── Collection Priorities ─────────────────────────────────────
+function panelCollection(){{
+  var rows=(D.collection||[]).map(function(p){{
+    var col=p.priority<=2?'#ff3355':p.priority<=4?'#ff8c00':p.priority<=6?'#ffcc00':'#00ff88';
+    var colls=p.collection.map(function(c){{return '<span class="mono" style="font-size:8px;padding:1px 6px;border-radius:2px;background:rgba(0,204,255,.07);border:1px solid rgba(0,204,255,.2);color:#00ccff;margin-right:4px">'+esc(c)+'</span>';}}).join('');
+    return '<div class="row" style="border-left-color:'+col+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">'+
+      '<div style="display:flex;align-items:center;gap:8px">'+
+      '<span style="font-size:22px;font-weight:700;color:'+col+';line-height:1">P'+p.priority+'</span>'+
+      '<span style="font-size:12px;font-weight:600;color:#d4eaf7">'+esc(p.target)+'</span></div>'+
+      '<span class="badge '+(p.status==='Active'?'b-high':'b-low')+'">'+esc(p.status)+'</span></div>'+
+      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35);margin-bottom:5px">'+esc(p.type)+' · Updated: '+esc(p.last_update)+'</div>'+
+      '<div style="margin-bottom:5px">'+colls+'</div>'+
+      '<div class="mono" style="font-size:8px;color:rgba(255,140,0,.65)">\u26a0 INTEL GAP: '+esc(p.intel_gap)+'</div></div>';
+  }}).join('');
+  return '<div class="card"><div class="sec">Collection Requirements &amp; Priorities</div>'+
+    '<div class="scroll">'+rows+'</div></div>';
+}}
+
+// ── CII ───────────────────────────────────────────────────────
+function panelCII(){{
+  var sorted=(D.cii||[]).slice().sort(function(a,b){{return b.risk-a.risk;}});
+  var rows=sorted.map(function(c){{
+    var col=c.risk>=90?'#ff3355':c.risk>=75?'#ff8c00':'#ffcc00';
+    return '<div class="row" style="border-left-color:'+col+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'+
+      '<div><span style="font-size:12px;font-weight:600;color:#d4eaf7">'+esc(c.name)+'</span>'+
+      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35);margin-top:1px">'+esc(c.country)+' · '+esc(c.sector)+'</div></div>'+
+      '<div style="font-size:24px;font-weight:700;color:'+col+'">'+c.risk+'</div></div>'+bar(c.risk,col)+'</div>';
+  }}).join('');
+  return '<div class="card"><div class="sec">GEOINT — Critical Infrastructure</div>'+
+    '<div class="scroll">'+rows+'</div></div>';
+}}
+
+// ── OSINT Platforms ───────────────────────────────────────────
+function panelOSINT(){{
+  var rows=(D.osint_platforms||[]).map(function(p){{
+    return '<div class="row" style="border-left-color:#00ff88">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px">'+
+      '<div><span style="font-size:12px;font-weight:600;color:#d4eaf7">'+esc(p.name)+'</span>'+
+      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.38);margin-top:2px">'+esc(p.type)+' · '+esc(p.provider)+'</div></div>'+
+      '<span class="badge b-act">'+esc(p.status)+'</span></div>'+
+      '<div style="font-size:10px;color:rgba(184,212,232,.55);margin-top:2px">'+esc(p.use_case)+'</div>'+
+      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.28);margin-top:2px">'+esc(p.coverage)+' · Res: '+esc(p.resolution)+'</div>'+
+      '</div>';
+  }}).join('');
+  return '<div class="card"><div class="sec">OSINT Collection Platforms</div>'+
+    '<div class="scroll">'+rows+'</div></div>';
+}}
+
+// ── Countdown & render ────────────────────────────────────────
+function startCountdown(){{
+  setInterval(function(){{
+    _elapsed++;
+    var left=Math.max(0,_refreshSecs-_elapsed);
+    var el=document.getElementById('cd');
+    if(el) el.textContent=left+'s';
+    if(left===0) _elapsed=0;
+  }},1000);
+}}
+
+// ── INITIAL RENDER ───────────────────────────────────────────
+// ── Live Seismic Panel ───────────────────────────────────────────────
+function panelSeismic(){{
+  var quakes = D.live_quakes||[];
+  var initial = quakes.length?quakes.map(function(q){{
+    var col=q.mag>=6?'#ff3355':q.mag>=5?'#ff8c00':q.mag>=4?'#ffcc00':'#00ff88';
+    return '<div class="row" style="border-left-color:'+col+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'+
+      '<span style="font-size:11px;font-weight:600;color:#d4eaf7">'+esc(q.place||q.loc||'')+'</span>'+
+      '<span class="mono" style="font-size:13px;font-weight:700;color:'+col+'">M'+q.mag+'</span></div>'+
+      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">Depth: '+(q.depth_km||'?')+'km · '+esc(q.time)+'</div>'+
+      '</div>';
+  }}).join(''):
+    '<div class="mono" style="font-size:10px;color:rgba(0,255,136,.35);padding:12px 0">Polling USGS…</div>';
+  return '<div class="card"><div class="sec"><span class="live-dot"></span>MASINT — Live Seismic (USGS)</div>'+
+    '<div id="live-seismic-inner" class="scroll">'+initial+'</div></div>';
+}}
+
+// ── Live KP / Space Weather Panel ────────────────────────────────────
+function panelKP(){{
+  var kp = D.kp_current||0;
+  var col = kp>=5?'#ff3355':kp>=3?'#ff8c00':'#00ff88';
+  return '<div class="card"><div class="sec"><span class="live-dot"></span>MASINT — Space Weather / KP Index</div>'+
+    '<div id="live-kp-inner">'+
+    '<div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">'+
+    '<div><div class="mono" style="font-size:8px;color:rgba(0,255,136,.4);margin-bottom:4px">KP INDEX</div>'+
+    '<div class="rj" style="font-size:48px;color:'+col+';line-height:1">'+kp+'</div></div>'+
+    '<div><div class="mono" style="font-size:11px;color:'+col+';margin-bottom:4px">'+esc(D.kp_status||'Quiet')+'</div>'+
+    '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">Kp ≥5 = Storm · ≥7 = Severe</div></div></div>'+
+    '<div style="display:flex;align-items:flex-end;gap:2px;height:48px">'+
+    (D.kp_series||[]).slice(-24).map(function(p){{
+      var v=Math.min(p.kp||0,9);var h=Math.round((v/9)*100)||2;
+      var c=v>=5?'#ff3355':v>=3?'#ff8c00':'#00ff88';
+      return '<div style="flex:1;height:'+h+'%;background:'+c+';border-radius:1px 1px 0 0;opacity:.8"></div>';
+    }}).join('')+
+    '</div><div class="mono" style="font-size:7px;color:rgba(0,255,136,.3);margin-top:3px;text-align:right">← 24h Kp history</div>'+
+    '</div></div>';
+}}
+
+function doRender(){{
+  document.getElementById('R').innerHTML=
+    headerBar()+
+    ticker()+
+    kpis()+
+    '<div class="g2">'+panelActors()+panelCollection()+'</div>'+
+    '<div class="g3">'+panelCOMINT()+panelELINT()+panelMASINT()+'</div>'+
+    '<div class="g3">'+panelJamming()+panelOrbital()+panelLiveCyber()+'</div>'+
+    '<div class="g3">'+panelSeismic()+panelKP()+panelOutages()+'</div>'+
+    '<div class="g2">'+panelLiveFeed()+panelOSINT()+'</div>'+
+    '<div class="g2">'+panelCII()+panelCollection()+'</div>';
+}}
+doRender();
+startCountdown();
+
+// ── CLIENT-SIDE LIVE POLLING ──────────────────────────────────
+// Polls CORS-open APIs every 60s without requiring a Streamlit rerun
+
+var _liveState = {{
+  feed:    D.live_feed   ||[],
+  cyber:   D.live_cyber  ||[],
+  quakes:  D.live_quakes ||[],
+  outages: D.live_outages||[],
+  kp:      D.kp_current  ||0,
+  kpStatus:D.kp_status   ||'Quiet',
+  kpSeries:D.kp_series   ||[],
+  ts:      D.ts          ||'',
+}};
+
+function relTime(iso){{
+  try{{
+    var d=new Date(iso),s=(Date.now()-d)/1000;
+    if(s<60)return Math.round(s)+'s ago';
+    if(s<3600)return Math.round(s/60)+'m ago';
+    if(s<86400)return Math.round(s/3600)+'h ago';
+    return Math.round(s/86400)+'d ago';
+  }}catch{{return iso||'';}}
+}}
+
+// ── Live OSINT Feed ── GDELT Doc API
+async function fetchGDELT(query){{
+  try{{
+    var url='https://api.gdeltproject.org/api/v2/doc/doc?query='+
+      encodeURIComponent(query+' sourcelang:english')+'&mode=artlist&maxrecords=12&format=json&sort=DateDesc';
+    var r=await fetch(url,{{signal:AbortSignal.timeout(10000)}});
+    if(!r.ok)return[];
+    var j=await r.json();
+    return(j.articles||[]).map(function(a){{
+      return{{title:a.title||'',source:(a.domain||'').split('.')[0].toUpperCase(),
+             url:a.url||'',time:relTime(a.seendate)}};
+    }});
+  }}catch{{return[];}}
+}}
+
+// ── Live Seismic (MASINT) ── USGS Hourly Feed
+async function fetchUSGS(){{
+  try{{
+    var r=await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_hour.geojson',
+      {{signal:AbortSignal.timeout(8000)}});
+    if(!r.ok){{
+      // fallback: last 30 days M4.5+
+      r=await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson',
+        {{signal:AbortSignal.timeout(8000)}});
+      if(!r.ok)return[];
+    }}
+    var j=await r.json();
+    return(j.features||[]).slice(0,10).map(function(f){{
+      return{{
+        place:f.properties.place||'',
+        mag:f.properties.mag||0,
+        depth_km:(f.geometry.coordinates[2]||0).toFixed(1),
+        time:relTime(new Date(f.properties.time).toISOString()),
+        alert:f.properties.alert||'',
+      }};
+    }});
+  }}catch{{return[];}}
+}}
+
+// ── Live KP Index ── NOAA 1-minute feed
+async function fetchKP(){{
+  try{{
+    var r=await fetch('https://services.swpc.noaa.gov/json/planetary_k_index_1m.json',
+      {{signal:AbortSignal.timeout(8000)}});
+    if(!r.ok)return null;
+    var arr=await r.json();
+    var recent=arr.slice(-6);
+    var maxKp=Math.max.apply(null,recent.map(function(x){{return parseFloat(x.Kp||x.kp_index||0);}}));
+    var kpStatus=maxKp>=8?'EXTREME STORM':maxKp>=7?'SEVERE STORM':maxKp>=6?'STRONG STORM':
+                 maxKp>=5?'MODERATE STORM':maxKp>=4?'MINOR STORM':maxKp>=3?'Unsettled':'Quiet';
+    return{{current:Math.round(maxKp*10)/10,status:kpStatus,
+             series:arr.slice(-24).map(function(x){{return{{kp:parseFloat(x.Kp||x.kp_index||0),time:x.time_tag}};}})}};
+  }}catch{{return null;}}
+}}
+
+// ── Live Space Weather Alerts ── NOAA SWPC
+async function fetchSpaceAlerts(){{
+  try{{
+    var r=await fetch('https://services.swpc.noaa.gov/products/alerts.json',
+      {{signal:AbortSignal.timeout(8000)}});
+    if(!r.ok)return[];
+    var arr=await r.json();
+    return(arr||[]).slice(0,6).map(function(a){{
+      return{{title:(a.message||'').split('\\n')[0].slice(0,100),source:'NOAA SWPC',
+             time:relTime(a.issue_datetime),url:'https://www.swpc.noaa.gov/'}};
+    }}).filter(function(a){{return a.title;}});
+  }}catch{{return[];}}
+}}
+
+// ── LIVE panel renderers that write directly to DOM ──────────
+
+function renderLiveFeed(){{
+  var el=document.getElementById('live-feed-inner');
+  if(!el)return;
+  var all=_liveState.feed.concat(_liveState.cyber).slice(0,20);
+  if(!all.length){{el.innerHTML='<div class="mono" style="font-size:10px;color:rgba(0,255,136,.3)">Awaiting signals…</div>';return;}}
+  el.innerHTML=all.map(function(a){{
+    return '<div class="row" style="border-left-color:#00ff88">'+
+      '<div style="display:flex;justify-content:space-between;margin-bottom:3px">'+
+      '<span class="mono" style="font-size:8px;color:#00ff88;font-weight:600">'+esc((a.source||'').slice(0,20).toUpperCase())+'</span>'+
+      '<span class="mono" style="font-size:8px;color:rgba(0,255,136,.4)">'+esc(a.time||'')+'</span></div>'+
+      '<div style="font-size:11px;color:#b8d4e8;line-height:1.45">'+esc((a.title||'').slice(0,110))+'</div>'+
+      (a.url?'<a href="'+esc(a.url)+'" target="_blank" rel="noopener" class="mono" '+
+       'style="font-size:8px;color:rgba(0,204,255,.7);text-decoration:none;display:inline-block;margin-top:3px">READ &#8594;</a>':'')+
+      '</div>';
+  }}).join('');
+}}
+
+function renderLiveCyber(){{
+  var el=document.getElementById('live-cyber-inner');
+  if(!el)return;
+  var items=_liveState.cyber.slice(0,10);
+  if(!items.length){{el.innerHTML='<div class="mono" style="font-size:10px;color:rgba(0,255,136,.3)">Scanning…</div>';return;}}
+  el.innerHTML=items.map(function(a){{
+    return '<div class="row" style="border-left-color:#ff3355">'+
+      '<div style="display:flex;justify-content:space-between;margin-bottom:3px">'+
+      '<span class="mono" style="font-size:8px;color:#ff3355;font-weight:600">'+esc((a.source||'').slice(0,20).toUpperCase())+'</span>'+
+      '<span class="mono" style="font-size:8px;color:rgba(0,255,136,.4)">'+esc(a.time||'')+'</span></div>'+
+      '<div style="font-size:11px;color:#b8d4e8;line-height:1.45">'+esc((a.title||'').slice(0,110))+'</div>'+
+      '</div>';
+  }}).join('');
+}}
+
+function renderSeismic(){{
+  var el=document.getElementById('live-seismic-inner');
+  if(!el)return;
+  var items=_liveState.quakes.slice(0,8);
+  if(!items.length){{el.innerHTML='<div class="mono" style="font-size:10px;color:rgba(0,255,136,.3)">No significant seismic in last hour.</div>';return;}}
+  el.innerHTML=items.map(function(q){{
+    var col=q.mag>=6?'#ff3355':q.mag>=5?'#ff8c00':q.mag>=4?'#ffcc00':'#00ff88';
+    return '<div class="row" style="border-left-color:'+col+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'+
+      '<span style="font-size:11px;font-weight:600;color:#b8d4e8">'+esc(q.place||'')+'</span>'+
+      '<span class="mono" style="font-size:12px;font-weight:700;color:'+col+'">M'+q.mag+'</span></div>'+
+      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">Depth: '+q.depth_km+'km · '+esc(q.time)+'</div>'+
+      '</div>';
+  }}).join('');
+}}
+
+function renderKP(){{
+  var el=document.getElementById('live-kp-inner');
+  if(!el)return;
+  var col=_liveState.kp>=5?'#ff3355':_liveState.kp>=3?'#ff8c00':'#00ff88';
+  el.innerHTML=
+    '<div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">'+
+    '<div><div class="mono" style="font-size:8px;color:rgba(0,255,136,.4);margin-bottom:4px">KP INDEX</div>'+
+    '<div class="rj" style="font-size:48px;color:'+col+';line-height:1">'+_liveState.kp+'</div></div>'+
+    '<div><div class="mono" style="font-size:11px;color:'+col+';margin-bottom:4px">'+esc(_liveState.kpStatus)+'</div>'+
+    '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">Kp ≥5 = Storm · ≥7 = Severe</div></div></div>'+
+    '<div style="display:flex;align-items:flex-end;gap:2px;height:48px">'+
+    _liveState.kpSeries.slice(-24).map(function(p){{
+      var v=Math.min(p.kp||0,9);var h=Math.round((v/9)*100);
+      var c=v>=5?'#ff3355':v>=3?'#ff8c00':'#00ff88';
+      return '<div style="flex:1;height:'+h+'%;background:'+c+';border-radius:1px 1px 0 0;opacity:.8"></div>';
+    }}).join('')+'</div>'+
+    '<div class="mono" style="font-size:7px;color:rgba(0,255,136,.3);margin-top:3px;text-align:right">← 24h Kp history</div>';
+}}
+
+function renderTicker(){{
+  var el=document.getElementById('ticker-inner');
+  if(!el)return;
+  var items=_liveState.feed.concat(_liveState.cyber).slice(0,20);
+  if(!items.length)return;
+  var html=items.map(function(a){{
+    return '<span class="t-item"><span>&#9632; '+esc((a.source||'').toUpperCase())+'</span> '+esc((a.title||'').slice(0,90))+'</span>';
+  }}).join('');
+  el.innerHTML=html+html;
+}}
+
+function renderHeader(){{
+  var el=document.getElementById('hbar-risk');
+  if(!el)return;
+  var rs=_liveState.risk||{{}};
+  var col=rs.color||'#ff8c00';
+  el.style.color=col;
+  el.textContent=(rs.score||'–')+' '+(rs.label||'');
+}}
+
+function renderAllLive(){{
+  renderTicker();
+  renderHeader();
+  renderLiveFeed();
+  renderLiveCyber();
+  renderSeismic();
+  renderKP();
+  var tsEl=document.getElementById('live-ts');
+  if(tsEl){{
+    var now=new Date();
+    tsEl.textContent=now.toUTCString().split(' ').slice(4,5)[0]+' UTC';
+  }}
+}}
+
+// ── Main polling loop ─────────────────────────────────────────
+var _pollActive=false;
+
+async function pollAll(){{
+  if(_pollActive)return;
+  _pollActive=true;
+  var statusEl=document.getElementById('poll-status');
+  if(statusEl)statusEl.textContent='● UPDATING…';
+
+  try{{
+    var[feed,cyber,geo,quakes,kpData,spaceAlerts]=await Promise.all([
+      fetchGDELT('war military strike conflict bombing offensive 2026'),
+      fetchGDELT('cyber attack espionage hacking malware APT ransomware'),
+      fetchGDELT('geopolitics sanctions nuclear ballistic missile diplomacy'),
+      fetchUSGS(),
+      fetchKP(),
+      fetchSpaceAlerts(),
+    ]);
+    if(geo&&geo.length) _liveState.feed=geo.concat(feed||[]).slice(0,25);
+    if(feed&&feed.length)    _liveState.feed=feed;
+    if(cyber&&cyber.length)  _liveState.cyber=cyber;
+    if(quakes&&quakes.length)_liveState.quakes=quakes;
+    if(kpData){{
+      _liveState.kp=kpData.current;
+      _liveState.kpStatus=kpData.status;
+      _liveState.kpSeries=kpData.series;
+    }}
+    if(spaceAlerts&&spaceAlerts.length)_liveState.outages=spaceAlerts.concat(_liveState.outages||[]).slice(0,10);
+  }}catch(e){{
+    console.warn('SIGINT poll error:',e);
+  }}
+
+  _pollActive=false;
+  renderAllLive();
+  if(statusEl){{
+    var t=new Date().toUTCString().split(' ').slice(4,5)[0];
+    statusEl.textContent='● LIVE · '+t+' UTC';
+  }}
+}}
+
+// ── Bootstrap ─────────────────────────────────────────────────
+renderAllLive();          // render with server-side data immediately
+setTimeout(pollAll,2000); // first live poll after 2s
+setInterval(pollAll, 60000); // then every 60 seconds
+
+</script>
+</body></html>"""
+    _sc.html(_sigint_html, height=5600, scrolling=True)
 
 
 with tab_econ:
