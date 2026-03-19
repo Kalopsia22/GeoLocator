@@ -6214,7 +6214,7 @@ body {{
 /* ── LAYOUT ── */
 .main-grid {{
   display: grid;
-  grid-template-columns: 1fr 1fr 1.1fr 1fr;
+  grid-template-columns: 1fr 1fr 1.2fr;
   gap: 16px;
   margin-bottom: 24px;
 }}
@@ -6690,30 +6690,32 @@ function finPanel() {{
 
   return `<div class="card">
     <div class="section-title">Financial${{liveTs}}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
 
-    <div style="margin-bottom:18px">
-      <div class="overline" style="margin-bottom:10px">Crypto${{liveBadge}}</div>
-      ${{cryptoRows || '<div class="mono" style="font-size:10px;color:var(--ink3)">Loading…</div>'}}
-    </div>
-
-    <div style="margin-bottom:18px">
-      <div class="overline" style="margin-bottom:10px">Sector Heatmap</div>
-      <div class="sector-grid">${{heatCells}}</div>
-    </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div style="background:var(--raised);border:1px solid var(--edge2);border-radius:10px;padding:14px;text-align:center">
-        <div class="overline" style="margin-bottom:8px">Market Posture</div>
-        <div class="disp" style="font-size:26px;color:${{mCol}};margin-bottom:5px">${{D.market.label}}</div>
-        <div class="mono" style="font-size:9px;color:var(--ink3)">${{D.market.posture}}</div>
-        <div class="mono" style="font-size:9px;color:var(--gold);margin-top:3px">${{D.market.flow}}</div>
+      <div>
+        <div class="overline" style="margin-bottom:10px">Crypto${{liveBadge}}</div>
+        ${{cryptoRows || '<div class="mono" style="font-size:10px;color:var(--ink3)">Loading…</div>'}}
       </div>
-      <div style="background:var(--raised);border:1px solid var(--edge2);border-radius:10px;padding:14px;text-align:center">
-        <div class="overline" style="margin-bottom:8px">BTC ETF Flow</div>
-        <div class="disp" style="font-size:26px;color:${{nfCol}};margin-bottom:5px">$${{Math.abs(D.btc_etf.net_flow)}}M</div>
-        ${{badge(nfUp ? 'INFLOW' : 'OUTFLOW', nfUp ? 'low' : 'crit')}}
-        <div class="mono" style="font-size:9px;color:var(--ink3);margin-top:6px">Est. $${{D.btc_etf.est_flow}}M</div>
+
+      <div>
+        <div class="overline" style="margin-bottom:10px">Sector Heatmap</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px">${{heatCells}}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="background:var(--raised);border:1px solid var(--edge2);border-radius:10px;padding:14px;text-align:center">
+            <div class="overline" style="margin-bottom:8px">Market Posture</div>
+            <div class="disp" style="font-size:28px;color:${{mCol}};margin-bottom:5px">${{D.market.label}}</div>
+            <div class="mono" style="font-size:9px;color:var(--ink3)">${{D.market.posture}}</div>
+            <div class="mono" style="font-size:9px;color:var(--gold);margin-top:3px">${{D.market.flow}}</div>
+          </div>
+          <div style="background:var(--raised);border:1px solid var(--edge2);border-radius:10px;padding:14px;text-align:center">
+            <div class="overline" style="margin-bottom:8px">BTC ETF Flow</div>
+            <div class="disp" style="font-size:28px;color:${{nfCol}};margin-bottom:5px">$${{Math.abs(D.btc_etf.net_flow)}}M</div>
+            ${{badge(nfUp ? 'INFLOW' : 'OUTFLOW', nfUp ? 'low' : 'crit')}}
+            <div class="mono" style="font-size:9px;color:var(--ink3);margin-top:6px">Est. $${{D.btc_etf.est_flow}}M</div>
+          </div>
+        </div>
       </div>
+
     </div>
   </div>`;
 }}
@@ -6978,7 +6980,8 @@ document.getElementById('root').innerHTML =
     panelCrypto() + panelSanctions() + panelCurrencyCrisis() +
   '</div>' +
   panelGeoRisk() +
-  '<div class="main-grid" style="margin-top:18px">' + econPanel() + tradePanel() + supplyPanel() + finPanel() + '</div>' +
+  '<div class="main-grid" style="margin-top:18px">' + econPanel() + tradePanel() + supplyPanel() + '</div>' +
+  '<div style="margin-bottom:24px">' + finPanel() + '</div>' +
   '<hr class="divider">' +
   row2() +
   '<hr class="divider">' +
