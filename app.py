@@ -951,8 +951,20 @@ def fetch_kp():
         r = requests.get("https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json", timeout=6)
         r.raise_for_status()
         data = r.json()
-        return {"kp": float(data[-1][1]), "series": [float(x[1]) for x in data[-24:] if len(x)>1]}
-    except:
+        if not isinstance(data, list) or not data:
+            raise ValueError("Unexpected KP data shape")
+        series = []
+        for row in data[-24:]:
+            try:
+                if isinstance(row, (list, tuple)) and len(row) > 1:
+                    series.append(float(row[1]))
+                elif isinstance(row, dict):
+                    series.append(float(row.get("Kp") or row.get("kp_index") or 0))
+            except (TypeError, ValueError):
+                pass
+        latest = series[-1] if series else 3.7
+        return {"kp": round(latest, 1), "series": series}
+    except Exception:
         return {"kp": 3.7, "series": [1,2,1.5,2.3,3.1,3.7,2.8,2.1,1.8,2.5,3,3.7]*2}
 
 # ── GDELT conflict-scoped fetcher ────────────────────────────
@@ -6146,28 +6158,43 @@ with tab_sigint:
 
     # Seismic events M3.5+ last 24h for MASINT overlay
     _sig_quakes = []
-    if not _sigint_usgs.empty:
-        import pandas as _spd
-        _q24 = _sigint_usgs[_sigint_usgs["mag"] >= 3.5].nlargest(12, "mag")
-        _sig_quakes = [
-            {"place": str(r["place"]), "mag": float(r["mag"]),
-             "depth_km": float(r["depth_km"]), "time": str(r["time"]),
-             "lat": float(r["lat"]), "lon": float(r["lon"])}
-            for _, r in _q24.iterrows()
-        ]
+    try:
+        if _sigint_usgs is not None and not _sigint_usgs.empty:
+            _q24 = _sigint_usgs[_sigint_usgs["mag"] >= 3.5].nlargest(12, "mag")
+            _sig_quakes = [
+                {"place": str(r["place"]), "mag": float(r["mag"]),
+                 "depth_km": float(r["depth_km"]), "time": str(r["time"]),
+                 "lat": float(r["lat"]), "lon": float(r["lon"])}
+                for _, r in _q24.iterrows()
+            ]
+    except Exception:
+        pass
 
-    # KP index summary
+    # KP index summary — fully defensive against any return shape
     _kp_current = 0
     _kp_status  = "Quiet"
-    if _sigint_kp.get("series"):
-        _kp_vals = [p.get("kp", 0) for p in _sigint_kp["series"][-6:]]
-        _kp_current = round(max(_kp_vals), 1) if _kp_vals else 0
-        _kp_status  = ("EXTREME STORM" if _kp_current >= 8 else
-                       "SEVERE STORM"  if _kp_current >= 7 else
-                       "STRONG STORM"  if _kp_current >= 6 else
-                       "MODERATE STORM"if _kp_current >= 5 else
-                       "MINOR STORM"   if _kp_current >= 4 else
-                       "Unsettled"     if _kp_current >= 3 else "Quiet")
+    try:
+        _kp_raw = _sigint_kp if isinstance(_sigint_kp, dict) else {}
+        _kp_series_raw = _kp_raw.get("series") or []
+        _kp_vals = []
+        for _p in _kp_series_raw[-6:]:
+            try:
+                if isinstance(_p, dict):
+                    _kp_vals.append(float(_p.get("kp", 0) or _p.get("kp_index", 0) or 0))
+                else:
+                    _kp_vals.append(float(_p))
+            except (TypeError, ValueError):
+                pass
+        if _kp_vals:
+            _kp_current = round(max(_kp_vals), 1)
+        _kp_status = ("EXTREME STORM" if _kp_current >= 8 else
+                      "SEVERE STORM"  if _kp_current >= 7 else
+                      "STRONG STORM"  if _kp_current >= 6 else
+                      "MODERATE STORM"if _kp_current >= 5 else
+                      "MINOR STORM"   if _kp_current >= 4 else
+                      "Unsettled"     if _kp_current >= 3 else "Quiet")
+    except Exception:
+        pass  # keep defaults
 
     # Active internet outages from live feed
     _outage_live = _sigint_outage[:10] if _sigint_outage else []
@@ -6648,7 +6675,7 @@ function panelKP(){{
     '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">Kp ≥5 = Storm · ≥7 = Severe</div></div></div>'+
     '<div style="display:flex;align-items:flex-end;gap:2px;height:48px">'+
     (D.kp_series||[]).slice(-24).map(function(p){{
-      var v=Math.min(p.kp||0,9);var h=Math.round((v/9)*100)||2;
+      var v=Math.min(typeof p==='object'?(p.kp||0):+p||0,9);var h=Math.round((v/9)*100)||2;
       var c=v>=5?'#ff3355':v>=3?'#ff8c00':'#00ff88';
       return '<div style="flex:1;height:'+h+'%;background:'+c+';border-radius:1px 1px 0 0;opacity:.8"></div>';
     }}).join('')+
@@ -6826,7 +6853,7 @@ function renderKP(){{
     '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">Kp ≥5 = Storm · ≥7 = Severe</div></div></div>'+
     '<div style="display:flex;align-items:flex-end;gap:2px;height:48px">'+
     _liveState.kpSeries.slice(-24).map(function(p){{
-      var v=Math.min(p.kp||0,9);var h=Math.round((v/9)*100);
+      var v=Math.min(typeof p==='object'?(p.kp||0):+p||0,9);var h=Math.round((v/9)*100)||2;
       var c=v>=5?'#ff3355':v>=3?'#ff8c00':'#00ff88';
       return '<div style="flex:1;height:'+h+'%;background:'+c+';border-radius:1px 1px 0 0;opacity:.8"></div>';
     }}).join('')+'</div>'+
