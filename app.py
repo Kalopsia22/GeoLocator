@@ -6251,696 +6251,492 @@ with tab_sigint:
         "refresh_interval": 60,
     })
 
+
+    # Computed vars for f-string injection
+    _sig_risk_score = _sigint_risk.get("score", "—") if isinstance(_sigint_risk, dict) else "—"
+    _sig_risk_label = _sigint_risk.get("label", "") if isinstance(_sigint_risk, dict) else ""
+    _jam_count = sum(1 for z in GPS_JAMMING_ZONES if z.get("severity") == "High")
+    _crit_actors = sum(1 for a in THREAT_ACTORS if a.get("threat_level", 0) >= 85)
+    _cii_crit = sum(1 for c in CII_INSTABILITY if c.get("risk", 0) >= 90)
+    _live_count = len(_sigint_news or []) + len(_sigint_conf or [])
+
     _sigint_html = f"""<!DOCTYPE html>
-<html><head><meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 *{{margin:0;padding:0;box-sizing:border-box;}}
-html{{scroll-behavior:smooth;}}
-body{{
-  background:#010509;font-family:'Rajdhani',system-ui,sans-serif;color:#b8d4e8;
-  padding:18px 16px 56px;
-  background-image:
-    radial-gradient(ellipse 60% 25% at 50% 0%,rgba(0,255,136,.03) 0%,transparent 70%),
-    repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(0,255,136,.015) 40px),
-    repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(0,255,136,.015) 40px);
+:root{{
+  --bg:#03060d;--bg1:#060d18;--bg2:#0a1525;--bg3:#0f1e35;
+  --edge:rgba(0,180,255,.07);--edge2:rgba(0,180,255,.14);
+  --amber:#f0a500;--cyan:#00d4ff;--red:#ff2d55;--green:#00e5a0;--violet:#a855f7;
+  --text:#c2d8ee;--text2:#7aa0be;--text3:#2e4d66;
 }}
-.mono{{font-family:'Share Tech Mono',monospace;}}
-body::after{{content:'';pointer-events:none;position:fixed;top:0;left:0;right:0;bottom:0;
-  background:repeating-linear-gradient(0deg,rgba(0,0,0,.025) 0px,rgba(0,0,0,.025) 1px,transparent 1px,transparent 4px);z-index:9999;}}
-.sec{{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:#00ff88;
-  display:flex;align-items:center;gap:12px;margin-bottom:14px;}}
-.sec::before{{content:'// ';color:#1a4a2e;}}
-.sec::after{{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(0,255,136,.3),transparent);}}
-.card{{background:#040d14;border:1px solid rgba(0,255,136,.1);border-radius:4px;padding:16px 18px;position:relative;overflow:hidden;}}
-.card::before{{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,255,136,.25),transparent);}}
-.scroll{{max-height:360px;overflow-y:auto;padding-right:2px;}}
-.scroll::-webkit-scrollbar{{width:3px;}}
-.scroll::-webkit-scrollbar-thumb{{background:rgba(0,255,136,.2);border-radius:2px;}}
-.row{{border-left:2px solid;border-radius:2px;padding:10px 12px;margin-bottom:6px;
-  background:rgba(0,255,136,.02);
-  border-top:1px solid rgba(0,255,136,.04);border-right:1px solid rgba(0,255,136,.04);border-bottom:1px solid rgba(0,255,136,.04);
-  transition:background .12s;}}
-.row:last-child{{margin-bottom:0;}}
-.row:hover{{background:rgba(0,255,136,.06);}}
-.g4{{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}}
-.g3{{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px;}}
-.g2{{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;}}
-.g21{{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:18px;}}
-.g13{{display:grid;grid-template-columns:1fr 3fr;gap:14px;margin-bottom:18px;}}
-@media(max-width:1000px){{.g4{{grid-template-columns:1fr 1fr;}}.g3{{grid-template-columns:1fr 1fr;}}}}
-@media(max-width:640px){{.g4,.g3,.g2,.g21,.g13{{grid-template-columns:1fr;}}}}
-.kpi{{background:#040d14;border:1px solid rgba(0,255,136,.12);border-radius:4px;padding:16px 18px;position:relative;}}
-.kpi::before{{content:'';position:absolute;top:0;left:0;bottom:0;width:2px;background:var(--ac,#00ff88);}}
-.badge{{display:inline-flex;align-items:center;padding:1px 7px;border-radius:2px;
-  font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:.06em;text-transform:uppercase;border:1px solid;}}
-.b-crit{{color:#ff3355;border-color:rgba(255,51,85,.4);background:rgba(255,51,85,.08);}}
-.b-high{{color:#ff8c00;border-color:rgba(255,140,0,.4);background:rgba(255,140,0,.08);}}
-.b-med{{color:#ffcc00;border-color:rgba(255,204,0,.4);background:rgba(255,204,0,.08);}}
-.b-low{{color:#00ff88;border-color:rgba(0,255,136,.4);background:rgba(0,255,136,.08);}}
-.b-act{{color:#00ccff;border-color:rgba(0,204,255,.4);background:rgba(0,204,255,.08);}}
-.b-intm{{color:#8888ff;border-color:rgba(136,136,255,.4);background:rgba(136,136,255,.08);}}
-.bar{{height:3px;background:rgba(0,255,136,.08);border-radius:1px;overflow:hidden;margin:5px 0;}}
-.fill{{height:100%;border-radius:1px;}}
-/* live indicator */
-.live-dot{{width:6px;height:6px;border-radius:50%;background:#00ff88;display:inline-block;animation:bl 1.2s ease-in-out infinite;margin-right:5px;}}
-.live-chip{{display:inline-flex;align-items:center;padding:2px 8px;border-radius:2px;font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:.1em;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.3);color:#00ff88;margin-left:8px;}}
-@keyframes bl{{0%,100%{{opacity:1;transform:scale(1)}}50%{{opacity:.2;transform:scale(.6)}}}}
-/* ticker */
-.ticker-wrap{{overflow:hidden;background:rgba(0,255,136,.03);border:1px solid rgba(0,255,136,.1);border-radius:2px;padding:7px 12px;margin-bottom:18px;white-space:nowrap;}}
-.ticker-inner{{display:inline-block;animation:tick 80s linear infinite;}}
-@keyframes tick{{0%{{transform:translateX(0)}}100%{{transform:translateX(-50%)}}}}
-.t-item{{display:inline-block;margin-right:48px;font-family:'Share Tech Mono',monospace;font-size:10px;color:rgba(0,255,136,.55);}}
-.t-item b{{color:#00ff88;}}
-/* header bar */
-.hbar{{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding:10px 14px;background:#040d14;border:1px solid rgba(0,255,136,.15);border-radius:4px;}}
-/* kp bar */
-.kp-seg{{height:14px;flex:1;margin:0 1px;border-radius:1px;display:flex;align-items:center;justify-content:center;}}
-</style>
-</head>
+html,body{{height:100%;}}
+body{{background:var(--bg);font-family:'Barlow',system-ui,sans-serif;color:var(--text);overflow-x:hidden;
+  background-image:radial-gradient(ellipse 70% 30% at 50% 0%,rgba(0,180,255,.055) 0%,transparent 65%),
+    radial-gradient(ellipse 40% 60% at 98% 50%,rgba(240,165,0,.03) 0%,transparent 55%),
+    radial-gradient(ellipse 30% 50% at 2% 80%,rgba(168,85,247,.025) 0%,transparent 55%);}}
+body::after{{content:'';pointer-events:none;position:fixed;inset:0;z-index:9999;
+  background:repeating-linear-gradient(0deg,transparent 0,transparent 3px,rgba(0,0,0,.02) 3px,rgba(0,0,0,.02) 4px);}}
+/* Topbar */
+.topbar{{position:sticky;top:0;z-index:200;display:grid;grid-template-columns:auto 1fr auto;align-items:stretch;
+  background:rgba(3,6,13,.94);border-bottom:1px solid var(--edge2);
+  backdrop-filter:blur(16px);box-shadow:0 1px 28px rgba(0,0,0,.5);}}
+.tb-logo{{display:flex;flex-direction:column;justify-content:center;padding:10px 20px;border-right:1px solid var(--edge2);}}
+.tb-name{{font-family:'Orbitron',monospace;font-weight:900;font-size:14px;letter-spacing:.18em;color:var(--cyan);}}
+.tb-sub{{font-family:'JetBrains Mono',monospace;font-size:7px;letter-spacing:.25em;color:var(--text3);margin-top:3px;}}
+.tb-metrics{{display:flex;align-items:stretch;overflow-x:auto;}}
+.tb-m{{display:flex;flex-direction:column;justify-content:center;padding:8px 18px;border-right:1px solid var(--edge);min-width:0;flex-shrink:0;}}
+.tb-ml{{font-family:'JetBrains Mono',monospace;font-size:7px;letter-spacing:.2em;text-transform:uppercase;color:var(--text3);margin-bottom:3px;}}
+.tb-mv{{font-family:'Orbitron',monospace;font-weight:700;font-size:14px;}}
+.tb-right{{display:flex;align-items:center;gap:10px;padding:0 16px;border-left:1px solid var(--edge2);}}
+.tb-ts{{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);}}
+.tb-pill{{display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:2px;
+  border:1px solid rgba(0,229,160,.28);background:rgba(0,229,160,.06);
+  font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.1em;color:var(--green);}}
+.tb-cd{{font-family:'JetBrains Mono',monospace;font-size:7.5px;color:var(--text3);}}
+/* Ticker */
+.ticker{{overflow:hidden;white-space:nowrap;background:rgba(240,165,0,.03);border-bottom:1px solid rgba(240,165,0,.1);padding:6px 0;}}
+.t-inner{{display:inline-block;animation:scr 100s linear infinite;}}
+@keyframes scr{{from{{transform:translateX(0)}}to{{transform:translateX(-50%)}}}}
+.ti{{display:inline-flex;align-items:center;gap:8px;margin-right:56px;font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(194,216,238,.38);}}
+.ti-s{{color:var(--amber);font-weight:500;}}
+/* KPIs */
+.kpis{{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--edge2);border-bottom:1px solid var(--edge2);}}
+.kpi{{background:var(--bg1);padding:18px 20px;position:relative;overflow:hidden;}}
+.kpi::before{{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--kc,var(--cyan)) 40%,transparent);}}
+.kpi-l{{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}}
+.kpi-v{{font-family:'Orbitron',monospace;font-weight:900;font-size:44px;color:var(--kc,var(--cyan));line-height:.9;margin-bottom:6px;}}
+.kpi-s{{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);}}
+/* Layout */
+.body{{padding:14px 16px 40px;}}
+.r2{{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}}
+.r3{{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;}}
+@media(max-width:1100px){{.r3{{grid-template-columns:1fr 1fr;}}}}
+@media(max-width:680px){{.r2,.r3{{grid-template-columns:1fr;}}}}
+/* Cards */
+.card{{background:var(--bg1);border:1px solid var(--edge2);border-radius:3px;position:relative;overflow:hidden;display:flex;flex-direction:column;animation:rise .3s ease both;}}
+@keyframes rise{{from{{opacity:0;transform:translateY(6px)}}to{{opacity:1;transform:translateY(0)}}}}
+.card:nth-child(2){{animation-delay:.06s;}}.card:nth-child(3){{animation-delay:.12s;}}
+.card::before{{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,180,255,.22),transparent);pointer-events:none;}}
+.ch{{display:flex;align-items:center;gap:9px;padding:10px 14px;border-bottom:1px solid var(--edge);background:rgba(0,0,0,.28);flex-shrink:0;}}
+.ch-ico{{width:22px;height:22px;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;}}
+.ch-title{{font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--text2);flex:1;}}
+.ch-ct{{font-family:'JetBrains Mono',monospace;font-size:8px;padding:2px 7px;border-radius:2px;background:rgba(0,0,0,.5);border:1px solid var(--edge2);color:var(--text3);}}
+.live-chip{{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:2px;background:rgba(0,229,160,.06);border:1px solid rgba(0,229,160,.22);font-family:'JetBrains Mono',monospace;font-size:7.5px;letter-spacing:.1em;color:var(--green);}}
+.classif{{position:absolute;bottom:8px;right:10px;pointer-events:none;font-family:'JetBrains Mono',monospace;font-size:7px;letter-spacing:.15em;color:var(--text3);opacity:.35;text-transform:uppercase;}}
+/* Scroll */
+.scroll{{overflow-y:auto;flex:1;padding:10px 12px;max-height:330px;scrollbar-width:thin;scrollbar-color:var(--bg3) transparent;display:flex;flex-direction:column;gap:5px;}}
+.scroll::-webkit-scrollbar{{width:2px;}}.scroll::-webkit-scrollbar-thumb{{background:var(--bg3);}}
+/* Items */
+.item{{background:var(--bg2);border-radius:2px;border-left:2px solid;border-top:1px solid var(--edge);border-right:1px solid var(--edge);border-bottom:1px solid var(--edge);padding:9px 11px;transition:background .12s;}}
+.item:hover{{background:var(--bg3);}}
+.i-top{{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:5px;}}
+.i-name{{font-family:'Barlow',sans-serif;font-size:13px;font-weight:600;color:#e0eefa;line-height:1.2;}}
+.i-meta{{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);margin-top:2px;}}
+.i-detail{{font-size:12px;color:var(--text2);line-height:1.55;margin-top:4px;}}
+/* Actor items */
+.actor{{background:var(--bg2);border-left:3px solid;border-radius:2px;border-top:1px solid var(--edge);border-right:1px solid var(--edge);border-bottom:1px solid var(--edge);padding:12px 13px;transition:background .12s;display:flex;gap:13px;align-items:flex-start;}}
+.actor:hover{{background:var(--bg3);}}
+.a-score{{font-family:'Orbitron',monospace;font-weight:900;font-size:34px;min-width:50px;text-align:center;flex-shrink:0;line-height:1;}}
+.a-slbl{{font-family:'JetBrains Mono',monospace;font-size:7px;letter-spacing:.12em;color:var(--text3);text-align:center;margin-top:3px;}}
+.a-body{{flex:1;min-width:0;}}
+.a-name{{font-family:'Barlow',sans-serif;font-size:14px;font-weight:600;color:#e0eefa;margin-bottom:1px;}}
+.a-unit{{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);margin-bottom:6px;}}
+.a-ops{{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;}}
+.a-op{{font-family:'JetBrains Mono',monospace;font-size:7.5px;padding:2px 7px;border-radius:2px;background:rgba(0,180,255,.06);border:1px solid rgba(0,180,255,.12);color:var(--text2);}}
+/* Priority items */
+.prio{{background:var(--bg2);border-left:3px solid;border-radius:2px;padding:10px 12px;border-top:1px solid var(--edge);border-right:1px solid var(--edge);border-bottom:1px solid var(--edge);transition:background .12s;}}
+.prio:hover{{background:var(--bg3);}}
+.p-row{{display:flex;align-items:flex-start;gap:11px;}}
+.p-num{{font-family:'Orbitron',monospace;font-weight:900;font-size:28px;min-width:30px;text-align:center;flex-shrink:0;line-height:1;padding-top:2px;}}
+.p-target{{font-size:13px;font-weight:600;color:#e0eefa;margin-bottom:2px;}}
+.p-type{{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);margin-bottom:4px;}}
+.p-gap{{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--amber);opacity:.85;margin-top:5px;}}
+.p-gap::before{{content:'⚠ GAP: ';}}
+.p-plats{{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;}}
+.p-plat{{font-family:'JetBrains Mono',monospace;font-size:7.5px;padding:2px 7px;border-radius:2px;background:rgba(0,180,255,.06);border:1px solid rgba(0,180,255,.12);color:var(--text2);}}
+/* Feed items */
+.fi{{background:var(--bg2);border-left:2px solid var(--cyan);border-radius:2px;padding:9px 11px;border-top:1px solid var(--edge);border-right:1px solid var(--edge);border-bottom:1px solid var(--edge);transition:background .12s;}}
+.fi:hover{{background:var(--bg3);}}
+.fi-src{{font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:500;color:var(--cyan);}}
+.fi-title{{font-size:12px;color:var(--text);line-height:1.5;margin:3px 0;}}
+.fi-time{{font-family:'JetBrains Mono',monospace;font-size:7.5px;color:var(--text3);}}
+.fi-link{{font-family:'JetBrains Mono',monospace;font-size:7.5px;color:rgba(0,212,255,.55);text-decoration:none;}}
+.fi-link:hover{{color:var(--cyan);}}
+/* Bars */
+.mbar{{height:2px;background:var(--edge);border-radius:1px;overflow:hidden;margin:5px 0;}}
+.mbar-f{{height:100%;border-radius:1px;}}
+/* Badges */
+.badge{{display:inline-flex;align-items:center;padding:2px 7px;border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:7.5px;letter-spacing:.06em;text-transform:uppercase;border:1px solid;white-space:nowrap;}}
+.bc{{color:var(--red);border-color:rgba(255,45,85,.3);background:rgba(255,45,85,.07);}}
+.bh{{color:var(--amber);border-color:rgba(240,165,0,.3);background:rgba(240,165,0,.07);}}
+.bl{{color:var(--green);border-color:rgba(0,229,160,.25);background:rgba(0,229,160,.05);}}
+.ba{{color:var(--cyan);border-color:rgba(0,212,255,.25);background:rgba(0,212,255,.05);}}
+.bv{{color:var(--violet);border-color:rgba(168,85,247,.25);background:rgba(168,85,247,.06);}}
+.dom{{font-family:'JetBrains Mono',monospace;font-size:7px;padding:2px 6px;border-radius:2px;background:rgba(0,212,255,.07);border:1px solid rgba(0,212,255,.15);color:var(--cyan);letter-spacing:.06em;}}
+/* KP chart */
+.kp-bars{{display:flex;align-items:flex-end;gap:2px;height:40px;padding:0 2px;}}
+.kp-seg{{flex:1;border-radius:1px 1px 0 0;min-width:0;}}
+/* CII */
+.cii-item{{background:var(--bg2);border-left:2px solid;border-radius:2px;padding:9px 11px;border-top:1px solid var(--edge);border-right:1px solid var(--edge);border-bottom:1px solid var(--edge);}}
+/* Section label */
+.slbl{{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.22em;text-transform:uppercase;color:var(--text3);padding:14px 16px 8px;display:flex;align-items:center;gap:10px;}}
+.slbl::after{{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--edge2),transparent);}}
+/* Animations */
+@keyframes pulse{{0%,100%{{opacity:1;transform:scale(1)}}50%{{opacity:.15;transform:scale(.5)}}}}
+.dot{{width:6px;height:6px;border-radius:50%;display:inline-block;animation:pulse 1.4s ease-in-out infinite;flex-shrink:0;}}
+</style></head>
 <body>
-<div id="R"></div>
+<div class="topbar">
+  <div class="tb-logo">
+    <div class="tb-name">SIGINT</div>
+    <div class="tb-sub">Signals Intelligence Dashboard</div>
+  </div>
+  <div class="tb-metrics">
+    <div class="tb-m"><div class="tb-ml">Global Risk</div><div class="tb-mv" id="hbar-risk" style="color:var(--amber)">{_sig_risk_score} {_sig_risk_label}</div></div>
+    <div class="tb-m"><div class="tb-ml">KP Index</div><div class="tb-mv" style="color:var(--cyan)">{_kp_current}</div></div>
+    <div class="tb-m"><div class="tb-ml">GPS Jamming</div><div class="tb-mv" style="color:var(--red)">{_jam_count}</div></div>
+    <div class="tb-m"><div class="tb-ml">Threat Actors</div><div class="tb-mv" style="color:var(--amber)">{_crit_actors}</div></div>
+    <div class="tb-m"><div class="tb-ml">CII Critical</div><div class="tb-mv" style="color:var(--red)">{_cii_crit}</div></div>
+    <div class="tb-m"><div class="tb-ml">Live Signals</div><div class="tb-mv" style="color:var(--green)">{_live_count}</div></div>
+  </div>
+  <div class="tb-right">
+    <span class="tb-ts" id="live-ts">{_sig_ts}</span>
+    <span class="tb-pill"><span class="dot" style="background:var(--green)"></span><span id="poll-status">LIVE</span></span>
+    <span class="tb-cd">↻&thinsp;<span id="cd">60</span>s</span>
+  </div>
+</div>
+<div class="ticker"><div class="t-inner" id="ticker-inner">Loading intelligence feed…</div></div>
+<div class="kpis" id="kpi-strip"></div>
+<div class="body" id="R"></div>
 <script>
-var D={_sigint_payload};
-function esc(s){{return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}}
-function bar(p,c){{return '<div class="bar"><div class="fill" style="width:'+Math.min(p,100)+'%;background:'+c+'"></div></div>';}}
-function tlvl(v){{return v>=85?'#ff3355':v>=70?'#ff8c00':v>=50?'#ffcc00':'#00ff88';}}
-var _refreshSecs = D.refresh_interval||60;
-var _elapsed = 0;
+const D={_sigint_payload};
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const tlvl=v=>v>=85?'var(--red)':v>=70?'var(--amber)':v>=50?'#f0d050':'var(--green)';
+const mbar=(p,c)=>'<div class="mbar"><div class="mbar-f" style="width:'+Math.min(p,100)+'%;background:'+c+'"></div></div>';
 
-// ── Header bar ──────────────────────────────────────────────
-function headerBar(){{
-  var rs = D.live_risk||{{}};
-  var rCol = rs.color||'#ff8c00';
-  var kpCol = D.kp_current>=5?'#ff3355':D.kp_current>=3?'#ff8c00':'#00ff88';
-  return '<div class="hbar" style="display:flex;align-items:center;justify-content:space-between;'+
-    'padding:10px 16px;background:rgba(0,255,136,.03);border:1px solid rgba(0,255,136,.1);'+
-    'border-radius:3px;margin-bottom:14px;flex-wrap:wrap;gap:8px">'+
-    '<div style="display:flex;align-items:center;gap:16px">'+
-    '<div class="mono" style="font-size:9px;color:#00ff88;letter-spacing:.2em">SIGINT DASHBOARD</div>'+
-    '<div class="mono" style="font-size:9px;color:rgba(0,255,136,.5)">GLOBAL RISK: '+
-      '<span id="hbar-risk" style="color:'+rCol+'">'+esc((rs.score||D.live_risk&&D.live_risk.score)||'—')+' '+(rs.label||'')+'</span></div>'+
-    '<div class="mono" style="font-size:9px;color:rgba(0,255,136,.5)">KP: '+
-      '<span style="color:'+kpCol+'">'+D.kp_current+' ('+esc(D.kp_status)+')</span></div>'+
-    '</div>'+
-    '<div style="display:flex;align-items:center;gap:12px">'+
-    '<span id="live-ts" class="mono" style="font-size:8px;color:rgba(0,255,136,.4)">'+esc(D.ts)+'</span>'+
-    '<span id="poll-status" class="mono" style="font-size:8px;color:#00ff88">'+
-      '<span class="pulse" style="background:#00ff88;margin-right:3px"></span>LIVE</span>'+
-    '<span class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">Next: <span id="cd">60</span>s</span>'+
+function buildKPIs(){{
+  var jam=(D.gps_jamming||[]).filter(z=>z.severity==='High').length;
+  var act=(D.actors||[]).filter(a=>a.threat_level>=85).length;
+  var elnt=(D.elint||[]).filter(e=>e.status==='Active').length;
+  var cii=(D.cii||[]).filter(c=>c.risk>=90).length;
+  var data=[
+    {{v:jam,l:'Active GPS Jamming',s:'High-severity zones',c:'var(--red)'}},
+    {{v:act,l:'Critical Threat Actors',s:'Threat level ≥85',c:'var(--amber)'}},
+    {{v:elnt,l:'Active ELINT Systems',s:'Emissions tracked',c:'var(--cyan)'}},
+    {{v:cii,l:'CII Critical Risk',s:'Infrastructure risk ≥90',c:'var(--red)'}},
+  ];
+  document.getElementById('kpi-strip').innerHTML=data.map(k=>
+    '<div class="kpi" style="--kc:'+k.c+'"><div class="kpi-l">'+esc(k.l)+'</div>'+
+    '<div class="kpi-v">'+k.v+'</div><div class="kpi-s">'+esc(k.s)+'</div></div>'
+  ).join('');
+}}
+
+function buildTicker(){{
+  var all=(D.live_events||[]).concat(D.live_conflict||[]).concat(D.live_feed||[]).slice(0,24);
+  if(!all.length)return;
+  var h=all.map(a=>'<span class="ti"><span class="ti-s">▶ '+esc((a.source||'').toUpperCase().slice(0,18))+'</span>'+esc((a.title||'').slice(0,88))+'</span>').join('');
+  document.getElementById('ticker-inner').innerHTML=h+h;
+}}
+
+function updateHeader(){{
+  var ts=document.getElementById('live-ts');
+  if(ts)ts.textContent=new Date().toUTCString().replace(/.*(\d\d:\d\d:\d\d).*/,'$1')+' UTC';
+}}
+
+function panelActors(){{
+  var sorted=(D.actors||[]).slice().sort((a,b)=>b.threat_level-a.threat_level);
+  var rows=sorted.map(a=>{{
+    var col=tlvl(a.threat_level);
+    var doms=(a.domain||[]).map(d=>'<span class="dom">'+esc(d)+'</span>').join('');
+    var ops=(a.operations||[]).map(o=>'<span class="a-op">'+esc(o)+'</span>').join('');
+    return '<div class="actor" style="border-color:'+col+'">'+
+      '<div><div class="a-score" style="color:'+col+'">'+a.threat_level+'</div><div class="a-slbl">THREAT</div></div>'+
+      '<div class="a-body"><div class="a-name">'+esc(a.actor)+'</div><div class="a-unit">'+esc(a.unit||'')+'</div>'+
+      mbar(a.threat_level,col)+
+      '<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:4px">'+doms+
+      '<span style="margin-left:auto;font-family:JetBrains Mono,monospace;font-size:7.5px;color:var(--text3)">ATTR '+(a.attribution||0)+'%</span></div>'+
+      '<div class="a-ops">'+ops+'</div></div></div>';
+  }}).join('');
+  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(255,45,85,.1);color:var(--red)">⚠</div>'+
+    '<div class="ch-title">Threat Actor Matrix</div><div class="ch-ct">'+sorted.length+' actors</div></div>'+
+    '<div class="scroll">'+rows+'</div><div class="classif">SIGINT // EYES ONLY</div></div>';
+}}
+
+function panelCollection(){{
+  var priCol=p=>p<=2?'var(--red)':p<=4?'var(--amber)':p<=6?'#f0d050':'var(--green)';
+  var rows=(D.collection||[]).map(p=>{{
+    var col=priCol(p.priority);
+    var st=p.status==='Active'?'<span class="badge bc">Active</span>':'<span class="badge bl">Routine</span>';
+    var plats=(p.collection||[]).map(c=>'<span class="p-plat">'+esc(c)+'</span>').join('');
+    return '<div class="prio" style="border-color:'+col+'">'+
+      '<div class="p-row"><div><div class="p-num" style="color:'+col+'">P'+p.priority+'</div></div>'+
+      '<div class="a-body"><div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">'+
+      '<span class="p-target">'+esc(p.target)+'</span>'+st+'</div>'+
+      '<div class="p-type">'+esc(p.type||'')+' · '+esc(p.last_update||'')+'</div>'+
+      '<div class="p-plats">'+plats+'</div>'+
+      '<div class="p-gap">'+esc(p.intel_gap||'')+'</div>'+
+      '</div></div></div>';
+  }}).join('');
+  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(240,165,0,.1);color:var(--amber)">🎯</div>'+
+    '<div class="ch-title">Collection Requirements</div><div class="ch-ct">P1–'+(D.collection||[]).length+'</div></div>'+
+    '<div class="scroll">'+rows+'</div><div class="classif">COLLECTION PLAN</div></div>';
+}}
+
+function panelCOMINT(){{
+  var rows=(D.comint||[]).map(s=>{{
+    var col=s.intercept==='Active'?'var(--amber)':'var(--violet)';
+    var bc=s.intercept==='Active'?'bh':'bv';
+    return '<div class="item" style="border-color:'+col+'">'+
+      '<div class="i-top"><div><div class="i-name">'+esc(s.actor)+'</div>'+
+      '<div class="i-meta">'+esc(s.id||'')+' · '+esc(s.signal_type||'')+' · '+esc(s.freq||'')+'</div></div>'+
+      '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">'+
+      '<span class="badge '+bc+'">'+esc(s.intercept||'')+'</span>'+
+      '<span style="font-family:JetBrains Mono,monospace;font-size:7.5px;color:var(--text3)">CONF '+(s.confidence||0)+'%</span></div></div>'+
+      mbar(s.confidence||0,col)+
+      '<div class="i-detail">'+esc(s.detail||'')+'</div>'+
+      '<div style="font-family:JetBrains Mono,monospace;font-size:8px;color:var(--text3);margin-top:5px">⊳ TARGET: '+esc(s.target||'')+'</div></div>';
+  }}).join('');
+  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(240,165,0,.1);color:var(--amber)">📡</div>'+
+    '<div class="ch-title">COMINT — Communications Intel</div><div class="ch-ct">'+((D.comint||[]).length)+' signals</div></div>'+
+    '<div class="scroll">'+rows+'</div><div class="classif">TOP SECRET // COMINT</div></div>';
+}}
+
+function panelELINT(){{
+  var ac=a=>a.includes('Russia')?'var(--red)':a.includes('China')?'var(--amber)':a.includes('USA')?'var(--cyan)':'var(--green)';
+  var rows=(D.elint||[]).map(e=>{{
+    var col=ac(e.actor||'');
+    return '<div class="item" style="border-color:'+col+'">'+
+      '<div class="i-top"><div><div class="i-name">'+esc(e.system||'')+'</div>'+
+      '<div class="i-meta">'+esc(e.type||'')+' · '+esc(e.freq||'')+' · Range: '+(e.range_km||'?')+'km</div></div>'+
+      '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0">'+
+      '<span class="badge" style="color:'+col+';border-color:'+col+'40;background:'+col+'12">'+esc(e.actor||'')+'</span>'+
+      '<span style="font-family:JetBrains Mono,monospace;font-size:7.5px;color:var(--text3);text-align:right">'+esc(e.capability||'')+'</span></div></div>'+
+      '<div class="i-detail">'+esc(e.detail||'')+'</div></div>';
+  }}).join('');
+  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(0,212,255,.08);color:var(--cyan)">⚡</div>'+
+    '<div class="ch-title">ELINT — Electronic Intelligence</div><div class="ch-ct">'+((D.elint||[]).length)+' tracked</div></div>'+
+    '<div class="scroll">'+rows+'</div><div class="classif">TOP SECRET // ELINT</div></div>';
+}}
+
+function panelMASINT(){{
+  var tc={{Seismic:'#f0d050','Nuclear Radiation':'var(--red)',Acoustic:'var(--cyan)',Chemical:'var(--amber)',Thermal:'var(--amber)'}};
+  var rows=(D.masint||[]).map(m=>{{
+    var col=tc[m.type]||'var(--green)';
+    return '<div class="item" style="border-color:'+col+'">'+
+      '<div class="i-top"><div><div class="i-name">'+esc(m.event||'')+'</div>'+
+      '<div class="i-meta">'+esc(m.id||'')+' · '+esc(m.location||'')+' · '+esc(m.date||'')+'</div></div>'+
+      '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0">'+
+      '<span class="badge" style="color:'+col+';border-color:'+col+'40;background:'+col+'12">'+esc(m.type||'')+'</span>'+
+      '<span style="font-family:JetBrains Mono,monospace;font-size:7.5px;color:var(--text3)">CONF '+(m.confidence||0)+'%</span></div></div>'+
+      mbar(m.confidence||0,col)+
+      '<div class="i-detail">'+esc(m.detail||'')+'</div></div>';
+  }}).join('');
+  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(240,208,80,.08);color:#f0d050">🔭</div>'+
+    '<div class="ch-title">MASINT — Measurement & Signature</div><div class="ch-ct">'+((D.masint||[]).length)+' events</div></div>'+
+    '<div class="scroll">'+rows+'</div><div class="classif">TOP SECRET // MASINT</div></div>';
+}}
+
+function panelJamming(){{
+  var rows=(D.gps_jamming||[]).map(z=>{{
+    var col=z.severity==='High'?'var(--red)':'#f0d050';
+    var bc=z.severity==='High'?'bc':'bh';
+    return '<div class="item" style="border-color:'+col+'">'+
+      '<div class="i-top"><div><div class="i-name">'+esc(z.name||'')+'</div>'+
+      '<div class="i-meta">Source: '+esc(z.source||'')+' · Radius: '+(z.radius_km||'?')+'km</div></div>'+
+      '<span class="badge '+bc+'">'+esc(z.severity||'')+'</span></div>'+mbar(z.severity==='High'?90:55,col)+'</div>';
+  }}).join('');
+  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(255,45,85,.08);color:var(--red)">📵</div>'+
+    '<div class="ch-title">GPS/GNSS Jamming Zones</div><div class="ch-ct">'+((D.gps_jamming||[]).length)+' zones</div></div>'+
+    '<div class="scroll">'+rows+'</div></div>';
+}}
+
+function panelOrbital(){{
+  var oc=o=>o.includes('USA')?'var(--cyan)':o.includes('Russia')?'var(--red)':o.includes('China')?'var(--amber)':o.includes('Israel')?'#f0d050':'var(--green)';
+  var rows=(D.orbital||[]).map(o=>{{
+    var col=oc(o.operator||'');
+    return '<div class="item" style="border-color:'+col+'">'+
+      '<div class="i-top"><div><div class="i-name">'+esc(o.name||'')+'</div>'+
+      '<div class="i-meta">'+esc(o.type||'')+'</div></div>'+
+      '<span class="badge" style="color:'+col+';border-color:'+col+'40;background:'+col+'12">'+esc(o.operator||'')+'</span></div></div>';
+  }}).join('');
+  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(0,212,255,.08);color:var(--cyan)">🛰</div>'+
+    '<div class="ch-title">Orbital ISR — Surveillance Sat</div><div class="ch-ct">'+((D.orbital||[]).length)+' systems</div></div>'+
+    '<div class="scroll">'+rows+'</div></div>';
+}}
+
+function panelLiveCyber(){{
+  var ac=a=>a.includes('Russia')?'var(--red)':a.includes('China')?'var(--amber)':a.includes('Iran')?'#f0d050':a.includes('DPRK')?'var(--violet)':'var(--green)';
+  var base=(D.cyber_threats||[]).map(c=>{{
+    var col=ac(c.actor||'');
+    return '<div class="item" style="border-color:'+col+'">'+
+      '<div class="i-top"><div><div class="i-name">'+esc(c.name||'')+'</div>'+
+      '<div class="i-meta">Targets: '+esc(c.targets||'')+'</div></div>'+
+      '<span class="badge" style="color:'+col+';border-color:'+col+'40;background:'+col+'12">'+esc(c.actor||'')+'</span></div></div>';
+  }}).join('');
+  var live=(D.live_cyber||[]).slice(0,5).map(a=>
+    '<div class="fi" style="border-left-color:var(--violet)">'+
+    '<div class="fi-src">'+esc((a.source||'').toUpperCase())+'</div>'+
+    '<div class="fi-title">'+esc((a.title||'').slice(0,100))+'</div>'+
+    '<div class="fi-time">'+esc(a.time||'')+'</div></div>'
+  ).join('');
+  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(168,85,247,.1);color:var(--violet)">💀</div>'+
+    '<div class="ch-title">CYBINT — Cyber Threats</div>'+
+    '<div class="live-chip"><span class="dot" style="background:var(--green)"></span>GDELT</div></div>'+
+    '<div class="scroll" id="live-cyber-inner">'+base+(live?'<div style="height:1px;background:var(--edge2);margin:4px 0"></div>'+live:'')+'</div>'+
+    '<div class="classif">TOP SECRET // CYBER</div></div>';
+}}
+
+function panelSeismic(){{
+  var q=D.live_quakes||[];
+  var rows=q.length?q.map(q=>{{
+    var col=q.mag>=6?'var(--red)':q.mag>=5?'var(--amber)':q.mag>=4?'#f0d050':'var(--green)';
+    return '<div class="item" style="border-color:'+col+'">'+
+      '<div class="i-top"><div><div class="i-name">'+esc(q.place||q.loc||'')+'</div>'+
+      '<div class="i-meta">Depth: '+(q.depth_km||'?')+'km · '+esc(q.time||'')+'</div></div>'+
+      '<span style="font-family:Orbitron,monospace;font-weight:700;font-size:18px;color:'+col+'">M'+q.mag+'</span></div></div>';
+  }}).join(''):'<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--text3);padding:12px 0">Polling USGS…</div>';
+  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(240,208,80,.08);color:#f0d050">🌍</div>'+
+    '<div class="ch-title">MASINT — Live Seismic</div>'+
+    '<div class="live-chip"><span class="dot" style="background:var(--green)"></span>USGS</div></div>'+
+    '<div id="live-seismic-inner" class="scroll">'+rows+'</div></div>';
+}}
+
+function panelKP(){{
+  var kp=D.kp_current||0;var col=kp>=5?'var(--red)':kp>=3?'var(--amber)':'var(--green)';
+  var bars=(D.kp_series||[]).slice(-24).map(p=>{{
+    var v=Math.min(p.kp||p||0,9);var h=Math.max(Math.round((v/9)*100),3);
+    var c=v>=5?'var(--red)':v>=3?'var(--amber)':'var(--green)';
+    return '<div class="kp-seg" style="height:'+h+'%;background:'+c+';opacity:.8"></div>';
+  }}).join('');
+  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(0,229,160,.08);color:var(--green)">☀</div>'+
+    '<div class="ch-title">Space Weather / KP Index</div>'+
+    '<div class="live-chip"><span class="dot" style="background:var(--green)"></span>NOAA</div></div>'+
+    '<div id="live-kp-inner" style="padding:14px 16px">'+
+    '<div style="display:flex;align-items:center;gap:18px;margin-bottom:12px">'+
+    '<div><div style="font-family:JetBrains Mono,monospace;font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:var(--text3);margin-bottom:4px">KP INDEX</div>'+
+    '<div style="font-family:Orbitron,monospace;font-weight:900;font-size:48px;color:'+col+';line-height:1">'+kp+'</div></div>'+
+    '<div><div style="font-family:JetBrains Mono,monospace;font-size:11px;color:'+col+';margin-bottom:4px">'+esc(D.kp_status||'Quiet')+'</div>'+
+    '<div style="font-family:JetBrains Mono,monospace;font-size:8px;color:var(--text3)">≥5 Storm · ≥7 Severe · ≥9 Extreme</div></div></div>'+
+    '<div class="kp-bars">'+bars+'</div>'+
+    '<div style="font-family:JetBrains Mono,monospace;font-size:7px;color:var(--text3);margin-top:3px;text-align:right">← 24h Kp history</div>'+
     '</div></div>';
 }}
 
-
-// ── Ticker ───────────────────────────────────────────────────
-function ticker(){{
-  var all = (D.live_events||[]).concat(D.live_conflict||[]).concat(D.live_feed||[]).slice(0,24);
-  if(!all.length) return '';
-  var inner=all.map(function(a){{
-    return '<span class="t-item"><b>▶ '+esc((a.source||'').toUpperCase().slice(0,20))+'</b> '+esc((a.title||'').slice(0,90))+'</span>';
-  }}).join('');
-  return '<div class="ticker-wrap"><div class="ticker-inner" id="ticker-inner">'+inner+inner+'</div></div>';
+function panelOutages(){{
+  var items=(D.live_outages||D.internet_static||[]).slice(0,10);
+  var rows=items.length?items.map(o=>
+    '<div class="item" style="border-color:var(--red)">'+
+    '<div class="i-name">'+esc(o.region||o.title||'')+'</div>'+
+    '<div class="i-meta">'+(o.provider||o.source||'')+' · '+(o.time||o.ts||'')+'</div></div>'
+  ).join(''):'<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--text3);padding:12px 0">No major outages detected.</div>';
+  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(255,45,85,.08);color:var(--red)">🔌</div>'+
+    '<div class="ch-title">Internet Outages</div>'+
+    '<div class="live-chip"><span class="dot" style="background:var(--green)"></span>Live</div></div>'+
+    '<div class="scroll">'+rows+'</div></div>';
 }}
 
-// ── KPI strip ─────────────────────────────────────────────────
-function kpis(){{
-  var activeJam  = (D.gps_jamming||[]).filter(function(z){{return z.severity==='High';}}).length;
-  var critActors = (D.actors||[]).filter(function(a){{return a.threat_level>=85;}}).length;
-  var liveEvents = (D.live_events||[]).length;
-  var outages    = (D.live_outages||[]).length;
-  var data=[
-    {{v:activeJam,  l:'GPS Jamming Zones',   s:'High severity active',c:'#ff8c00',live:false}},
-    {{v:critActors, l:'Critical APT Actors', s:'Threat level \u226585',c:'#ff3355',live:false}},
-    {{v:liveEvents, l:'Live GDELT Events',   s:'Last 90s window',     c:'#00ccff',live:true}},
-    {{v:outages,    l:'Internet Disruptions',s:'Live outage feed',    c:'#ff8c00',live:true}},
-  ];
-  return '<div class="g4">'+data.map(function(k){{
-    var liveTag=k.live?'<span class="live-chip"><span class="live-dot"></span>LIVE</span>':'';
-    return '<div class="kpi" style="--ac:'+k.c+'">'+
-      '<div class="mono" style="font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:rgba(0,255,136,.38);margin-bottom:6px">'+k.l+liveTag+'</div>'+
-      '<div style="font-size:44px;font-weight:700;color:'+k.c+';line-height:.9;margin-bottom:4px">'+k.v+'</div>'+
-      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.28)">'+k.s+'</div></div>';
-  }}).join('')+'</div>';
-}}
-
-// ── Live Events Feed ──────────────────────────────────────────
 function panelLiveFeed(){{
   var all=(D.live_events||[]).concat(D.live_conflict||[]).concat(D.live_feed||[]).slice(0,25);
-  var rows=all.length?all.map(function(a){{
-    var catCol={{CONFLICT:'#ff3355',MILITARY:'#ff8c00',NUCLEAR:'#ff3355',OSINT:'#00ccff',CYBER:'#8888ff'}};
-    var col=catCol[a.cat||'']||'#00ff88';
-    return '<div class="row" style="border-left-color:'+col+'">'+
-      '<div style="display:flex;justify-content:space-between;margin-bottom:3px">'+
-      '<span class="mono" style="font-size:8px;color:'+col+';font-weight:600">'+esc((a.source||'').toUpperCase().slice(0,22))+'</span>'+
-      '<span class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">'+esc(a.time||'')+'</span>'+
-      '</div>'+
-      '<div style="font-size:12px;font-weight:500;color:#d4eaf7;line-height:1.45">'+esc((a.title||'').slice(0,110))+'</div>'+
-      (a.url?'<a href="'+esc(a.url)+'" target="_blank" rel="noopener" class="mono" style="font-size:8px;color:rgba(0,204,255,.6);text-decoration:none;display:inline-block;margin-top:3px">READ \u2192</a>':'')+
+  var cc={{CONFLICT:'var(--red)',MILITARY:'var(--amber)',NUCLEAR:'var(--red)',OSINT:'var(--cyan)',CYBER:'var(--violet)'}};
+  var rows=all.length?all.map(a=>{{
+    var col=cc[a.cat||'']||'var(--cyan)';
+    return '<div class="fi" style="border-left-color:'+col+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'+
+      '<span class="fi-src" style="color:'+col+'">'+esc((a.source||'').slice(0,22).toUpperCase())+'</span>'+
+      '<span class="fi-time">'+esc(a.time||'')+'</span></div>'+
+      '<div class="fi-title">'+esc((a.title||'').slice(0,110))+'</div>'+
+      (a.url?'<a class="fi-link" href="'+esc(a.url)+'" target="_blank" rel="noopener">READ →</a>':'')+
       '</div>';
-  }}).join(''):'<div class="mono" style="font-size:10px;color:rgba(0,255,136,.35);padding:12px 0">Fetching live signals...</div>';
-  return '<div class="card"><div class="sec"><span class="live-dot"></span>Live OSINT / SIGINT Feed <span class="mono" style="font-size:8px;color:rgba(0,255,136,.4)">('+all.length+' signals)</span></div>'+
+  }}).join(''):'<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--text3);padding:12px 0">Fetching live signals…</div>';
+  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(0,212,255,.08);color:var(--cyan)">📰</div>'+
+    '<div class="ch-title">Live OSINT / SIGINT Feed</div>'+
+    '<div class="live-chip"><span class="dot" style="background:var(--green)"></span>'+all.length+' signals</div></div>'+
     '<div class="scroll" id="live-feed-inner">'+rows+'</div></div>';
 }}
 
-// ── Live Cyber Events ─────────────────────────────────────────
-function panelLiveCyber(){{
-  var all=(D.live_cyber||[]);
-  var baseRows=(D.cyber_threats||[]).map(function(c){{
-    var col=c.actor.includes('Russia')?'#ff3355':c.actor.includes('China')?'#ff8c00':c.actor.includes('Iran')?'#ffcc00':c.actor.includes('DPRK')?'#8888ff':'#00ff88';
-    return '<div class="row" style="border-left-color:'+col+'">'+
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'+
-      '<span style="font-size:12px;font-weight:600;color:#d4eaf7">'+esc(c.name)+'</span>'+
-      '<span class="badge" style="color:'+col+';border-color:'+col+'50;background:'+col+'12">'+esc(c.actor)+'</span>'+
-      '</div>'+
-      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">TARGETS: '+esc(c.targets)+'</div>'+
-      '</div>';
-  }}).join('');
-  var liveRows=all.length?'<div class="sec" style="margin-top:12px"><span class="live-dot"></span>GDELT Cyber Signals</div>'+all.map(function(a){{
-    return '<div class="row" style="border-left-color:#8888ff">'+
-      '<div style="display:flex;justify-content:space-between;margin-bottom:3px">'+
-      '<span class="mono" style="font-size:8px;color:#8888ff">'+esc((a.source||'').toUpperCase().slice(0,22))+'</span>'+
-      '<span class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">'+esc(a.time||'')+'</span>'+
-      '</div>'+
-      '<div style="font-size:11px;color:#d4eaf7;line-height:1.4">'+esc((a.title||'').slice(0,100))+'</div>'+
-      '</div>';
-  }}).join(''):'';
-  return '<div class="card"><div class="sec">CYBINT — Threat Actors <span class="live-chip"><span class="live-dot"></span>GDELT</span></div>'+
-    '<div class="scroll" id="live-cyber-inner">'+baseRows+liveRows+'</div></div>';
-}}
-
-// ── Live Seismic MASINT ───────────────────────────────────────
-function panelMASINT(){{
-  var baseRows=(D.masint||[]).map(function(m){{
-    var typeCol={{Seismic:'#ffcc00','Nuclear Radiation':'#ff3355',Acoustic:'#00ccff',Chemical:'#ff8c00',Thermal:'#ff8c00'}};
-    var col=typeCol[m.type]||'#00ff88';
-    return '<div class="row" style="border-left-color:'+col+'">'+
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">'+
-      '<div><div style="font-size:12px;font-weight:600;color:#d4eaf7">'+esc(m.event)+'</div>'+
-      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.38);margin-top:2px">'+esc(m.id)+' · '+esc(m.type)+' · '+esc(m.location)+'</div></div>'+
-      '<div style="display:flex;gap:5px;flex-shrink:0;margin-left:8px">'+
-      '<span class="badge" style="color:'+col+';border-color:'+col+'50;background:'+col+'12">'+esc(m.type)+'</span>'+
-      '<span class="mono" style="font-size:9px;color:rgba(0,255,136,.45)">'+m.confidence+'%</span>'+
-      '</div></div>'+
-      bar(m.confidence,col)+
-      '<div style="font-size:11px;color:rgba(184,212,232,.6);line-height:1.45;margin-top:4px">'+esc(m.detail)+'</div>'+
-      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.3);margin-top:3px">'+esc(m.date)+'</div>'+
-      '</div>';
-  }}).join('');
-  var quakeRows=(D.live_quakes||[]).length?
-    '<div class="sec" style="margin-top:12px"><span class="live-dot"></span>USGS Live M3.5+ Seismic</div>'+
-    (D.live_quakes||[]).map(function(q){{
-      var col=q.mag>=5.5?'#ff3355':q.mag>=4.5?'#ff8c00':'#ffcc00';
-      return '<div class="row" style="border-left-color:'+col+'">'+
-        '<div style="display:flex;justify-content:space-between;align-items:center">'+
-        '<div><div style="font-size:11px;color:#d4eaf7">'+esc(q.place)+'</div>'+
-        '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">Depth: '+q.depth_km+'km · '+esc(q.time)+'</div></div>'+
-        '<div style="font-size:22px;font-weight:700;color:'+col+';flex-shrink:0;margin-left:8px">M'+q.mag.toFixed(1)+'</div>'+
-        '</div></div>';
-    }}).join(''):'';
-  return '<div class="card"><div class="sec">MASINT — Measurement &amp; Signature</div>'+
-    '<div class="scroll">'+baseRows+quakeRows+'</div></div>';
-}}
-
-// ── Live Internet Outages ─────────────────────────────────────
-function panelOutages(){{
-  var liveRows=(D.live_outages||[]).length?
-    (D.live_outages||[]).map(function(o){{
-      return '<div class="row" style="border-left-color:#ff8c00">'+
-        '<div style="display:flex;justify-content:space-between;margin-bottom:3px">'+
-        '<span class="mono" style="font-size:8px;color:#ff8c00">'+esc((o.source||'').toUpperCase().slice(0,25))+'</span>'+
-        '<span class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">'+esc(o.time||'')+'</span>'+
-        '</div>'+
-        '<div style="font-size:11px;color:#d4eaf7;line-height:1.4;margin-bottom:3px">'+esc((o.title||'').slice(0,100))+'</div>'+
-        (o.url?'<a href="'+esc(o.url)+'" target="_blank" rel="noopener" class="mono" style="font-size:8px;color:rgba(0,204,255,.6);text-decoration:none">READ \u2192</a>':'')+
-        '</div>';
-    }}).join(''):
-    '<div class="mono" style="font-size:10px;color:rgba(0,255,136,.35);padding:8px 0">No live outage signals in feed.</div>';
-  var staticRows=(D.internet_static||[]).map(function(io){{
-    var col=io.severity==='Total'?'#ff3355':io.severity==='Partial'||io.severity==='Disrupted'?'#ff8c00':'#ffcc00';
-    return '<div class="row" style="border-left-color:'+col+'">'+
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'+
-      '<span style="font-size:12px;font-weight:600;color:#d4eaf7">'+esc(io.name)+'</span>'+
-      '<span class="badge b-'+(io.severity==='Total'?'crit':io.severity==='Partial'||io.severity==='Disrupted'?'high':'med')+'">'+esc(io.severity)+'</span>'+
-      '</div>'+
-      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">'+esc(io.cause||'')+'</div>'+
-      '</div>';
-  }}).join('');
-  return '<div class="card"><div class="sec"><span class="live-dot"></span>Internet Outages &amp; Censorship</div>'+
-    '<div class="scroll">'+liveRows+'<div class="sec" style="margin-top:10px">Known Active Disruptions</div>'+staticRows+'</div></div>';
-}}
-
-// ── GPS / GNSS Jamming ────────────────────────────────────────
-function panelJamming(){{
-  var rows=(D.gps_jamming||[]).map(function(z){{
-    var col=z.severity==='High'?'#ff3355':'#ffcc00';
-    return '<div class="row" style="border-left-color:'+col+'">'+
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
-      '<span style="font-size:12px;font-weight:600;color:#d4eaf7">'+esc(z.name)+'</span>'+
-      '<div style="display:flex;gap:6px;align-items:center">'+
-      '<span class="mono" style="font-size:8px;color:rgba(0,255,136,.4)">r='+z.radius_km+'km</span>'+
-      '<span class="badge '+(z.severity==='High'?'b-crit':'b-med')+'">'+esc(z.severity)+'</span>'+
-      '</div></div>'+bar(z.severity==='High'?88:55,col)+
-      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35);margin-top:3px">SOURCE: '+esc(z.source)+'</div>'+
-      '</div>';
-  }}).join('');
-  return '<div class="card"><div class="sec">GPS / GNSS Jamming &amp; Spoofing</div>'+
-    '<div class="scroll">'+rows+'</div></div>';
-}}
-
-// ── ELINT ─────────────────────────────────────────────────────
-function panelELINT(){{
-  var rows=(D.elint||[]).map(function(e){{
-    var col=e.actor.includes('Russia')?'#ff3355':e.actor.includes('China')?'#ff8c00':e.actor.includes('USA')?'#00ccff':'#00ff88';
-    return '<div class="row" style="border-left-color:'+col+'">'+
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">'+
-      '<div><div style="font-size:12px;font-weight:600;color:#d4eaf7">'+esc(e.system)+'</div>'+
-      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.38);margin-top:2px">'+esc(e.type)+' · '+esc(e.freq)+' · '+e.range_km+'km</div></div>'+
-      '<div style="text-align:right;flex-shrink:0;margin-left:8px">'+
-      '<span class="badge" style="color:'+col+';border-color:'+col+'50;background:'+col+'12">'+esc(e.actor)+'</span>'+
-      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35);margin-top:2px">'+esc(e.capability)+'</div></div></div>'+
-      '<div style="font-size:11px;color:rgba(184,212,232,.6);line-height:1.45">'+esc(e.detail)+'</div></div>';
-  }}).join('');
-  return '<div class="card"><div class="sec">ELINT — Electronic Intelligence <span class="mono" style="font-size:8px;color:rgba(0,255,136,.4)">('+D.elint.length+' tracked)</span></div>'+
-    '<div class="scroll">'+rows+'</div></div>';
-}}
-
-// ── COMINT ────────────────────────────────────────────────────
-function panelCOMINT(){{
-  var rows=(D.comint||[]).map(function(s){{
-    var col=s.intercept==='Active'?'#ff8c00':'#8888ff';
-    var bc=s.intercept==='Active'?'b-high':'b-intm';
-    return '<div class="row" style="border-left-color:'+col+'">'+
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">'+
-      '<div><div style="font-size:13px;font-weight:600;color:#d4eaf7">'+esc(s.actor)+'</div>'+
-      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.38);margin-top:2px">'+esc(s.id)+' · '+esc(s.signal_type)+' · '+esc(s.freq)+'</div></div>'+
-      '<div style="display:flex;gap:5px;flex-shrink:0;margin-left:8px">'+
-      '<span class="badge '+bc+'">'+esc(s.intercept)+'</span>'+
-      '<span class="mono" style="font-size:9px;color:rgba(0,255,136,.45)">'+s.confidence+'%</span>'+
-      '</div></div>'+
-      '<div style="font-size:11px;color:rgba(184,212,232,.6);line-height:1.5;margin-bottom:4px">'+esc(s.detail)+'</div>'+
-      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.3)">TARGET: '+esc(s.target)+' · '+esc(s.last_active)+'</div>'+
-      '</div>';
-  }}).join('');
-  return '<div class="card"><div class="sec">COMINT — Communications Intelligence</div>'+
-    '<div class="scroll">'+rows+'</div></div>';
-}}
-
-// ── Orbital ISR ───────────────────────────────────────────────
-function panelOrbital(){{
-  var rows=(D.orbital||[]).map(function(o){{
-    var col=o.operator.includes('USA')?'#00ccff':o.operator.includes('Russia')?'#ff3355':o.operator.includes('China')?'#ff8c00':o.operator.includes('Israel')?'#ffcc00':'#00ff88';
-    return '<div class="row" style="border-left-color:'+col+'">'+
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'+
-      '<span style="font-size:12px;font-weight:600;color:#d4eaf7">'+esc(o.name)+'</span>'+
-      '<span class="badge" style="color:'+col+';border-color:'+col+'50;background:'+col+'12">'+esc(o.operator)+'</span>'+
-      '</div>'+
-      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">TYPE: '+esc(o.type)+'</div>'+
-      '</div>';
-  }}).join('');
-  return '<div class="card"><div class="sec">Orbital ISR / IMINT Constellation</div>'+
-    '<div class="scroll">'+rows+'</div></div>';
-}}
-
-// ── Threat Actor Matrix ───────────────────────────────────────
-function panelActors(){{
-  var sorted=(D.actors||[]).slice().sort(function(a,b){{return b.threat_level-a.threat_level;}});
-  var rows=sorted.map(function(a){{
-    var col=tlvl(a.threat_level);
-    var domBadges=a.domain.map(function(d){{return '<span class="badge b-act" style="font-size:7px;margin-right:3px">'+esc(d)+'</span>';}}).join('');
-    var ops=a.operations.map(function(o){{return '<span class="mono" style="font-size:8px;color:rgba(0,255,136,.42);margin-right:8px">\u25cf '+esc(o)+'</span>';}}).join('');
-    return '<div class="row" style="border-left-color:'+col+'">'+
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">'+
-      '<div><div style="font-size:13px;font-weight:700;color:#d4eaf7">'+esc(a.actor)+'</div>'+
-      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.38);margin-top:2px">'+esc(a.unit)+'</div></div>'+
-      '<div style="text-align:right;flex-shrink:0;margin-left:10px">'+
-      '<div style="font-size:28px;font-weight:700;color:'+col+';line-height:1">'+a.threat_level+'</div>'+
-      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">ATTR: '+a.attribution+'%</div></div></div>'+
-      bar(a.threat_level,col)+
-      '<div style="margin:5px 0 4px">'+domBadges+'</div>'+
-      '<div style="flex-wrap:wrap">'+ops+'</div></div>';
-  }}).join('');
-  return '<div class="card"><div class="sec">Threat Actor Matrix <span class="live-chip"><span class="live-dot"></span>ASSESSED</span></div>'+
-    '<div class="scroll">'+rows+'</div></div>';
-}}
-
-// ── Collection Priorities ─────────────────────────────────────
-function panelCollection(){{
-  var rows=(D.collection||[]).map(function(p){{
-    var col=p.priority<=2?'#ff3355':p.priority<=4?'#ff8c00':p.priority<=6?'#ffcc00':'#00ff88';
-    var colls=p.collection.map(function(c){{return '<span class="mono" style="font-size:8px;padding:1px 6px;border-radius:2px;background:rgba(0,204,255,.07);border:1px solid rgba(0,204,255,.2);color:#00ccff;margin-right:4px">'+esc(c)+'</span>';}}).join('');
-    return '<div class="row" style="border-left-color:'+col+'">'+
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">'+
-      '<div style="display:flex;align-items:center;gap:8px">'+
-      '<span style="font-size:22px;font-weight:700;color:'+col+';line-height:1">P'+p.priority+'</span>'+
-      '<span style="font-size:12px;font-weight:600;color:#d4eaf7">'+esc(p.target)+'</span></div>'+
-      '<span class="badge '+(p.status==='Active'?'b-high':'b-low')+'">'+esc(p.status)+'</span></div>'+
-      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35);margin-bottom:5px">'+esc(p.type)+' · Updated: '+esc(p.last_update)+'</div>'+
-      '<div style="margin-bottom:5px">'+colls+'</div>'+
-      '<div class="mono" style="font-size:8px;color:rgba(255,140,0,.65)">\u26a0 INTEL GAP: '+esc(p.intel_gap)+'</div></div>';
-  }}).join('');
-  return '<div class="card"><div class="sec">Collection Requirements &amp; Priorities</div>'+
-    '<div class="scroll">'+rows+'</div></div>';
-}}
-
-// ── CII ───────────────────────────────────────────────────────
-function panelCII(){{
-  var sorted=(D.cii||[]).slice().sort(function(a,b){{return b.risk-a.risk;}});
-  var rows=sorted.map(function(c){{
-    var col=c.risk>=90?'#ff3355':c.risk>=75?'#ff8c00':'#ffcc00';
-    return '<div class="row" style="border-left-color:'+col+'">'+
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'+
-      '<div><span style="font-size:12px;font-weight:600;color:#d4eaf7">'+esc(c.name)+'</span>'+
-      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35);margin-top:1px">'+esc(c.country)+' · '+esc(c.sector)+'</div></div>'+
-      '<div style="font-size:24px;font-weight:700;color:'+col+'">'+c.risk+'</div></div>'+bar(c.risk,col)+'</div>';
-  }}).join('');
-  return '<div class="card"><div class="sec">GEOINT — Critical Infrastructure</div>'+
-    '<div class="scroll">'+rows+'</div></div>';
-}}
-
-// ── OSINT Platforms ───────────────────────────────────────────
 function panelOSINT(){{
-  var rows=(D.osint_platforms||[]).map(function(p){{
-    return '<div class="row" style="border-left-color:#00ff88">'+
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px">'+
-      '<div><span style="font-size:12px;font-weight:600;color:#d4eaf7">'+esc(p.name)+'</span>'+
-      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.38);margin-top:2px">'+esc(p.type)+' · '+esc(p.provider)+'</div></div>'+
-      '<span class="badge b-act">'+esc(p.status)+'</span></div>'+
-      '<div style="font-size:10px;color:rgba(184,212,232,.55);margin-top:2px">'+esc(p.use_case)+'</div>'+
-      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.28);margin-top:2px">'+esc(p.coverage)+' · Res: '+esc(p.resolution)+'</div>'+
-      '</div>';
-  }}).join('');
-  return '<div class="card"><div class="sec">OSINT Collection Platforms</div>'+
+  var rows=(D.osint_platforms||[]).map(p=>
+    '<div class="item" style="border-color:var(--green)">'+
+    '<div class="i-top"><div><div class="i-name">'+esc(p.name||'')+'</div>'+
+    '<div class="i-meta">'+esc(p.type||'')+' · '+esc(p.provider||'')+' · Res: '+esc(p.resolution||'')+'</div></div>'+
+    '<span class="badge bl">'+esc(p.status||'')+'</span></div>'+
+    '<div class="i-detail">'+esc(p.use_case||'')+'</div></div>'
+  ).join('');
+  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(0,229,160,.08);color:var(--green)">👁</div>'+
+    '<div class="ch-title">OSINT Collection Platforms</div>'+
+    '<div class="ch-ct">'+((D.osint_platforms||[]).length)+' sources</div></div>'+
     '<div class="scroll">'+rows+'</div></div>';
 }}
 
-// ── Countdown & render ────────────────────────────────────────
-function startCountdown(){{
-  setInterval(function(){{
-    _elapsed++;
-    var left=Math.max(0,_refreshSecs-_elapsed);
-    var el=document.getElementById('cd');
-    if(el) el.textContent=left+'s';
-    if(left===0) _elapsed=0;
-  }},1000);
+function panelCII(){{
+  var sorted=(D.cii||[]).slice().sort((a,b)=>b.risk-a.risk);
+  var rows=sorted.map(c=>{{
+    var col=c.risk>=90?'var(--red)':c.risk>=75?'var(--amber)':'#f0d050';
+    return '<div class="cii-item" style="border-color:'+col+'">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'+
+      '<div><div class="i-name">'+esc(c.name||'')+'</div>'+
+      '<div class="i-meta">'+esc(c.country||'')+' · '+esc(c.sector||'')+'</div></div>'+
+      '<span style="font-family:Orbitron,monospace;font-weight:900;font-size:20px;color:'+col+'">'+c.risk+'</span></div>'+
+      mbar(c.risk,col)+'</div>';
+  }}).join('');
+  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(255,45,85,.08);color:var(--red)">🏗</div>'+
+    '<div class="ch-title">GEOINT — Critical Infrastructure</div>'+
+    '<div class="ch-ct">'+sorted.length+' tracked</div></div>'+
+    '<div class="scroll">'+rows+'</div><div class="classif">GEOINT // INFRA</div></div>';
 }}
 
-// ── INITIAL RENDER ───────────────────────────────────────────
-// ── Live Seismic Panel ───────────────────────────────────────────────
-function panelSeismic(){{
-  var quakes = D.live_quakes||[];
-  var initial = quakes.length?quakes.map(function(q){{
-    var col=q.mag>=6?'#ff3355':q.mag>=5?'#ff8c00':q.mag>=4?'#ffcc00':'#00ff88';
-    return '<div class="row" style="border-left-color:'+col+'">'+
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'+
-      '<span style="font-size:11px;font-weight:600;color:#d4eaf7">'+esc(q.place||q.loc||'')+'</span>'+
-      '<span class="mono" style="font-size:13px;font-weight:700;color:'+col+'">M'+q.mag+'</span></div>'+
-      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">Depth: '+(q.depth_km||'?')+'km · '+esc(q.time)+'</div>'+
-      '</div>';
-  }}).join(''):
-    '<div class="mono" style="font-size:10px;color:rgba(0,255,136,.35);padding:12px 0">Polling USGS…</div>';
-  return '<div class="card"><div class="sec"><span class="live-dot"></span>MASINT — Live Seismic (USGS)</div>'+
-    '<div id="live-seismic-inner" class="scroll">'+initial+'</div></div>';
-}}
-
-// ── Live KP / Space Weather Panel ────────────────────────────────────
-function panelKP(){{
-  var kp = D.kp_current||0;
-  var col = kp>=5?'#ff3355':kp>=3?'#ff8c00':'#00ff88';
-  return '<div class="card"><div class="sec"><span class="live-dot"></span>MASINT — Space Weather / KP Index</div>'+
-    '<div id="live-kp-inner">'+
-    '<div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">'+
-    '<div><div class="mono" style="font-size:8px;color:rgba(0,255,136,.4);margin-bottom:4px">KP INDEX</div>'+
-    '<div class="rj" style="font-size:48px;color:'+col+';line-height:1">'+kp+'</div></div>'+
-    '<div><div class="mono" style="font-size:11px;color:'+col+';margin-bottom:4px">'+esc(D.kp_status||'Quiet')+'</div>'+
-    '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">Kp ≥5 = Storm · ≥7 = Severe</div></div></div>'+
-    '<div style="display:flex;align-items:flex-end;gap:2px;height:48px">'+
-    (D.kp_series||[]).slice(-24).map(function(p){{
-      var v=Math.min(typeof p==='object'?(p.kp||0):+p||0,9);var h=Math.round((v/9)*100)||2;
-      var c=v>=5?'#ff3355':v>=3?'#ff8c00':'#00ff88';
-      return '<div style="flex:1;height:'+h+'%;background:'+c+';border-radius:1px 1px 0 0;opacity:.8"></div>';
-    }}).join('')+
-    '</div><div class="mono" style="font-size:7px;color:rgba(0,255,136,.3);margin-top:3px;text-align:right">← 24h Kp history</div>'+
-    '</div></div>';
-}}
-
+/* ── RENDER ── */
 function doRender(){{
+  buildKPIs();buildTicker();
   document.getElementById('R').innerHTML=
-    headerBar()+
-    ticker()+
-    kpis()+
-    '<div class="g2">'+panelActors()+panelCollection()+'</div>'+
-    '<div class="g3">'+panelCOMINT()+panelELINT()+panelMASINT()+'</div>'+
-    '<div class="g3">'+panelJamming()+panelOrbital()+panelLiveCyber()+'</div>'+
-    '<div class="g3">'+panelSeismic()+panelKP()+panelOutages()+'</div>'+
-    '<div class="g2">'+panelLiveFeed()+panelOSINT()+'</div>'+
-    '<div class="g2">'+panelCII()+panelCollection()+'</div>';
+    '<div class="slbl">Priority Intelligence</div>'+
+    '<div class="r2">'+panelActors()+panelCollection()+'</div>'+
+    '<div class="slbl">Signals Collection</div>'+
+    '<div class="r3">'+panelCOMINT()+panelELINT()+panelMASINT()+'</div>'+
+    '<div class="slbl">Environment & Cyber Domain</div>'+
+    '<div class="r3">'+panelJamming()+panelOrbital()+panelLiveCyber()+'</div>'+
+    '<div class="slbl">Live MASINT & Alerts</div>'+
+    '<div class="r3">'+panelSeismic()+panelKP()+panelOutages()+'</div>'+
+    '<div class="slbl">Open Source & Infrastructure</div>'+
+    '<div class="r2">'+panelLiveFeed()+panelOSINT()+'</div>'+
+    panelCII();
+  updateHeader();
 }}
 doRender();
-startCountdown();
 
-// ── CLIENT-SIDE LIVE POLLING ──────────────────────────────────
-// Polls CORS-open APIs every 60s without requiring a Streamlit rerun
+var _el=0,_rs=D.refresh_interval||60;
+setInterval(()=>{{_el++;var l=Math.max(0,_rs-_el);var e=document.getElementById('cd');if(e)e.textContent=l;if(l===0)_el=0;}},1000);
 
-var _liveState = {{
-  feed:    D.live_feed   ||[],
-  cyber:   D.live_cyber  ||[],
-  quakes:  D.live_quakes ||[],
-  outages: D.live_outages||[],
-  kp:      D.kp_current  ||0,
-  kpStatus:D.kp_status   ||'Quiet',
-  kpSeries:D.kp_series   ||[],
-  ts:      D.ts          ||'',
-}};
+var _ls={{feed:D.live_feed||[],cyber:D.live_cyber||[],quakes:D.live_quakes||[],kp:D.kp_current||0,kpStatus:D.kp_status||'Quiet',kpSeries:D.kp_series||[]}};
 
-function relTime(iso){{
-  try{{
-    var d=new Date(iso),s=(Date.now()-d)/1000;
-    if(s<60)return Math.round(s)+'s ago';
-    if(s<3600)return Math.round(s/60)+'m ago';
-    if(s<86400)return Math.round(s/3600)+'h ago';
-    return Math.round(s/86400)+'d ago';
-  }}catch{{return iso||'';}}
+function relTime(iso){{try{{var d=new Date(iso),s=(Date.now()-d)/1000;if(s<60)return Math.round(s)+'s ago';if(s<3600)return Math.round(s/60)+'m ago';return Math.round(s/3600)+'h ago';}}catch{{return iso||'';}}}}
+
+async function fetchGDELT(q){{try{{var r=await fetch('https://api.gdeltproject.org/api/v2/doc/doc?query='+encodeURIComponent(q+' sourcelang:english')+'&mode=artlist&maxrecords=12&format=json&sort=DateDesc',{{signal:AbortSignal.timeout(10000)}});if(!r.ok)return[];var j=await r.json();return(j.articles||[]).map(a=>{{return{{title:a.title||'',source:(a.domain||'').split('.')[0].toUpperCase(),url:a.url||'',time:relTime(a.seendate),cat:''}};}}); }}catch{{return[];}}}}
+async function fetchUSGS(){{try{{var r=await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_hour.geojson',{{signal:AbortSignal.timeout(8000)}});if(!r.ok){{r=await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson',{{signal:AbortSignal.timeout(8000)}});if(!r.ok)return[];}}var j=await r.json();return(j.features||[]).slice(0,10).map(f=>{{return{{place:f.properties.place||'',mag:f.properties.mag||0,depth_km:(f.geometry.coordinates[2]||0).toFixed(1),time:relTime(new Date(f.properties.time).toISOString())}};}}); }}catch{{return[];}}}}
+async function fetchKP(){{try{{var r=await fetch('https://services.swpc.noaa.gov/json/planetary_k_index_1m.json',{{signal:AbortSignal.timeout(8000)}});if(!r.ok)return null;var arr=await r.json();var series=arr.slice(-24).map(x=>{{return{{kp:parseFloat(x.Kp||x.kp_index||0)}}}});var recent=series.slice(-6).map(x=>x.kp);var mx=Math.max(...recent,0);var st=mx>=8?'EXTREME STORM':mx>=7?'SEVERE STORM':mx>=6?'STRONG STORM':mx>=5?'MODERATE STORM':mx>=4?'MINOR STORM':mx>=3?'Unsettled':'Quiet';return{{current:Math.round(mx*10)/10,status:st,series}};}}catch{{return null;}}}}
+
+function patchFeed(){{var el=document.getElementById('live-feed-inner');if(!el)return;var cc={{CONFLICT:'var(--red)',MILITARY:'var(--amber)',NUCLEAR:'var(--red)',OSINT:'var(--cyan)',CYBER:'var(--violet)'}};el.innerHTML=_ls.feed.slice(0,25).map(a=>{{var col=cc[a.cat||'']||'var(--cyan)';return'<div class="fi" style="border-left-color:'+col+'"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><span class="fi-src" style="color:'+col+'">'+esc((a.source||'').slice(0,22).toUpperCase())+'</span><span class="fi-time">'+esc(a.time||'')+'</span></div><div class="fi-title">'+esc((a.title||'').slice(0,110))+'</div>'+(a.url?'<a class="fi-link" href="'+esc(a.url)+'" target="_blank" rel="noopener">READ →</a>':'')+' </div>';}}).join('');}}
+function patchCyber(){{var el=document.getElementById('live-cyber-inner');if(!el)return;var live=_ls.cyber.slice(0,5).map(a=>'<div class="fi" style="border-left-color:var(--violet)"><div class="fi-src">'+esc((a.source||'').toUpperCase())+'</div><div class="fi-title">'+esc((a.title||'').slice(0,100))+'</div><div class="fi-time">'+esc(a.time||'')+'</div></div>').join('');if(live)el.insertAdjacentHTML('beforeend',live);}}
+function patchSeismic(){{var el=document.getElementById('live-seismic-inner');if(!el||!_ls.quakes.length)return;el.innerHTML=_ls.quakes.slice(0,8).map(q=>{{var col=q.mag>=6?'var(--red)':q.mag>=5?'var(--amber)':q.mag>=4?'#f0d050':'var(--green)';return'<div class="item" style="border-color:'+col+'"><div class="i-top"><div><div class="i-name">'+esc(q.place||q.loc||'')+'</div><div class="i-meta">Depth: '+(q.depth_km||'?')+'km · '+esc(q.time||'')+'</div></div><span style="font-family:Orbitron,monospace;font-weight:700;font-size:18px;color:'+col+'">M'+q.mag+'</span></div></div>';}}).join('');}}
+function patchKP(){{var el=document.getElementById('live-kp-inner');if(!el)return;var kp=_ls.kp;var col=kp>=5?'var(--red)':kp>=3?'var(--amber)':'var(--green)';var bars=_ls.kpSeries.slice(-24).map(p=>{{var v=Math.min(p.kp||p||0,9);var h=Math.max(Math.round((v/9)*100),3);var c=v>=5?'var(--red)':v>=3?'var(--amber)':'var(--green)';return'<div class="kp-seg" style="height:'+h+'%;background:'+c+';opacity:.8"></div>';}}).join('');el.innerHTML='<div style="display:flex;align-items:center;gap:18px;margin-bottom:12px"><div><div style="font-family:JetBrains Mono,monospace;font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:var(--text3);margin-bottom:4px">KP INDEX</div><div style="font-family:Orbitron,monospace;font-weight:900;font-size:48px;color:'+col+';line-height:1">'+kp+'</div></div><div><div style="font-family:JetBrains Mono,monospace;font-size:11px;color:'+col+';margin-bottom:4px">'+esc(_ls.kpStatus)+'</div><div style="font-family:JetBrains Mono,monospace;font-size:8px;color:var(--text3)">≥5 Storm · ≥7 Severe · ≥9 Extreme</div></div></div><div class="kp-bars">'+bars+'</div><div style="font-family:JetBrains Mono,monospace;font-size:7px;color:var(--text3);margin-top:3px;text-align:right">← 24h Kp history</div>';}}
+function patchTicker(){{var el=document.getElementById('ticker-inner');if(!el)return;var all=_ls.feed.concat(_ls.cyber).slice(0,20);if(!all.length)return;var h=all.map(a=>'<span class="ti"><span class="ti-s">▶ '+esc((a.source||'').toUpperCase().slice(0,18))+'</span>'+esc((a.title||'').slice(0,88))+'</span>').join('');el.innerHTML=h+h;}}
+
+var _polling=false;
+async function pollAll(){{if(_polling)return;_polling=true;var ps=document.getElementById('poll-status');if(ps)ps.textContent='UPDATING…';
+  try{{var[feed,cyber,geo,quakes,kpData]=await Promise.all([fetchGDELT('war military strike conflict bombing 2026'),fetchGDELT('cyber attack espionage hacking malware APT'),fetchGDELT('geopolitics sanctions nuclear ballistic missile diplomacy'),fetchUSGS(),fetchKP()]);
+    if(feed&&feed.length)_ls.feed=(geo||[]).concat(feed).slice(0,25);
+    if(cyber&&cyber.length)_ls.cyber=cyber;
+    if(quakes&&quakes.length)_ls.quakes=quakes;
+    if(kpData){{_ls.kp=kpData.current;_ls.kpStatus=kpData.status;_ls.kpSeries=kpData.series;}}
+  }}catch(e){{console.warn('poll',e);}}
+  _polling=false;patchFeed();patchCyber();patchSeismic();patchKP();patchTicker();updateHeader();
+  if(ps)ps.textContent='LIVE';
 }}
-
-// ── Live OSINT Feed ── GDELT Doc API
-async function fetchGDELT(query){{
-  try{{
-    var url='https://api.gdeltproject.org/api/v2/doc/doc?query='+
-      encodeURIComponent(query+' sourcelang:english')+'&mode=artlist&maxrecords=12&format=json&sort=DateDesc';
-    var r=await fetch(url,{{signal:AbortSignal.timeout(10000)}});
-    if(!r.ok)return[];
-    var j=await r.json();
-    return(j.articles||[]).map(function(a){{
-      return{{title:a.title||'',source:(a.domain||'').split('.')[0].toUpperCase(),
-             url:a.url||'',time:relTime(a.seendate)}};
-    }});
-  }}catch{{return[];}}
-}}
-
-// ── Live Seismic (MASINT) ── USGS Hourly Feed
-async function fetchUSGS(){{
-  try{{
-    var r=await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_hour.geojson',
-      {{signal:AbortSignal.timeout(8000)}});
-    if(!r.ok){{
-      // fallback: last 30 days M4.5+
-      r=await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson',
-        {{signal:AbortSignal.timeout(8000)}});
-      if(!r.ok)return[];
-    }}
-    var j=await r.json();
-    return(j.features||[]).slice(0,10).map(function(f){{
-      return{{
-        place:f.properties.place||'',
-        mag:f.properties.mag||0,
-        depth_km:(f.geometry.coordinates[2]||0).toFixed(1),
-        time:relTime(new Date(f.properties.time).toISOString()),
-        alert:f.properties.alert||'',
-      }};
-    }});
-  }}catch{{return[];}}
-}}
-
-// ── Live KP Index ── NOAA 1-minute feed
-async function fetchKP(){{
-  try{{
-    var r=await fetch('https://services.swpc.noaa.gov/json/planetary_k_index_1m.json',
-      {{signal:AbortSignal.timeout(8000)}});
-    if(!r.ok)return null;
-    var arr=await r.json();
-    var recent=arr.slice(-6);
-    var maxKp=Math.max.apply(null,recent.map(function(x){{return parseFloat(x.Kp||x.kp_index||0);}}));
-    var kpStatus=maxKp>=8?'EXTREME STORM':maxKp>=7?'SEVERE STORM':maxKp>=6?'STRONG STORM':
-                 maxKp>=5?'MODERATE STORM':maxKp>=4?'MINOR STORM':maxKp>=3?'Unsettled':'Quiet';
-    return{{current:Math.round(maxKp*10)/10,status:kpStatus,
-             series:arr.slice(-24).map(function(x){{return{{kp:parseFloat(x.Kp||x.kp_index||0),time:x.time_tag}};}})}};
-  }}catch{{return null;}}
-}}
-
-// ── Live Space Weather Alerts ── NOAA SWPC
-async function fetchSpaceAlerts(){{
-  try{{
-    var r=await fetch('https://services.swpc.noaa.gov/products/alerts.json',
-      {{signal:AbortSignal.timeout(8000)}});
-    if(!r.ok)return[];
-    var arr=await r.json();
-    return(arr||[]).slice(0,6).map(function(a){{
-      return{{title:(a.message||'').split('\\n')[0].slice(0,100),source:'NOAA SWPC',
-             time:relTime(a.issue_datetime),url:'https://www.swpc.noaa.gov/'}};
-    }}).filter(function(a){{return a.title;}});
-  }}catch{{return[];}}
-}}
-
-// ── LIVE panel renderers that write directly to DOM ──────────
-
-function renderLiveFeed(){{
-  var el=document.getElementById('live-feed-inner');
-  if(!el)return;
-  var all=_liveState.feed.concat(_liveState.cyber).slice(0,20);
-  if(!all.length){{el.innerHTML='<div class="mono" style="font-size:10px;color:rgba(0,255,136,.3)">Awaiting signals…</div>';return;}}
-  el.innerHTML=all.map(function(a){{
-    return '<div class="row" style="border-left-color:#00ff88">'+
-      '<div style="display:flex;justify-content:space-between;margin-bottom:3px">'+
-      '<span class="mono" style="font-size:8px;color:#00ff88;font-weight:600">'+esc((a.source||'').slice(0,20).toUpperCase())+'</span>'+
-      '<span class="mono" style="font-size:8px;color:rgba(0,255,136,.4)">'+esc(a.time||'')+'</span></div>'+
-      '<div style="font-size:11px;color:#b8d4e8;line-height:1.45">'+esc((a.title||'').slice(0,110))+'</div>'+
-      (a.url?'<a href="'+esc(a.url)+'" target="_blank" rel="noopener" class="mono" '+
-       'style="font-size:8px;color:rgba(0,204,255,.7);text-decoration:none;display:inline-block;margin-top:3px">READ &#8594;</a>':'')+
-      '</div>';
-  }}).join('');
-}}
-
-function renderLiveCyber(){{
-  var el=document.getElementById('live-cyber-inner');
-  if(!el)return;
-  var items=_liveState.cyber.slice(0,10);
-  if(!items.length){{el.innerHTML='<div class="mono" style="font-size:10px;color:rgba(0,255,136,.3)">Scanning…</div>';return;}}
-  el.innerHTML=items.map(function(a){{
-    return '<div class="row" style="border-left-color:#ff3355">'+
-      '<div style="display:flex;justify-content:space-between;margin-bottom:3px">'+
-      '<span class="mono" style="font-size:8px;color:#ff3355;font-weight:600">'+esc((a.source||'').slice(0,20).toUpperCase())+'</span>'+
-      '<span class="mono" style="font-size:8px;color:rgba(0,255,136,.4)">'+esc(a.time||'')+'</span></div>'+
-      '<div style="font-size:11px;color:#b8d4e8;line-height:1.45">'+esc((a.title||'').slice(0,110))+'</div>'+
-      '</div>';
-  }}).join('');
-}}
-
-function renderSeismic(){{
-  var el=document.getElementById('live-seismic-inner');
-  if(!el)return;
-  var items=_liveState.quakes.slice(0,8);
-  if(!items.length){{el.innerHTML='<div class="mono" style="font-size:10px;color:rgba(0,255,136,.3)">No significant seismic in last hour.</div>';return;}}
-  el.innerHTML=items.map(function(q){{
-    var col=q.mag>=6?'#ff3355':q.mag>=5?'#ff8c00':q.mag>=4?'#ffcc00':'#00ff88';
-    return '<div class="row" style="border-left-color:'+col+'">'+
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'+
-      '<span style="font-size:11px;font-weight:600;color:#b8d4e8">'+esc(q.place||'')+'</span>'+
-      '<span class="mono" style="font-size:12px;font-weight:700;color:'+col+'">M'+q.mag+'</span></div>'+
-      '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">Depth: '+q.depth_km+'km · '+esc(q.time)+'</div>'+
-      '</div>';
-  }}).join('');
-}}
-
-function renderKP(){{
-  var el=document.getElementById('live-kp-inner');
-  if(!el)return;
-  var col=_liveState.kp>=5?'#ff3355':_liveState.kp>=3?'#ff8c00':'#00ff88';
-  el.innerHTML=
-    '<div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">'+
-    '<div><div class="mono" style="font-size:8px;color:rgba(0,255,136,.4);margin-bottom:4px">KP INDEX</div>'+
-    '<div class="rj" style="font-size:48px;color:'+col+';line-height:1">'+_liveState.kp+'</div></div>'+
-    '<div><div class="mono" style="font-size:11px;color:'+col+';margin-bottom:4px">'+esc(_liveState.kpStatus)+'</div>'+
-    '<div class="mono" style="font-size:8px;color:rgba(0,255,136,.35)">Kp ≥5 = Storm · ≥7 = Severe</div></div></div>'+
-    '<div style="display:flex;align-items:flex-end;gap:2px;height:48px">'+
-    _liveState.kpSeries.slice(-24).map(function(p){{
-      var v=Math.min(typeof p==='object'?(p.kp||0):+p||0,9);var h=Math.round((v/9)*100)||2;
-      var c=v>=5?'#ff3355':v>=3?'#ff8c00':'#00ff88';
-      return '<div style="flex:1;height:'+h+'%;background:'+c+';border-radius:1px 1px 0 0;opacity:.8"></div>';
-    }}).join('')+'</div>'+
-    '<div class="mono" style="font-size:7px;color:rgba(0,255,136,.3);margin-top:3px;text-align:right">← 24h Kp history</div>';
-}}
-
-function renderTicker(){{
-  var el=document.getElementById('ticker-inner');
-  if(!el)return;
-  var items=_liveState.feed.concat(_liveState.cyber).slice(0,20);
-  if(!items.length)return;
-  var html=items.map(function(a){{
-    return '<span class="t-item"><span>&#9632; '+esc((a.source||'').toUpperCase())+'</span> '+esc((a.title||'').slice(0,90))+'</span>';
-  }}).join('');
-  el.innerHTML=html+html;
-}}
-
-function renderHeader(){{
-  var el=document.getElementById('hbar-risk');
-  if(!el)return;
-  var rs=_liveState.risk||{{}};
-  var col=rs.color||'#ff8c00';
-  el.style.color=col;
-  el.textContent=(rs.score||'–')+' '+(rs.label||'');
-}}
-
-function renderAllLive(){{
-  renderTicker();
-  renderHeader();
-  renderLiveFeed();
-  renderLiveCyber();
-  renderSeismic();
-  renderKP();
-  var tsEl=document.getElementById('live-ts');
-  if(tsEl){{
-    var now=new Date();
-    tsEl.textContent=now.toUTCString().split(' ').slice(4,5)[0]+' UTC';
-  }}
-}}
-
-// ── Main polling loop ─────────────────────────────────────────
-var _pollActive=false;
-
-async function pollAll(){{
-  if(_pollActive)return;
-  _pollActive=true;
-  var statusEl=document.getElementById('poll-status');
-  if(statusEl)statusEl.textContent='● UPDATING…';
-
-  try{{
-    var[feed,cyber,geo,quakes,kpData,spaceAlerts]=await Promise.all([
-      fetchGDELT('war military strike conflict bombing offensive 2026'),
-      fetchGDELT('cyber attack espionage hacking malware APT ransomware'),
-      fetchGDELT('geopolitics sanctions nuclear ballistic missile diplomacy'),
-      fetchUSGS(),
-      fetchKP(),
-      fetchSpaceAlerts(),
-    ]);
-    if(geo&&geo.length) _liveState.feed=geo.concat(feed||[]).slice(0,25);
-    if(feed&&feed.length)    _liveState.feed=feed;
-    if(cyber&&cyber.length)  _liveState.cyber=cyber;
-    if(quakes&&quakes.length)_liveState.quakes=quakes;
-    if(kpData){{
-      _liveState.kp=kpData.current;
-      _liveState.kpStatus=kpData.status;
-      _liveState.kpSeries=kpData.series;
-    }}
-    if(spaceAlerts&&spaceAlerts.length)_liveState.outages=spaceAlerts.concat(_liveState.outages||[]).slice(0,10);
-  }}catch(e){{
-    console.warn('SIGINT poll error:',e);
-  }}
-
-  _pollActive=false;
-  renderAllLive();
-  if(statusEl){{
-    var t=new Date().toUTCString().split(' ').slice(4,5)[0];
-    statusEl.textContent='● LIVE · '+t+' UTC';
-  }}
-}}
-
-// ── Bootstrap ─────────────────────────────────────────────────
-renderAllLive();          // render with server-side data immediately
-setTimeout(pollAll,2000); // first live poll after 2s
-setInterval(pollAll, 60000); // then every 60 seconds
-
-</script>
-</body></html>"""
+setTimeout(pollAll,2000);setInterval(pollAll,60000);
+</script></body></html>"""
     _sc.html(_sigint_html, height=5600, scrolling=True)
 
 
