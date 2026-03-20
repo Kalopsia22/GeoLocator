@@ -361,8 +361,12 @@ except ImportError:
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
-:root{
-  --void:#02040a;--deep:#060d18;--panel:#080f1c;--card:#0b1524;
+
+/* ═══════════════════════════════════════════════════════════
+   DESIGN TOKENS
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --void:#020509;--deep:#060d18;--panel:#080f1c;--card:#0b1524;
   --glass:rgba(8,15,28,.88);--border:rgba(0,200,255,.12);--bord2:rgba(0,200,255,.06);
   --cyan:#00c8ff;--amber:#ffb400;--red:#ff3d5a;--green:#00e676;
   --violet:#9d6eff;--orange:#ff8c42;--text:#e2ecf8;--text2:#a8c0d8;
@@ -370,16 +374,197 @@ st.markdown("""
   --fd:'Bebas Neue','Impact',sans-serif;
   --fm:'IBM Plex Mono','Courier New',monospace;
   --fb:'DM Sans',system-ui,sans-serif;
+
+  /* Aurora animation timing */
+  --t1:18s; --t2:26s; --t3:34s; --t4:22s;
 }
-html,body,[class*="css"],.stApp{font-family:var(--fb)!important;background:var(--void)!important;color:var(--text)!important;}
-.stApp::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.02) 3px,rgba(0,0,0,.02) 6px);pointer-events:none;z-index:9000;}
-.stApp::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.45) 100%);pointer-events:none;z-index:9001;}
-::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:var(--deep)}::-webkit-scrollbar-thumb{background:rgba(0,200,255,.2);border-radius:2px}
-section[data-testid="stSidebar"]{background:var(--deep)!important;border-right:1px solid var(--border)!important;}
-section[data-testid="stSidebar"] .stMarkdown,section[data-testid="stSidebar"] label,section[data-testid="stSidebar"] p{color:var(--text)!important;}
-.stTabs [data-baseweb="tab-list"]{background:var(--deep)!important;border-bottom:1px solid var(--border)!important;gap:0!important;padding:0 8px;}
-.stTabs [data-baseweb="tab"]{background:transparent!important;border-bottom:3px solid transparent!important;font-family:var(--fb)!important;font-weight:600!important;font-size:13px!important;letter-spacing:.06em!important;color:var(--muted)!important;padding:14px 20px!important;}
-.stTabs [aria-selected="true"]{color:var(--cyan)!important;border-bottom-color:var(--cyan)!important;}
+
+/* ═══════════════════════════════════════════════════════════
+   BACKGROUND SYSTEM
+   Three-layer composited background:
+   1. Base deep-space gradient
+   2. Aurora colour bands (CSS animated)
+   3. Star field + scanline texture
+   ═══════════════════════════════════════════════════════════ */
+
+html, body, [class*="css"], .stApp {
+  font-family: var(--fb) !important;
+  color: var(--text) !important;
+  background: var(--void) !important;
+}
+
+/* ── Layer 0: Base gradient — deep space blue-black ── */
+.stApp {
+  background:
+    radial-gradient(ellipse 120% 60% at 50%  -5%, rgba(0,50,120,.28) 0%, transparent 65%),
+    radial-gradient(ellipse  60% 80% at  0%  50%, rgba(10,30,80,.18) 0%, transparent 60%),
+    radial-gradient(ellipse  50% 70% at 100% 60%, rgba(20,10,60,.16) 0%, transparent 60%),
+    linear-gradient(175deg, #020509 0%, #03060f 40%, #020408 100%)
+    !important;
+}
+
+/* ── Layer 1: Aurora bands — two animated pseudo-elements ── */
+.stApp::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    /* Teal aurora band — top left diagonal */
+    radial-gradient(ellipse 80% 35% at 20%  8%, rgba(0,180,220,.11) 0%, transparent 70%),
+    /* Violet aurora band — top right */
+    radial-gradient(ellipse 70% 28% at 80% 12%, rgba(80,20,180,.09) 0%, transparent 65%),
+    /* Faint amber equatorial band */
+    radial-gradient(ellipse 90% 18% at 50% 45%, rgba(120,70,0,.055) 0%, transparent 70%),
+    /* Deep green trace — bottom left */
+    radial-gradient(ellipse 55% 25% at  8% 80%, rgba(0,120,80,.06) 0%, transparent 65%);
+  animation: aurora-drift var(--t1) ease-in-out infinite alternate;
+}
+
+@keyframes aurora-drift {
+  0%   { transform: translate(0,    0)    scale(1);    opacity: 1; }
+  30%  { transform: translate(18px,-12px) scale(1.03); opacity: .88; }
+  60%  { transform: translate(-14px, 8px) scale(.97);  opacity: .94; }
+  100% { transform: translate(10px, 16px) scale(1.02); opacity: .84; }
+}
+
+/* ── Layer 2: Second aurora pass — slow opposing drift ── */
+.stApp::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    /* Slow violet bloom — upper centre */
+    radial-gradient(ellipse 60% 40% at 55%  -8%, rgba(60,0,160,.08) 0%, transparent 70%),
+    /* Cyan shimmer — right edge */
+    radial-gradient(ellipse 35% 55% at 100% 30%, rgba(0,160,220,.07) 0%, transparent 65%),
+    /* Warm magenta trace — far left */
+    radial-gradient(ellipse 40% 30% at  0%  25%, rgba(140,0,100,.06) 0%, transparent 60%),
+    /* Vignette — darken edges for depth */
+    radial-gradient(ellipse 92% 88% at 50%  50%, transparent 45%, rgba(0,0,0,.55) 100%);
+  animation: aurora-drift2 var(--t2) ease-in-out infinite alternate-reverse;
+}
+
+@keyframes aurora-drift2 {
+  0%   { transform: translate(0,    0)    scale(1);    opacity: 1; }
+  40%  { transform: translate(-20px,14px) scale(1.04); opacity: .82; }
+  70%  { transform: translate(12px,-8px)  scale(.96);  opacity: .92; }
+  100% { transform: translate(-8px,-18px) scale(1.01); opacity: .78; }
+}
+
+/* ── Layer 3: Star field — tiny CSS box-shadow stars ── */
+#stDecoration {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  /* 60 pseudo-random stars via box-shadow — no JS needed */
+  background: transparent;
+  animation: stars-twinkle var(--t3) ease-in-out infinite alternate;
+}
+#stDecoration::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at  4%  8%, rgba(255,255,255,.55) 0%, transparent 100%),
+    radial-gradient(1px 1px at 12% 22%, rgba(200,230,255,.45) 0%, transparent 100%),
+    radial-gradient(1px 1px at 22%  5%, rgba(255,255,255,.38) 0%, transparent 100%),
+    radial-gradient(1px 1px at 31% 15%, rgba(180,220,255,.4)  0%, transparent 100%),
+    radial-gradient(1px 1px at 42%  3%, rgba(255,255,255,.5)  0%, transparent 100%),
+    radial-gradient(1px 1px at 51% 18%, rgba(200,200,255,.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 63%  9%, rgba(255,255,255,.42) 0%, transparent 100%),
+    radial-gradient(1px 1px at 74% 25%, rgba(180,230,255,.38) 0%, transparent 100%),
+    radial-gradient(1px 1px at 84%  6%, rgba(255,255,255,.48) 0%, transparent 100%),
+    radial-gradient(1px 1px at 93% 14%, rgba(200,220,255,.4)  0%, transparent 100%),
+    radial-gradient(1px 1px at  7% 35%, rgba(255,255,255,.32) 0%, transparent 100%),
+    radial-gradient(1px 1px at 18% 48%, rgba(180,200,255,.28) 0%, transparent 100%),
+    radial-gradient(1px 1px at 28% 38%, rgba(255,255,255,.36) 0%, transparent 100%),
+    radial-gradient(1px 1px at 39% 52%, rgba(200,220,255,.3)  0%, transparent 100%),
+    radial-gradient(1px 1px at 48% 41%, rgba(255,255,255,.44) 0%, transparent 100%),
+    radial-gradient(1px 1px at 58% 55%, rgba(180,210,255,.32) 0%, transparent 100%),
+    radial-gradient(1px 1px at 67% 44%, rgba(255,255,255,.38) 0%, transparent 100%),
+    radial-gradient(1px 1px at 78% 58%, rgba(200,230,255,.26) 0%, transparent 100%),
+    radial-gradient(1px 1px at 87% 47%, rgba(255,255,255,.34) 0%, transparent 100%),
+    radial-gradient(1px 1px at 96% 39%, rgba(180,200,255,.28) 0%, transparent 100%),
+    radial-gradient(1px 1px at  2% 62%, rgba(255,255,255,.3)  0%, transparent 100%),
+    radial-gradient(1px 1px at 14% 72%, rgba(200,220,255,.24) 0%, transparent 100%),
+    radial-gradient(1px 1px at 24% 65%, rgba(255,255,255,.28) 0%, transparent 100%),
+    radial-gradient(1px 1px at 35% 78%, rgba(180,210,255,.22) 0%, transparent 100%),
+    radial-gradient(1px 1px at 45% 68%, rgba(255,255,255,.32) 0%, transparent 100%),
+    radial-gradient(1px 1px at 55% 82%, rgba(200,225,255,.2)  0%, transparent 100%),
+    radial-gradient(1px 1px at 64% 73%, rgba(255,255,255,.26) 0%, transparent 100%),
+    radial-gradient(1px 1px at 76% 86%, rgba(180,200,255,.18) 0%, transparent 100%),
+    radial-gradient(1px 1px at 85% 76%, rgba(255,255,255,.24) 0%, transparent 100%),
+    radial-gradient(1px 1px at 95% 88%, rgba(200,220,255,.2)  0%, transparent 100%);
+}
+@keyframes stars-twinkle {
+  0%   { opacity: .6; }
+  50%  { opacity: 1;  }
+  100% { opacity: .7; }
+}
+
+/* ── Layer 4: Fine scanline texture ── */
+#stDecoration::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 3px,
+    rgba(0,0,0,.018) 3px,
+    rgba(0,0,0,.018) 4px
+  );
+}
+
+/* ── Sidebar — semi-transparent with blur ── */
+section[data-testid="stSidebar"] {
+  background: rgba(4,8,20,.82) !important;
+  border-right: 1px solid rgba(0,200,255,.1) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+}
+section[data-testid="stSidebar"] .stMarkdown,
+section[data-testid="stSidebar"] label,
+section[data-testid="stSidebar"] p { color: var(--text) !important; }
+
+/* ── Tab bar — glassy ── */
+.stTabs [data-baseweb="tab-list"] {
+  background: rgba(4,8,20,.75) !important;
+  border-bottom: 1px solid var(--border) !important;
+  backdrop-filter: blur(16px) !important;
+  gap: 0 !important;
+  padding: 0 8px;
+}
+.stTabs [data-baseweb="tab"] {
+  background: transparent !important;
+  border-bottom: 3px solid transparent !important;
+  font-family: var(--fb) !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  letter-spacing: .06em !important;
+  color: var(--muted) !important;
+  padding: 14px 20px !important;
+}
+.stTabs [aria-selected="true"] {
+  color: var(--cyan) !important;
+  border-bottom-color: var(--cyan) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SCROLLBAR
+   ═══════════════════════════════════════════════════════════ */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--deep); }
+::-webkit-scrollbar-thumb { background: rgba(0,200,255,.2); border-radius: 2px; }
+
+/* ═══════════════════════════════════════════════════════════
+   COMPONENT STYLES  (unchanged from original)
+   ═══════════════════════════════════════════════════════════ */
 div[data-testid="stMetric"]{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px!important;}
 div[data-testid="stMetricValue"]{font-family:var(--fm)!important;font-size:24px!important;color:var(--cyan)!important;font-weight:500!important;}
 div[data-testid="stMetricLabel"]{font-family:var(--fb)!important;font-size:11px!important;font-weight:600!important;letter-spacing:.1em!important;text-transform:uppercase!important;color:var(--muted)!important;}
@@ -468,10 +653,7 @@ hr{border:none!important;border-top:1px solid var(--bord2)!important;margin:18px
 .ticker-wrap{background:var(--deep);border-top:1px solid var(--border);border-bottom:1px solid var(--bord2);overflow:hidden;padding:8px 0;}
 .ticker-inner{display:inline-block;white-space:nowrap;animation:ticker-scroll 90s linear infinite;font-family:var(--fm);font-size:11px;color:var(--muted);}
 @keyframes ticker-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-.t-sep{color:var(--cyan);margin:0 16px;}
-.t-hi{color:var(--text);}
-.t-red{color:var(--red);}
-.t-amb{color:var(--amber);}
+.t-sep{color:var(--cyan);margin:0 16px;}.t-hi{color:var(--text);}.t-red{color:var(--red);}.t-amb{color:var(--amber);}
 .helper{font-size:12px;color:var(--muted);line-height:1.6;padding:10px 14px;background:var(--dim);border-radius:8px;border-left:3px solid var(--bord2);margin-bottom:14px;}
 .helper b{color:var(--text2);font-style:normal;}
 .sb-div{height:1px;background:var(--bord2);margin:16px 0;}
@@ -481,81 +663,42 @@ hr{border:none!important;border-top:1px solid var(--bord2)!important;margin:18px
 .tl-text{font-size:13px;color:var(--text);line-height:1.5;}
 .tl-tag{font-family:var(--fm);font-size:9px;margin-top:2px;}
 .live-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:rgba(255,61,90,.1);border:1px solid rgba(255,61,90,.3);border-radius:20px;font-family:var(--fm);font-size:9px;color:var(--red);}
+.sec-l{font-family:var(--fb);font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.sec-l::after{content:'';flex:1;height:1px;background:var(--bord2);}
 
-/* ═══════════════════════════════════════════
-   MOBILE RESPONSIVE — phones & small tablets
-   ═══════════════════════════════════════════ */
-@media (max-width: 768px) {
-  /* Stack header vertically */
-  .status-row { gap:10px!important; padding:6px 0 10px!important; font-size:10px!important; }
-  .wordmark   { font-size:22px!important; letter-spacing:.1em!important; }
-
-  /* Tighten map header */
-  .map-top-bar { flex-direction:column!important; align-items:flex-start!important; gap:6px!important; padding:10px 14px!important; }
-  .map-legend  { gap:8px!important; font-size:9px!important; flex-wrap:wrap!important; }
-  .map-title-text { font-size:14px!important; }
-
-  /* Compact metric cards */
-  div[data-testid="stMetric"] { padding:10px 12px!important; }
-  div[data-testid="stMetricValue"] { font-size:18px!important; }
-  div[data-testid="stMetricLabel"] { font-size:10px!important; }
-
-  /* Full-width tabs, smaller font */
-  .stTabs [data-baseweb="tab"] { padding:10px 10px!important; font-size:11px!important; letter-spacing:.02em!important; }
-
-  /* Cards */
-  .gcard { padding:12px 14px!important; }
-  .conflict-card .cc-body { padding:10px 12px!important; }
-  .incident-row { gap:8px!important; padding:10px 0!important; }
-  .inc-title { font-size:12px!important; }
-  .m-val { font-size:28px!important; }
-
-  /* Tracker header — stack vertically */
-  .tracker-header { flex-direction:column!important; gap:12px!important; }
-
-  /* News cards grid */
-  .grid { grid-template-columns:1fr!important; }
-
-  /* Sidebar toggles — more touch-friendly */
-  .stToggle label { font-size:13px!important; }
-
-  /* Scrollable news feed on mobile */
-  .news-feed-mobile { max-height:60vh!important; overflow-y:auto!important; }
-
-  /* Ticker */
-  .ticker-inner { font-size:10px!important; }
-
-  /* Buttons */
-  .stButton>button { padding:8px 14px!important; font-size:12px!important; }
-
-  /* Helper text */
-  .helper { font-size:11px!important; }
-
-  /* Reduce chart heights for mobile */
-  .js-plotly-plot { min-height:140px!important; }
+/* ═══════════════════════════════════════════════════════════
+   MOBILE RESPONSIVE
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width:768px){
+  .status-row{gap:10px!important;padding:6px 0 10px!important;font-size:10px!important;}
+  .wordmark{font-size:22px!important;letter-spacing:.1em!important;}
+  .map-top-bar{flex-direction:column!important;align-items:flex-start!important;gap:6px!important;padding:10px 14px!important;}
+  .map-legend{gap:8px!important;font-size:9px!important;flex-wrap:wrap!important;}
+  .map-title-text{font-size:14px!important;}
+  div[data-testid="stMetric"]{padding:10px 12px!important;}
+  div[data-testid="stMetricValue"]{font-size:18px!important;}
+  div[data-testid="stMetricLabel"]{font-size:10px!important;}
+  .stTabs [data-baseweb="tab"]{padding:10px 10px!important;font-size:11px!important;letter-spacing:.02em!important;}
+  .gcard{padding:12px 14px!important;}
+  .m-val{font-size:28px!important;}
+  .ticker-inner{font-size:10px!important;}
+  .stButton>button{padding:8px 14px!important;font-size:12px!important;}
+  .helper{font-size:11px!important;}
+  .js-plotly-plot{min-height:140px!important;}
 }
-
-@media (max-width: 480px) {
-  .wordmark { font-size:18px!important; }
-  .stTabs [data-baseweb="tab"] { padding:8px 7px!important; font-size:10px!important; }
-  .map-top-bar { padding:8px 10px!important; }
-  div[data-testid="stMetricValue"] { font-size:15px!important; }
-  .m-val { font-size:22px!important; }
-  .gcard { padding:10px 11px!important; margin-bottom:7px!important; }
-  .live-badge { font-size:8px!important; padding:2px 7px!important; }
-}
-
-/* Touch-friendly map tooltip — larger on mobile */
-@media (max-width: 768px) {
-  .deck-tooltip {
-    font-size:13px!important;
-    padding:12px 16px!important;
-    max-width:260px!important;
-    line-height:1.7!important;
-  }
+@media (max-width:480px){
+  .wordmark{font-size:18px!important;}
+  .stTabs [data-baseweb="tab"]{padding:8px 7px!important;font-size:10px!important;}
+  div[data-testid="stMetricValue"]{font-size:15px!important;}
+  .m-val{font-size:22px!important;}
+  .gcard{padding:10px 11px!important;margin-bottom:7px!important;}
+  .live-badge{font-size:8px!important;padding:2px 7px!important;}
 }
 </style>
 """, unsafe_allow_html=True)
+
+# Inject star-field layer (CSS-only, no JS, ultra-lightweight)
+st.markdown('<div id="stDecoration"></div>', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
 # SESSION STATE
