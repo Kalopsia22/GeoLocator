@@ -1370,6 +1370,302 @@ def fetch_outage_feed():
         return []
 
 # ── Earthquake depth profile for Earth Signals ────────────────
+# ══════════════════════════════════════════════════════════════
+# LIVE INTEGRATION FETCHERS
+# ══════════════════════════════════════════════════════════════
+
+@st.cache_data(ttl=120, show_spinner=False)
+def fetch_acled_events(limit: int = 50) -> list:
+    """
+    ACLED (Armed Conflict Location & Event Data) via their free public API.
+    Returns recent conflict events with lat/lon, actor, event type, fatalities.
+    API key can be set in st.secrets['ACLED_KEY'] — falls back to scraping GDELT
+    if no key is configured.
+    """
+    import xml.etree.ElementTree as ET
+    from datetime import datetime, timezone, timedelta
+
+    # ── Attempt ACLED REST API (requires free account key) ────
+    acled_key  = None
+    acled_mail = None
+    try:
+        acled_key  = st.secrets.get("ACLED_KEY",  None)
+        acled_mail = st.secrets.get("ACLED_EMAIL", None)
+    except Exception:
+        pass
+
+    if acled_key and acled_mail:
+        try:
+            from_date = (datetime.now(tz=timezone.utc) - timedelta(days=14)).strftime("%Y-%m-%d")
+            url = (
+                f"https://api.acleddata.com/acled/read?"
+                f"key={acled_key}&email={acled_mail}"
+                f"&event_date={from_date}&event_date_where=BETWEEN"
+                f"&event_date_end={datetime.now(tz=timezone.utc).strftime('%Y-%m-%d')}"
+                f"&limit={limit}&fields=event_date|event_type|sub_event_type"
+                f"|actor1|actor2|country|location|latitude|longitude|fatalities|notes|source"
+            )
+            r = requests.get(url, timeout=10,
+                headers={"User-Agent": "GeoLocator/1.0 (research)"})
+            if r.status_code == 200:
+                data = r.json()
+                events = data.get("data", []) or []
+                result = []
+                for ev in events:
+                    try:
+                        result.append({
+                            "date":        ev.get("event_date", ""),
+                            "event_type":  ev.get("event_type", ""),
+                            "sub_type":    ev.get("sub_event_type", ""),
+                            "actor1":      ev.get("actor1", "Unknown"),
+                            "actor2":      ev.get("actor2", ""),
+                            "country":     ev.get("country", ""),
+                            "location":    ev.get("location", ""),
+                            "lat":         float(ev.get("latitude",  0) or 0),
+                            "lon":         float(ev.get("longitude", 0) or 0),
+                            "fatalities":  int(ev.get("fatalities",  0) or 0),
+                            "notes":       (ev.get("notes", "") or "")[:200],
+                            "source":      ev.get("source", "ACLED"),
+                            "tip": (f"⚔ ACLED | {ev.get('event_type','')} | "
+                                    f"{ev.get('location','')}, {ev.get('country','')} | "
+                                    f"{ev.get('event_date','')} | "
+                                    f"Fatalities: {ev.get('fatalities',0)} | "
+                                    f"Actor: {ev.get('actor1','')}")
+                        })
+                    except (ValueError, TypeError):
+                        continue
+                if result:
+                    return result
+        except Exception:
+            pass
+
+    # ── Fallback: GDELT GEO API for conflict events ────────────
+    try:
+        from_ts = (datetime.now(tz=timezone.utc) - timedelta(days=7)).strftime("%Y%m%d%H%M%S")
+        query = "war battle attack killed airstrike shelling explosion"
+        url = (
+            f"https://api.gdeltproject.org/api/v2/geo/geo?"
+            f"query={requests.utils.quote(query)}"
+            f"&mode=pointdata&maxpoints={limit}&format=json"
+            f"&startdatetime={from_ts}&timespan=7d"
+        )
+        r = requests.get(url, timeout=10)
+        if r.status_code == 200:
+            data = r.json()
+            points = data.get("features", []) or []
+            result = []
+            for pt in points:
+                try:
+                    props = pt.get("properties", {})
+                    geo   = pt.get("geometry", {}).get("coordinates", [0, 0])
+                    result.append({
+                        "date":       props.get("dateadded", "")[:10],
+                        "event_type": "Conflict",
+                        "sub_type":   "Armed clash",
+                        "actor1":     props.get("name", "Unknown"),
+                        "country":    props.get("countrycode", ""),
+                        "location":   props.get("name", ""),
+                        "lat":        float(geo[1]) if len(geo) > 1 else 0,
+                        "lon":        float(geo[0]) if len(geo) > 0 else 0,
+                        "fatalities": 0,
+                        "notes":      (props.get("title", ""))[:200],
+                        "source":     "GDELT GEO",
+                        "tip": (f"⚔ CONFLICT EVENT | {props.get('name','')} | "
+                                f"{props.get('dateadded','')[:10]} | GDELT")
+                    })
+                except (ValueError, TypeError, KeyError):
+                    continue
+            return result[:limit]
+    except Exception:
+        pass
+
+    return []
+
+
+@st.cache_data(ttl=45, show_spinner=False)
+def fetch_ais_vessels(bbox: tuple = (-180, -90, 180, 90), limit: int = 80) -> list:
+    """
+    Live AIS vessel positions via AISStream.io WebSocket REST endpoint.
+    Falls back to MarineTraffic public data / VesselFinder if API key absent.
+    Set st.secrets['AISSTREAM_KEY'] for full live feed.
+    """
+    ais_key = None
+    try:
+        ais_key = st.secrets.get("AISSTREAM_KEY", None)
+    except Exception:
+        pass
+
+    # ── Try AISStream.io HTTP snapshot ─────────────────────────
+    if ais_key:
+        try:
+            url = "https://api.aisstream.io/v0/vessels"
+            params = {
+                "BoundingBoxes": [[bbox[1], bbox[0], bbox[3], bbox[2]]],
+                "FilterMessageTypes": ["PositionReport"],
+            }
+            r = requests.post(url, json=params, timeout=10,
+                headers={"Authorization": f"Bearer {ais_key}"})
+            if r.status_code == 200:
+                vessels = r.json().get("vessels", []) or r.json() or []
+                result = []
+                for v in vessels[:limit]:
+                    try:
+                        ship_type = v.get("ShipType", 0)
+                        type_lbl  = ("Tanker" if 80 <= ship_type <= 89
+                                     else "Cargo" if 70 <= ship_type <= 79
+                                     else "Military" if ship_type == 35
+                                     else "Passenger" if 60 <= ship_type <= 69
+                                     else "Other")
+                        result.append({
+                            "mmsi":    v.get("MMSI", ""),
+                            "name":    v.get("ShipName", "Unknown").strip(),
+                            "lat":     float(v.get("Latitude",  0)),
+                            "lon":     float(v.get("Longitude", 0)),
+                            "speed":   float(v.get("Sog", 0)),
+                            "heading": float(v.get("TrueHeading", 0)),
+                            "type":    type_lbl,
+                            "flag":    v.get("Destination", ""),
+                            "tip": (f"🚢 AIS VESSEL | {v.get('ShipName','').strip()} | "
+                                    f"MMSI: {v.get('MMSI','')} | "
+                                    f"Type: {type_lbl} | Speed: {v.get('Sog',0)} kn | "
+                                    f"Heading: {v.get('TrueHeading',0)}°")
+                        })
+                    except (ValueError, TypeError):
+                        continue
+                if result:
+                    return result
+        except Exception:
+            pass
+
+    # ── Fallback: VesselFinder open endpoint (limited public data) ──
+    try:
+        url = "https://www.myshiptracking.com/requests/vesselsonmap.php?type=json&minlat=-90&maxlat=90&minlng=-180&maxlng=180&zoom=2"
+        r = requests.get(url, timeout=8,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; research)"})
+        if r.status_code == 200 and r.text.strip().startswith("["):
+            vessels = r.json() or []
+            result = []
+            for v in vessels[:limit]:
+                try:
+                    result.append({
+                        "mmsi":    str(v.get("mmsi", v.get("i", ""))),
+                        "name":    str(v.get("name", v.get("n", "Unknown"))).strip(),
+                        "lat":     float(v.get("lat",  v.get("y", 0))),
+                        "lon":     float(v.get("lon",  v.get("x", 0))),
+                        "speed":   float(v.get("speed", v.get("s", 0)) or 0),
+                        "heading": float(v.get("course", v.get("c", 0)) or 0),
+                        "type":    str(v.get("type",  v.get("t", ""))),
+                        "flag":    str(v.get("flag",  v.get("f", ""))),
+                        "tip": (f"🚢 AIS | {str(v.get('name', v.get('n','Unknown'))).strip()} | "
+                                f"Speed: {v.get('speed', v.get('s',0))} kn")
+                    })
+                except (ValueError, TypeError):
+                    continue
+            return result
+    except Exception:
+        pass
+
+    return []
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def fetch_opensky_flights(bbox: tuple = (-180, -90, 180, 90), limit: int = 120) -> list:
+    """
+    Live aircraft positions from OpenSky Network free anonymous API.
+    Filters for military-interest callsigns and anomalous patterns.
+    No API key required — anonymous rate limit is 10 req/min.
+    """
+    try:
+        url = (
+            f"https://opensky-network.org/api/states/all"
+            f"?lamin={bbox[1]}&lomin={bbox[0]}&lamax={bbox[3]}&lomax={bbox[2]}"
+        )
+        r = requests.get(url, timeout=12,
+            headers={"User-Agent": "GeoLocator/1.0 (open research)"})
+        if r.status_code != 200:
+            return []
+        data    = r.json()
+        states  = data.get("states", []) or []
+
+        # Field index mapping for OpenSky state vector
+        # [icao, callsign, origin, time_pos, last_contact, lon, lat, geo_alt,
+        #  on_ground, velocity, true_track, vert_rate, sensors, baro_alt,
+        #  squawk, spi, position_source]
+        MIL_PREFIXES = {
+            "RCH","RRR","CTAM","SAM","USAF","UAF","NATO","RCHT","LNT","FORTE",
+            "JAKE","DOOM","BUCK","GRIM","HAVOC","SHADOW","DARKSTAR","NIGHT",
+            "REAPER","HAWG","VIPER","EAGLE","LANCE","SABER","DRAGON","TIGER",
+        }
+        SPECIAL_SQUAWKS = {"7500", "7600", "7700"}
+
+        result = []
+        for s in states:
+            if not s or len(s) < 8:
+                continue
+            try:
+                callsign = (s[1] or "").strip().upper()
+                lon      = s[5]
+                lat      = s[6]
+                alt      = s[7] or s[13] or 0
+                on_gnd   = s[8]
+                speed    = s[9] or 0
+                heading  = s[10] or 0
+                squawk   = (s[14] or "").strip()
+                icao     = (s[0] or "").upper()
+
+                if on_gnd or not lat or not lon:
+                    continue
+
+                # Classify
+                is_mil     = any(callsign.startswith(p) for p in MIL_PREFIXES)
+                is_emrg    = squawk in SPECIAL_SQUAWKS
+                is_no_call = not callsign
+                is_anomaly = is_mil or is_emrg
+
+                if not is_anomaly and not is_no_call and len(result) < limit:
+                    if len(result) >= limit // 3:
+                        continue  # Only take a third of regular flights
+
+                category = ("MILITARY" if is_mil
+                            else "EMERGENCY" if is_emrg
+                            else "UNKNOWN" if is_no_call
+                            else "CIVIL")
+                col_map  = {
+                    "MILITARY":  [255, 80,  30, 230],
+                    "EMERGENCY": [255, 30,  80, 255],
+                    "UNKNOWN":   [200, 200,  0, 180],
+                    "CIVIL":     [0,  180, 255, 100],
+                }
+                result.append({
+                    "icao":     icao,
+                    "callsign": callsign or "N/A",
+                    "lat":      float(lat),
+                    "lon":      float(lon),
+                    "alt_m":    int(float(alt or 0)),
+                    "speed_ms": float(speed),
+                    "heading":  float(heading),
+                    "squawk":   squawk,
+                    "category": category,
+                    "_color":   col_map.get(category, [0,180,255,100]),
+                    "_radius":  20000 if is_anomaly else 10000,
+                    "tip": (f"{'🪖 MILITARY' if is_mil else '🚨 EMERGENCY' if is_emrg else '✈ CIVIL'}"
+                            f" | {callsign or 'No callsign'} | ICAO: {icao}"
+                            f" | Alt: {int(float(alt or 0))}m | Speed: {int(float(speed or 0))} m/s"
+                            f" | Squawk: {squawk or 'none'}")
+                })
+                if len(result) >= limit:
+                    break
+            except (ValueError, TypeError, IndexError):
+                continue
+
+        # Sort: military and emergencies first
+        result.sort(key=lambda x: 0 if x["category"] in ("MILITARY","EMERGENCY") else 1)
+        return result[:limit]
+
+    except Exception:
+        return []
+
+
 @st.cache_data(ttl=300, show_spinner=False)
 def fetch_news_rss(category: str) -> list:
     """Server-side RSS fetch for news tab categories — bypasses CORS entirely."""
@@ -2033,7 +2329,8 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
                       show_gps=False, show_orbital=False, show_cii=False, show_displaced=False,
                       show_climate=False, show_weather=False, show_outages=False, show_cyber=False,
                       show_econ=False, show_minerals=False, show_waterways=False, show_fires_layer=False,
-                      show_protests=False, show_aviation=False):
+                      show_protests=False, show_aviation=False,
+                      show_ais=False, show_opensky=False, show_acled=False):
     layers = []
 
     _layer_id_counter = [0]
@@ -2509,6 +2806,54 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
         layers.append(pdk.Layer("ScatterplotLayer", data=avdf, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
+    # ── Live AIS vessel positions ──────────────────────────────
+    if show_ais:
+        _ais_vessels = fetch_ais_vessels()
+        if _ais_vessels:
+            _ais_df = pd.DataFrame(_ais_vessels)
+            _ais_df["_color"] = _ais_df["type"].apply(lambda t:
+                [255, 60, 30, 220] if "Tanker" in str(t)
+                else [255, 180, 0, 200] if "Military" in str(t)
+                else [0, 200, 255, 150])
+            _ais_df["_radius"] = 22000
+            _ais_df["tip"] = _ais_df.apply(
+                lambda r: f"🚢 AIS | {r.get('name','Unknown')} | "
+                          f"Type: {r.get('type','')} | Speed: {r.get('speed',0)} kn",
+                axis=1)
+            layers.append(pdk.Layer("ScatterplotLayer", data=_ais_df, id="ais_vessels",
+                get_position=["lon","lat"], get_radius="_radius",
+                get_fill_color="_color", get_line_color=[255,255,255,20],
+                line_width_min_pixels=1, pickable=True, auto_highlight=True))
+
+    # ── Live OpenSky airspace ───────────────────────────────────
+    if show_opensky:
+        _sky_flights = fetch_opensky_flights()
+        if _sky_flights:
+            _sky_df = pd.DataFrame(_sky_flights)
+            # Already has _color and _radius per row
+            layers.append(pdk.Layer("ScatterplotLayer", data=_sky_df, id="opensky",
+                get_position=["lon","lat"], get_radius="_radius",
+                get_fill_color="_color",
+                get_line_color=[255,255,255,30], line_width_min_pixels=1,
+                pickable=True, auto_highlight=True))
+
+    # ── ACLED conflict events ───────────────────────────────────
+    if show_acled:
+        _acled_events = fetch_acled_events(limit=80)
+        if _acled_events:
+            _ae_df = pd.DataFrame(_acled_events)
+            _ae_df["_color"] = _ae_df["event_type"].apply(lambda t:
+                [255, 30, 60, 220]  if "Explosion" in str(t) or "Violence" in str(t)
+                else [255, 120, 0, 200] if "Battle" in str(t) or "Conflict" in str(t)
+                else [255, 200, 0, 180])
+            _ae_df["_radius"] = _ae_df.get("fatalities", pd.Series([0]*len(_ae_df))).apply(
+                lambda f: min(20000 + int(f or 0) * 1000, 120000))
+            layers.append(pdk.Layer("ScatterplotLayer", data=_ae_df, id="acled",
+                get_position=["lon","lat"], get_radius="_radius",
+                get_fill_color="_color",
+                get_line_color=[255, 60, 60, 60], line_width_min_pixels=1,
+                pickable=True, auto_highlight=True))
+
     return pdk.Deck(
         layers=layers,
         initial_view_state=pdk.ViewState(latitude=22, longitude=18, zoom=1.4, pitch=0),
@@ -2713,6 +3058,13 @@ with st.sidebar:
         show_trade   = st.toggle("⚓ Trade Route Arcs",    value=False, key="lyr_trade")
         show_aviation= st.toggle("✈ Aviation Status",      value=False, key="lyr_avia")
         show_waterways=st.toggle("⚓ Strategic Waterways", value=False, key="lyr_water")
+
+    with st.expander("🛰 Live Intelligence", expanded=False):
+        show_ais     = st.toggle("🚢 AIS Vessel Tracking (Live)",   value=False, key="lyr_ais")
+        show_opensky = st.toggle("✈ OpenSky Airspace (Live)",       value=False, key="lyr_osky")
+        show_acled   = st.toggle("⚔ ACLED Conflict Events (Live)",  value=False, key="lyr_acled")
+        if show_ais or show_opensky or show_acled:
+            st.caption("🔴 Live data — refreshes on rerun")
 
     with st.expander("📢 Human & Social", expanded=False):
         show_protests  = st.toggle("📢 Protests (all)",     value=False, key="lyr_prot")
@@ -3822,7 +4174,8 @@ _map_selection = st.pydeck_chart(
         show_displaced=show_displaced, show_climate=show_climate, show_weather=show_weather,
         show_outages=show_outages, show_cyber=show_cyber, show_econ=show_econ,
         show_minerals=show_minerals, show_waterways=show_waterways,
-        show_fires_layer=show_fires_layer, show_protests=show_protests, show_aviation=show_aviation),
+        show_fires_layer=show_fires_layer, show_protests=show_protests, show_aviation=show_aviation,
+        show_ais=show_ais, show_opensky=show_opensky, show_acled=show_acled),
     use_container_width=True,
     on_select="rerun",
     selection_mode="single-object",
@@ -4315,6 +4668,68 @@ with tab_conflict:
           🔴 MOST RECENT INCIDENTS
         </div>""", unsafe_allow_html=True)
 
+        # ── Live ACLED events for this theatre ─────────────────
+        _acled_live = fetch_acled_events(limit=30)
+        # Filter to roughly match the theatre's geographic region
+        _theatre_country_map = {
+            "Ukraine–Russia War":    ["Ukraine","Russia","Belarus"],
+            "Gaza Conflict":              ["Palestine","Israel","Gaza","Egypt"],
+            "Israel–Iran War":       ["Israel","Iran","Lebanon","Syria","Yemen"],
+            "Sudan Civil War":            ["Sudan"],
+            "Myanmar Civil War":          ["Myanmar"],
+            "Pakistan-Afghanistan Conflict": ["Pakistan","Afghanistan"],
+            "Haiti Gang War":             ["Haiti"],
+        }
+        _theatre_countries = _theatre_country_map.get(theatre, [])
+        _acled_theatre = [
+            ev for ev in _acled_live
+            if not _theatre_countries or
+               any(c.lower() in ev.get("country","").lower() or
+                   c.lower() in ev.get("location","").lower()
+                   for c in _theatre_countries)
+        ]
+
+        if _acled_theatre:
+            st.markdown(
+                f'<div style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;' +
+                'color:var(--muted);margin-bottom:8px;margin-top:12px;display:flex;align-items:center;gap:8px">' +
+                '<span style="width:6px;height:6px;border-radius:50%;background:#ff3d5a;display:inline-block;'
+                'animation:pulse-red 1.2s ease-in-out infinite"></span>' +
+                f'⚔ ACLED LIVE EVENTS ({len(_acled_theatre)} recent)</div>',
+                unsafe_allow_html=True
+            )
+            for _aev in _acled_theatre[:6]:
+                _aev_fat = _aev.get("fatalities", 0) or 0
+                _aev_col = "#ff3d5a" if _aev_fat > 10 else "#ff8c42" if _aev_fat > 0 else "#ffb400"
+                _aev_type = _aev.get("event_type", "Event")
+                _aev_loc  = _aev.get("location", "") or _aev.get("country", "")
+                _aev_date = _aev.get("date", "")
+                _aev_src  = _aev.get("source", "ACLED")
+                _aev_note = (_aev.get("notes","") or "")[:120]
+                _aev_actor= _aev.get("actor1","")[:30]
+                st.markdown(
+                    f'<div style="background:var(--card);border:1px solid rgba(255,61,90,.18);'
+                    f'border-left:3px solid {_aev_col};border-radius:8px;padding:9px 13px;margin-bottom:5px">' +
+                    f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">' +
+                    f'<span style="font-family:var(--fm);font-size:9px;font-weight:600;color:{_aev_col}">' +
+                    f'{_aev_type}</span>' +
+                    (f'<span style="font-family:var(--fm);font-size:9px;color:#ff3d5a">{_aev_fat} fatalities</span>' if _aev_fat > 0 else '') +
+                    f'</div>' +
+                    f'<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px">{_aev_loc} · {_aev_date}</div>' +
+                    (f'<div style="font-size:11px;color:var(--muted);line-height:1.5">{_aev_note}</div>' if _aev_note else '') +
+                    f'<div style="font-family:var(--fm);font-size:8.5px;color:var(--muted);margin-top:4px">'
+                    f'Actor: {_aev_actor} · Source: {_aev_src}</div>' +
+                    '</div>',
+                    unsafe_allow_html=True
+                )
+        else:
+            st.markdown(
+                '<div style="font-family:var(--fm);font-size:9px;color:var(--muted);padding:8px 0">' +
+                'ACLED: No key configured — add ACLED_KEY + ACLED_EMAIL to st.secrets for live events.</div>',
+                unsafe_allow_html=True
+            )
+
+        st.markdown("---")
         sorted_incidents = sorted(C["incidents"], key=lambda x: x.get("date",""), reverse=True)
         for inc in sorted_incidents[:4]:
             icon = INCIDENT_ICONS.get(inc["type"],"●")
@@ -4771,6 +5186,273 @@ tl.innerHTML = html;
 
     if len(_filtered_hist) > 40:
         st.markdown(f'<div style="font-family:var(--fm);font-size:10px;color:var(--muted);text-align:center;padding:8px">… {len(_filtered_hist)-40} more events — refine filters to see more</div>', unsafe_allow_html=True)
+
+
+    # ══ SITUATION REPORT EXPORT ═══════════════════════════════════
+    st.markdown("---")
+    st.markdown('<div class="sec-label">📋 Situation Report Export</div>',
+                unsafe_allow_html=True)
+
+    _sr_c1, _sr_c2 = st.columns([2, 1])
+    with _sr_c1:
+        _sitrep_fmt = st.radio(
+            "Format:", ["Markdown (.md)", "Plain Text (.txt)", "HTML (.html)"],
+            horizontal=True, key="sitrep_fmt"
+        )
+    with _sr_c2:
+        _sitrep_acled = st.checkbox("Include live ACLED events", value=True, key="sitrep_acled")
+
+    # ── Build content ─────────────────────────────────────────────
+    _sr_now    = datetime.now(tz=timezone.utc)
+    _sr_ts     = _sr_now.strftime("%Y-%m-%d %H:%MZ")
+    _sr_facs   = C.get("factions", [])
+    _sr_incs   = sorted(C.get("incidents", []), key=lambda x: x.get("date",""), reverse=True)
+    _sr_tl     = C.get("timeline", [])
+    _sr_media  = C.get("media_sources", [])
+    _sr_aclevs = _acled_theatre[:6] if _sitrep_acled else []
+    _esc_col   = "#ff3d5a" if C["escalation"]>=80 else "#ff8c42" if C["escalation"]>=60 else "#ffb400"
+    _cf_yn     = "YES" if C.get("ceasefire") else "NO"
+    _sr_assess = (
+        "CRITICAL — active high-intensity combat, no near-term resolution"
+        if C["escalation"] >= 80 else
+        "HIGH — sustained combat operations, elevated civilian risk"
+        if C["escalation"] >= 60 else
+        "ELEVATED — ongoing hostilities with intermittent escalation"
+        if C["escalation"] >= 40 else
+        "MODERATE — low-intensity conflict or ceasefire holding"
+    )
+
+    if "Markdown" in _sitrep_fmt:
+        _sr_mime, _sr_ext = "text/markdown", "md"
+        _sr_fac_block = "\n".join(
+            "### " + f["name"] + " (" + f.get("side","") + ")\n"
+            + "- **Status:** " + f.get("status","") + "\n"
+            + "- **Strength:** " + f.get("strength","") + "\n"
+            + "- **Key Systems:** " + ", ".join(f.get("weapons",[])) + "\n"
+            + "- **External Support:** " + ", ".join(f.get("support",[])) + "\n"
+            for f in _sr_facs
+        )
+        _sr_inc_block = "\n".join(
+            "- **[" + i.get("date","") + "] [" + i.get("severity","") + "]** "
+            + i.get("type","").upper() + ": " + i.get("title","")
+            + " — *" + i.get("loc","") + "*"
+            + (" (Cas: " + str(i.get("casualties",0)) + ")" if i.get("casualties",0) > 0 else "")
+            for i in _sr_incs[:8]
+        )
+        _sr_tl_block = "\n".join(
+            "- **[" + ev.get("date","") + "]** " + ev.get("event","")
+            for ev in reversed(_sr_tl[-8:])
+        )
+        _sr_ac_block = ("\n## 5. LIVE ACLED EVENTS\n*Source: ACLED*\n\n" + "\n".join(
+            "- **[" + ev.get("date","") + "]** " + ev.get("event_type","")
+            + " — " + ev.get("location","") + ", " + ev.get("country","")
+            + " | Actor: " + ev.get("actor1","")
+            + " | Fatalities: " + str(ev.get("fatalities",0))
+            for ev in _sr_aclevs
+        )) if _sr_aclevs else ""
+        _sr_media_block = "\n".join(
+            "- " + ms["name"]
+            + " — Bias: " + ms.get("bias","N/A")
+            + " — Reliability: " + str(ms.get("reliability","N/A")) + "%"
+            for ms in _sr_media
+        )
+        _sitrep_content = (
+            "# SITUATION REPORT — " + theatre.upper() + "\n"
+            + "**Classification:** UNCLASSIFIED // FOR RESEARCH USE ONLY\n"
+            + "**Prepared:** " + _sr_ts + "\n"
+            + "**Source:** GeoLocator Intelligence Dashboard\n\n"
+            + "---\n\n"
+            + "## 1. EXECUTIVE SUMMARY\n"
+            + "**Status:** " + C["status"]
+            + " | **Intensity:** " + C["intensity"]
+            + " | **Escalation:** " + str(C["escalation"]) + "/100\n"
+            + "**Region:** " + C["region"]
+            + " | **Duration:** " + _dur_str + " (since " + C["start"] + ")\n"
+            + "**Casualties:** " + f"{C['casualties_total']:,}"
+            + " | **Displaced:** " + f"{C['displaced']:,}" + "\n"
+            + "**Ceasefire:** " + _cf_yn + "\n\n"
+            + C.get("description","") + "\n\n"
+            + "---\n\n"
+            + "## 2. RECENT TIMELINE\n" + _sr_tl_block + "\n\n"
+            + "---\n\n"
+            + "## 3. ORDER OF BATTLE\n" + _sr_fac_block + "\n"
+            + "---\n\n"
+            + "## 4. RECENT INCIDENTS\n" + _sr_inc_block + "\n"
+            + _sr_ac_block + "\n\n"
+            + "---\n\n"
+            + "## 6. INTELLIGENCE SOURCES\n" + _sr_media_block + "\n\n"
+            + "---\n\n"
+            + "## 7. ASSESSMENT\n"
+            + "Escalation index " + str(C["escalation"]) + "/100: **" + _sr_assess + "**\n\n"
+            + "---\n"
+            + "*GeoLocator v2026.03 — " + _sr_ts + " — AI-assisted OSINT*\n"
+            + "*Verify all data against primary sources before operational use.*\n"
+        )
+
+    elif "Plain Text" in _sitrep_fmt:
+        _sr_mime, _sr_ext = "text/plain", "txt"
+        _sr_sep  = "=" * 60 + "\n"
+        _sr_sep2 = "-" * 40 + "\n"
+        _sitrep_content = (
+            "SITUATION REPORT — " + theatre.upper() + "\n"
+            + _sr_sep
+            + "Classification: UNCLASSIFIED // FOR RESEARCH USE ONLY\n"
+            + "Prepared:       " + _sr_ts + "\n"
+            + "Source:         GeoLocator Intelligence Dashboard\n\n"
+            + "1. EXECUTIVE SUMMARY\n" + _sr_sep2
+            + "Status:     " + C["status"] + "\n"
+            + "Intensity:  " + C["intensity"] + "\n"
+            + "Escalation: " + str(C["escalation"]) + "/100\n"
+            + "Region:     " + C["region"] + "\n"
+            + "Duration:   " + _dur_str + "\n"
+            + "Casualties: " + f"{C['casualties_total']:,}" + "\n"
+            + "Displaced:  " + f"{C['displaced']:,}" + "\n"
+            + "Ceasefire:  " + _cf_yn + "\n\n"
+            + C.get("description","") + "\n\n"
+            + "2. RECENT INCIDENTS\n" + _sr_sep2
+            + "\n".join(
+                "[" + i.get("date","") + "] [" + i.get("severity","") + "] "
+                + i.get("type","").upper() + ": " + i.get("title","")
+                + " (" + i.get("loc","") + ")"
+                + (" Cas: " + str(i.get("casualties",0)) if i.get("casualties",0) > 0 else "")
+                for i in _sr_incs[:8]
+            ) + "\n\n"
+            + ("3. ACLED LIVE EVENTS\n" + _sr_sep2
+               + "\n".join(
+                   "[" + ev.get("date","") + "] "
+                   + ev.get("event_type","") + " — "
+                   + ev.get("location","") + ", " + ev.get("country","")
+                   + " — Fatalities: " + str(ev.get("fatalities",0))
+                   + " — " + ev.get("actor1","")
+                   for ev in _sr_aclevs
+               ) + "\n\n" if _sr_aclevs else "")
+            + "4. ASSESSMENT\n" + _sr_sep2
+            + _sr_assess + "\n\n"
+            + _sr_sep
+            + "GeoLocator v2026.03 — " + _sr_ts + "\n"
+            + "AI-assisted OSINT — verify against primary sources\n"
+        )
+
+    else:  # HTML
+        _sr_mime, _sr_ext = "text/html", "html"
+        _fac_rows = "".join(
+            "<tr><td>" + f["name"] + "</td><td>" + f.get("side","")
+            + "</td><td>" + f.get("status","") + "</td><td>" + f.get("strength","")
+            + "</td><td>" + ", ".join(f.get("support",[])) + "</td></tr>"
+            for f in _sr_facs
+        )
+        _inc_rows = "".join(
+            "<tr><td>" + i.get("date","") + "</td>"
+            + "<td style='color:"
+            + ("#ff3d5a" if i.get("severity")=="CRITICAL"
+               else "#ff8c42" if i.get("severity")=="HIGH" else "#ffb400")
+            + "'>" + i.get("severity","") + "</td>"
+            + "<td>" + i.get("type","").upper() + "</td>"
+            + "<td>" + i.get("title","") + "</td>"
+            + "<td>" + i.get("loc","") + "</td>"
+            + "<td>" + str(i.get("casualties",0)) + "</td></tr>"
+            for i in _sr_incs[:10]
+        )
+        _ac_rows = "".join(
+            "<tr><td>" + ev.get("date","") + "</td><td>" + ev.get("event_type","")
+            + "</td><td>" + ev.get("location","") + ", " + ev.get("country","")
+            + "</td><td>" + ev.get("actor1","")
+            + "</td><td>" + str(ev.get("fatalities",0)) + "</td></tr>"
+            for ev in _sr_aclevs
+        )
+        _acled_table = (
+            "<h2>5. Live ACLED Events</h2>"
+            + "<table><thead><tr><th>Date</th><th>Type</th><th>Location</th>"
+            + "<th>Actor</th><th>Fatalities</th></tr></thead><tbody>"
+            + _ac_rows + "</tbody></table>"
+        ) if _ac_rows else ""
+
+        _sitrep_content = (
+            "<!DOCTYPE html><html lang='en'><head>"
+            + "<meta charset='utf-8'>"
+            + "<title>SitRep — " + theatre + " — " + _sr_ts + "</title>"
+            + "<style>"
+            + "body{font-family:Georgia,serif;max-width:900px;margin:40px auto;"
+            + "padding:0 24px;color:#1a1a2e;line-height:1.7;}"
+            + "h1{font-family:monospace;font-size:20px;border-bottom:3px solid "
+            + _esc_col + ";padding-bottom:8px;margin-bottom:6px;}"
+            + "h2{font-family:monospace;font-size:13px;color:#555;margin-top:28px;"
+            + "letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid #eee;padding-bottom:4px;}"
+            + ".meta{font-family:monospace;font-size:11px;color:#888;margin-bottom:20px;}"
+            + ".kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0;}"
+            + ".kpi{border:1px solid #ddd;border-radius:4px;padding:14px;text-align:center;"
+            + "border-top:3px solid " + _esc_col + ";}"
+            + ".kpi-v{font-family:monospace;font-size:26px;font-weight:bold;color:" + _esc_col + ";}"
+            + ".kpi-l{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:.1em;margin-top:4px;}"
+            + "table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;}"
+            + "thead tr{background:#1a1a2e;color:#fff;}"
+            + "th{padding:8px 10px;text-align:left;font-family:monospace;font-size:11px;letter-spacing:.05em;}"
+            + "td{padding:7px 10px;border-bottom:1px solid #eee;vertical-align:top;}"
+            + "tr:nth-child(even){background:#f9f9f9;}"
+            + ".assess{background:#fef9f0;border-left:4px solid " + _esc_col + ";"
+            + "padding:14px 18px;border-radius:2px;margin:12px 0;}"
+            + ".footer{font-family:monospace;font-size:10px;color:#aaa;border-top:1px solid #eee;"
+            + "margin-top:32px;padding-top:12px;}"
+            + "</style></head><body>"
+            + "<h1>SITUATION REPORT — " + theatre.upper() + "</h1>"
+            + "<div class='meta'>Prepared: " + _sr_ts
+            + " &nbsp;|&nbsp; Classification: UNCLASSIFIED — Research Use Only<br>"
+            + "Status: <strong>" + C["status"] + " / " + C["intensity"]
+            + "</strong> &nbsp;|&nbsp; Duration: " + _dur_str + "</div>"
+            + "<div class='kpi-grid'>"
+            + "<div class='kpi'><div class='kpi-v'>" + str(C["escalation"])
+            + "/100</div><div class='kpi-l'>Escalation Index</div></div>"
+            + "<div class='kpi'><div class='kpi-v'>" + f"{C['casualties_total']:,}"
+            + "</div><div class='kpi-l'>Est. Casualties</div></div>"
+            + "<div class='kpi'><div class='kpi-v'>" + f"{C['displaced']:,}"
+            + "</div><div class='kpi-l'>Displaced</div></div>"
+            + "<div class='kpi'><div class='kpi-v'>" + _cf_yn
+            + "</div><div class='kpi-l'>Ceasefire</div></div>"
+            + "</div>"
+            + "<p>" + C.get("description","") + "</p>"
+            + "<h2>3. Order of Battle</h2>"
+            + "<table><thead><tr><th>Faction</th><th>Side</th><th>Status</th>"
+            + "<th>Strength</th><th>External Support</th></tr></thead><tbody>"
+            + _fac_rows + "</tbody></table>"
+            + "<h2>4. Recent Incidents</h2>"
+            + "<table><thead><tr><th>Date</th><th>Severity</th><th>Type</th>"
+            + "<th>Description</th><th>Location</th><th>Cas.</th></tr></thead><tbody>"
+            + _inc_rows + "</tbody></table>"
+            + _acled_table
+            + "<h2>7. Assessment</h2>"
+            + "<div class='assess'>" + _sr_assess + "</div>"
+            + "<div class='footer'>GeoLocator Intelligence Dashboard v2026.03 — "
+            + _sr_ts + "<br>"
+            + "AI-assisted OSINT composite — verify all data against primary sources "
+            + "before operational use.</div>"
+            + "</body></html>"
+        )
+
+    # ── Download + preview ────────────────────────────────────────
+    _sr_fname = (
+        "sitrep_"
+        + theatre.lower().replace(" ","_").replace("\u2013","_").replace("–","_")
+        + "_" + _sr_now.strftime("%Y%m%d_%H%M")
+        + "." + _sr_ext
+    )
+    st.download_button(
+        label="⬇  Export SitRep — " + theatre + " (" + _sr_ext.upper() + ")",
+        data=_sitrep_content.encode("utf-8"),
+        file_name=_sr_fname,
+        mime=_sr_mime,
+        use_container_width=True,
+        type="primary",
+    )
+    with st.expander("👁  Preview SitRep", expanded=False):
+        if "HTML" in _sitrep_fmt:
+            import streamlit.components.v1 as _sr_cmp
+            _sr_cmp.html(_sitrep_content, height=520, scrolling=True)
+        else:
+            st.code(
+                _sitrep_content[:3000] + ("…" if len(_sitrep_content) > 3000 else ""),
+                language="markdown" if "Markdown" in _sitrep_fmt else "text"
+            )
+
 
 
 # ══════════════════════════════════════════════════════════════
@@ -6443,7 +7125,7 @@ function buildTicker(){{
 
 function updateHeader(){{
   var ts=document.getElementById('live-ts');
-  if(ts)ts.textContent=new Date().toUTCString().replace(/.*(\d\d:\d\d:\d\d).*/,'$1')+' UTC';
+  if(ts)ts.textContent=new Date().toUTCString().replace(/.*([0-9][0-9]:[0-9][0-9]:[0-9][0-9]).*/,'$1')+' UTC';
 }}
 
 function panelActors(){{
