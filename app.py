@@ -140,6 +140,128 @@ import json, requests, re, html as html_lib, time
 from datetime import datetime, timezone, timedelta
 
 
+# ══════════════════════════════════════════════════════════════
+# PERSISTENCE LAYER — Supabase (fire-and-forget)
+# ══════════════════════════════════════════════════════════════
+# Configure in .streamlit/secrets.toml:
+#   SUPABASE_URL = "https://xxxx.supabase.co"
+#   SUPABASE_KEY = "your-anon-key"
+#
+# Required tables (run once in Supabase SQL editor):
+#
+#   create table if not exists acled_events (
+#     id          bigserial primary key,
+#     inserted_at timestamptz default now(),
+#     event_date  text, event_type text, sub_type text,
+#     actor1 text, actor2 text, country text, location text,
+#     lat float8, lon float8, fatalities int, notes text, source text
+#   );
+#   create table if not exists ais_positions (
+#     id          bigserial primary key,
+#     inserted_at timestamptz default now(),
+#     mmsi text, name text, lat float8, lon float8,
+#     speed float8, heading float8, type text, flag text
+#   );
+#   create table if not exists seismic_events (
+#     id          bigserial primary key,
+#     inserted_at timestamptz default now(),
+#     title text, mag float8, place text,
+#     depth_km float8, lon float8, lat float8, url text
+#   );
+#   create table if not exists gdelt_events (
+#     id          bigserial primary key,
+#     inserted_at timestamptz default now(),
+#     title text, source text, url text unique, time text
+#   );
+
+def _sb_creds() -> tuple:
+    """Return (url, key) or (None, None) if not configured."""
+    try:
+        url = st.secrets.get("SUPABASE_URL", None)
+        key = st.secrets.get("SUPABASE_KEY", None)
+        return (url, key) if url and key else (None, None)
+    except Exception:
+        return (None, None)
+
+
+def _persist(table: str, rows: list) -> None:
+    """
+    Fire-and-forget insert to Supabase REST API.
+    - Never raises; never blocks the calling fetcher.
+    - Deduplicates on 'url' column for gdelt_events (Prefer: resolution=ignore-duplicates).
+    - Strips non-serialisable types (DataFrames, numpy values) before sending.
+    """
+    url, key = _sb_creds()
+    if not url or not key or not rows:
+        return
+    try:
+        import json as _json
+
+        def _clean(v):
+            """Make a value JSON-safe."""
+            if v is None:
+                return None
+            if isinstance(v, (int, float, str, bool)):
+                return v
+            try:
+                import numpy as np
+                if isinstance(v, (np.integer,)):  return int(v)
+                if isinstance(v, (np.floating,)): return float(v)
+                if isinstance(v, (np.bool_,)):    return bool(v)
+            except ImportError:
+                pass
+            return str(v)
+
+        clean_rows = [
+            {k: _clean(v) for k, v in row.items()
+             if k not in ("tip", "_color", "_radius")}  # skip map-only fields
+            for row in rows
+        ]
+
+        headers = {
+            "apikey":        key,
+            "Authorization": f"Bearer {key}",
+            "Content-Type":  "application/json",
+            "Prefer":        "resolution=ignore-duplicates",
+        }
+        requests.post(
+            f"{url}/rest/v1/{table}",
+            data=_json.dumps(clean_rows),
+            headers=headers,
+            timeout=5,
+        )
+    except Exception:
+        pass  # always silent — persistence must never break the live feed
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def load_persisted(table: str, limit: int = 100) -> list:
+    """
+    Read the most recent rows from a Supabase table.
+    Used as a fallback when the live API source fails.
+    Returns [] if Supabase is not configured or the query fails.
+    """
+    url, key = _sb_creds()
+    if not url or not key:
+        return []
+    try:
+        r = requests.get(
+            f"{url}/rest/v1/{table}",
+            params={"order": "inserted_at.desc", "limit": limit},
+            headers={
+                "apikey":        key,
+                "Authorization": f"Bearer {key}",
+                "Accept":        "application/json",
+            },
+            timeout=6,
+        )
+        if r.status_code == 200:
+            return r.json() or []
+    except Exception:
+        pass
+    return []
+
+
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_live_instability(country: str, baseline: dict) -> dict:
     """Fetch live instability signal from GDELT and blend with baseline.
@@ -924,8 +1046,16 @@ def fetch_usgs():
                 "time": datetime.fromtimestamp(p["time"]/1000,tz=timezone.utc).strftime("%H:%Mz"),
                 "url": p.get("url",""),
             })
+        _persist("seismic_events", rows)
         return pd.DataFrame(rows)
     except:
+        # ── Last resort: rebuild DataFrame from persisted rows ──
+        _stored_q = load_persisted("seismic_events", limit=50)
+        if _stored_q:
+            try:
+                return pd.DataFrame(_stored_q)
+            except Exception:
+                pass
         return _sq()
 
 @st.cache_data(ttl=300, show_spinner=False)
@@ -1307,7 +1437,16 @@ def fetch_live_global_events(max_records: int = 20) -> list:
                 })
         except:
             pass
-    return all_arts[:max_records]
+    if all_arts:
+        _persist("gdelt_events", all_arts[:max_records])
+        return all_arts[:max_records]
+
+    # ── Last resort: return last persisted GDELT events ─────────
+    _stored_g = load_persisted("gdelt_events", limit=max_records)
+    if _stored_g:
+        return _stored_g
+
+    return []
 
 
 # ── Live NOAA solar wind / X-ray flux ─────────────────────────
@@ -1435,6 +1574,7 @@ def fetch_acled_events(limit: int = 50) -> list:
                     except (ValueError, TypeError):
                         continue
                 if result:
+                    _persist("acled_events", result)
                     return result
         except Exception:
             pass
@@ -1475,9 +1615,15 @@ def fetch_acled_events(limit: int = 50) -> list:
                     })
                 except (ValueError, TypeError, KeyError):
                     continue
+            _persist("acled_events", result[:limit])
             return result[:limit]
     except Exception:
         pass
+
+    # ── Last resort: return last persisted records ──────────────
+    _stored = load_persisted("acled_events", limit=limit)
+    if _stored:
+        return _stored
 
     return []
 
@@ -1533,6 +1679,7 @@ def fetch_ais_vessels(bbox: tuple = (-180, -90, 180, 90), limit: int = 80) -> li
                     except (ValueError, TypeError):
                         continue
                 if result:
+                    _persist("ais_positions", result)
                     return result
         except Exception:
             pass
@@ -1561,9 +1708,15 @@ def fetch_ais_vessels(bbox: tuple = (-180, -90, 180, 90), limit: int = 80) -> li
                     })
                 except (ValueError, TypeError):
                     continue
+            _persist("ais_positions", result)
             return result
     except Exception:
         pass
+
+    # ── Last resort: return last persisted positions ────────────
+    _stored_ais = load_persisted("ais_positions", limit=80)
+    if _stored_ais:
+        return _stored_ais
 
     return []
 
@@ -3078,6 +3231,32 @@ with st.sidebar:
 
     st.markdown('<div class="sb-div"></div>', unsafe_allow_html=True)
     st.markdown("#### 📡 Live Data Status")
+
+    # ── Supabase persistence status ──────────────────────────────
+    _sb_url, _sb_key = _sb_creds()
+    if _sb_url:
+        st.markdown(
+            '<div style="display:flex;align-items:center;gap:7px;padding:6px 10px;'
+            'background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.2);'
+            'border-radius:6px;margin-bottom:10px">'
+            '<span style="width:7px;height:7px;border-radius:50%;background:#00e676;'
+            'display:inline-block"></span>'
+            '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:#00e676">'
+            'Supabase persistence active</span></div>',
+            unsafe_allow_html=True
+        )
+    else:
+        st.markdown(
+            '<div style="display:flex;align-items:center;gap:7px;padding:6px 10px;'
+            'background:rgba(74,107,133,.06);border:1px solid rgba(74,107,133,.2);'
+            'border-radius:6px;margin-bottom:10px">'
+            '<span style="width:7px;height:7px;border-radius:50%;background:#4a6b85;'
+            'display:inline-block"></span>'
+            '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;color:#4a6b85">'
+            'Persistence off — add SUPABASE_URL + SUPABASE_KEY to secrets</span></div>',
+            unsafe_allow_html=True
+        )
+
     feeds_ok = not eq_df.empty
     _kp_col = "p-red" if kp_data["kp"]>=5 else "p-amber" if kp_data["kp"]>=3 else "p-green"
     _sw_col = "p-red" if solar_data["speed"]>700 else "p-amber" if solar_data["speed"]>500 else "p-green"
