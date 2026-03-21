@@ -141,6 +141,258 @@ from datetime import datetime, timezone, timedelta
 
 
 # ══════════════════════════════════════════════════════════════
+# OIL & GAS FACILITY MAP — DEPENDENCIES
+# ══════════════════════════════════════════════════════════════
+import plotly.graph_objects as _go
+from plotly.subplots import make_subplots as _make_subplots
+
+THEME = dict(
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(10,14,22,0.75)",
+    font=dict(family="Barlow Condensed, sans-serif", color="#5a7898", size=11),
+    xaxis=dict(gridcolor="#1a2438", zerolinecolor="#1a2438", showgrid=True,
+               linecolor="#1e2d46", tickfont=dict(family="Barlow Condensed", size=10)),
+    yaxis=dict(gridcolor="#1a2438", zerolinecolor="#1a2438", showgrid=True,
+               linecolor="#1e2d46", tickfont=dict(family="Barlow Condensed", size=10)),
+    legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(size=11, family="Barlow Condensed")),
+    hoverlabel=dict(bgcolor="#101520", font_family="Barlow Condensed, sans-serif",
+                    font_size=12, bordercolor="#243450"),
+)
+
+PALETTE = {
+    "WTI":        "#d4963a",
+    "Brent":      "#2eb8a0",
+    "NatGas":     "#e05858",
+    "Gasoline":   "#9060d8",
+    "HeatingOil": "#4a8cc8",
+    "green":      "#38b86a",
+    "red":        "#e05050",
+    "purple":     "#9060d8",
+    "white":      "#c8d8e8",
+}
+
+def rgba(hex_color: str, alpha: float) -> str:
+    h = hex_color.lstrip("#")
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return f"rgba({r},{g},{b},{alpha})"
+
+def apply_theme(fig, title="", height=380, margin=None):
+    m = margin or dict(l=55, r=20, t=38, b=38)
+    fig.update_layout(
+        **THEME,
+        title=dict(text=title, font=dict(color="#c8a060", size=12)),
+        height=height,
+        margin=m,
+    )
+    return fig
+
+def err_box(msg: str):
+    st.markdown(f"<div class='err-box'>⚠ {msg}</div>", unsafe_allow_html=True)
+
+def dl_button(df: pd.DataFrame, filename: str):
+    if not df.empty:
+        st.download_button(
+            f"⬇ Download {filename}", df.to_csv(),
+            file_name=filename, mime="text/csv", use_container_width=True,
+        )
+
+# ═══════════════════════════════════════════════════════════════
+# DATA FETCHERS  (all cache-wrapped, with provenance metadata)
+# ═══════════════════════════════════════════════════════════════
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_nasa_firms(lat: float, lon: float, radius_km: int = 50) -> dict:
+    """
+    Fetch thermal anomaly data from NASA FIRMS.
+    Strategy:
+      1. Try FIRMS public NRT CSV download (no key, last 24h global file, filter by bbox)
+      2. Fall back to FIRMS active fire count via their public summary JSON
+    Both endpoints are completely public — no API key required.
+    """
+    from io import StringIO
+    deg = radius_km / 111.0
+    lat_min, lat_max = lat - deg, lat + deg
+    lon_min, lon_max = lon - deg, lon + deg
+
+    # ── Method 1: FIRMS public NRT CSV (last 24h, global, no key) ──
+    # These are the genuinely open NRT CSV files NASA publishes daily
+    NRT_SOURCES = [
+        ("VIIRS_SNPP", "https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-20-viirs-c2/csv/J1_VIIRS_C2_Global_24h.csv"),
+        ("MODIS",      "https://firms.modaps.eosdis.nasa.gov/data/active_fire/modis-c6.1/csv/MODIS_C6_1_Global_24h.csv"),
+        ("VIIRS_NOAA", "https://firms.modaps.eosdis.nasa.gov/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Global_24h.csv"),
+    ]
+
+    for sensor_name, csv_url in NRT_SOURCES:
+        try:
+            r = requests.get(csv_url, timeout=15,
+                             headers={"User-Agent": "OilGasResearchDashboard/1.0"})
+            if r.status_code != 200:
+                continue
+            df = pd.read_csv(StringIO(r.text))
+            if df.empty or "latitude" not in df.columns:
+                continue
+            df["latitude"]  = pd.to_numeric(df["latitude"],  errors="coerce")
+            df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
+            df = df.dropna(subset=["latitude","longitude"])
+            # Filter to facility bounding box
+            nearby = df[
+                (df["latitude"]  >= lat_min) & (df["latitude"]  <= lat_max) &
+                (df["longitude"] >= lon_min) & (df["longitude"] <= lon_max)
+            ].copy()
+            # Normalise column names across MODIS / VIIRS
+            frp_col  = next((c for c in ["frp","FRP"] if c in nearby.columns), None)
+            date_col = next((c for c in ["acq_date","ACQ_DATE"] if c in nearby.columns), None)
+            time_col = next((c for c in ["acq_time","ACQ_TIME"] if c in nearby.columns), None)
+            bright_col = next((c for c in ["bright_ti4","bright_t31","brightness","BRIGHT_TI4","BRIGHTNESS"] if c in nearby.columns), None)
+            conf_col = next((c for c in ["confidence","CONFIDENCE"] if c in nearby.columns), None)
+
+            out = pd.DataFrame()
+            out["latitude"]   = nearby["latitude"]
+            out["longitude"]  = nearby["longitude"]
+            out["frp"]        = pd.to_numeric(nearby[frp_col],    errors="coerce") if frp_col    else np.nan
+            out["acq_date"]   = nearby[date_col].astype(str)                        if date_col   else "N/A"
+            out["acq_time"]   = nearby[time_col].astype(str)                        if time_col   else "N/A"
+            out["bright_ti4"] = pd.to_numeric(nearby[bright_col], errors="coerce") if bright_col else np.nan
+            out["confidence"] = nearby[conf_col].astype(str)                        if conf_col   else "N/A"
+            out = out.dropna(subset=["latitude","longitude"])
+
+            return {
+                "ok": True, "df": out, "count": len(out),
+                "sensor": sensor_name,
+                "source": f"NASA FIRMS {sensor_name} NRT (24h global, no key)",
+                "fetched_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+                "embed_url": (
+                    f"https://firms.modaps.eosdis.nasa.gov/map/#d:2017-05-14..2017-05-15;"
+                    f"@{lon:.3f},{lat:.3f},10z"
+                ),
+            }
+        except Exception:
+            continue
+
+    # ── Method 2: FIRMS public map embed (always works, visual only) ──
+    embed_url = (
+        f"https://firms.modaps.eosdis.nasa.gov/map/"
+        f"#d:24hrs;@{lon:.4f},{lat:.4f},11z"
+    )
+    return {
+        "ok": False,
+        "error": "NRT CSV download unavailable on this network — use embed viewer below",
+        "df": pd.DataFrame(), "count": 0,
+        "embed_url": embed_url,
+        "source": "NASA FIRMS (map embed fallback)",
+        "fetched_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+    }
+
+
+# ── Open-Meteo — live weather at facility coordinates ─────────
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def fetch_weather(lat: float, lon: float) -> dict:
+    """Fetch current weather + 24h forecast via Open-Meteo. No key needed."""
+    try:
+        r = requests.get(
+            "https://api.open-meteo.com/v1/forecast",
+            params={
+                "latitude": lat, "longitude": lon,
+                "current": "temperature_2m,wind_speed_10m,wind_direction_10m,"
+                           "relative_humidity_2m,weather_code,visibility,surface_pressure",
+                "hourly": "temperature_2m,wind_speed_10m,precipitation_probability",
+                "forecast_days": 2,
+                "wind_speed_unit": "kmh",
+                "timezone": "UTC",
+            },
+            timeout=8,
+        )
+        r.raise_for_status()
+        data = r.json()
+        curr = data.get("current", {})
+        hourly = data.get("hourly", {})
+        # Build 24h forecast df
+        fcast_df = pd.DataFrame({
+            "time":     pd.to_datetime(hourly.get("time", [])),
+            "temp_c":   hourly.get("temperature_2m", []),
+            "wind_kmh": hourly.get("wind_speed_10m", []),
+            "precip_pct": hourly.get("precipitation_probability", []),
+        }).head(24)
+        WMO_CODES = {
+            0:"Clear sky",1:"Mainly clear",2:"Partly cloudy",3:"Overcast",
+            45:"Foggy",48:"Rime fog",51:"Light drizzle",53:"Drizzle",
+            61:"Light rain",63:"Rain",71:"Light snow",73:"Snow",
+            80:"Rain showers",81:"Heavy showers",95:"Thunderstorm",
+            99:"Thunderstorm w/ hail",
+        }
+        return {
+            "ok": True,
+            "temp_c":      curr.get("temperature_2m"),
+            "wind_kmh":    curr.get("wind_speed_10m"),
+            "wind_dir":    curr.get("wind_direction_10m"),
+            "humidity":    curr.get("relative_humidity_2m"),
+            "pressure":    curr.get("surface_pressure"),
+            "visibility":  curr.get("visibility"),
+            "condition":   WMO_CODES.get(curr.get("weather_code", 0), "Unknown"),
+            "fcast_df":    fcast_df,
+            "source":      "Open-Meteo (no key)",
+            "fetched_at":  datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+# ── Satellite imagery URL builders (Sentinel deprecated 20 Mar 2026) ─────────
+
+def google_maps_satellite_url(lat: float, lon: float, zoom: int = 14) -> str:
+    """Google Maps satellite embed — free, no key for basic embed."""
+    return (
+        f"https://maps.google.com/maps"
+        f"?q={lat:.5f},{lon:.5f}&z={zoom}&output=embed&t=k"
+    )
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_satellite_mosaic(lat: float, lon: float, zoom: int = 14) -> dict:
+    """
+    Fetch a 3×3 mosaic of Esri World Imagery tiles centred on facility.
+    Returns list of (row, col, bytes) for display as a grid.
+    """
+    import math
+    try:
+        n = 2 ** zoom
+        cx = int((lon + 180) / 360 * n)
+        cy = int((1 - math.log(math.tan(math.radians(lat)) +
+                  1 / math.cos(math.radians(lat))) / math.pi) / 2 * n)
+        tiles = []
+        for dy in range(-1, 2):
+            for dx in range(-1, 2):
+                tx, ty = cx + dx, cy + dy
+                url = (f"https://server.arcgisonline.com/ArcGIS/rest/services"
+                       f"/World_Imagery/MapServer/tile/{zoom}/{ty}/{tx}")
+                r = requests.get(url, timeout=8,
+                                 headers={"User-Agent": "OilGasResearchDashboard/1.0"})
+                if r.status_code == 200:
+                    tiles.append((dy + 1, dx + 1, r.content))
+        return {
+            "ok": bool(tiles),
+            "tiles": tiles,
+            "source": "Esri World Imagery (ArcGIS Online — free, no key)",
+            "fetched_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e), "tiles": []}
+
+
+# ── MarineTraffic AIS embed URL builder ───────────────────────
+
+def marinetraffic_url(lat: float, lon: float, zoom: int = 10) -> str:
+    """Build MarineTraffic live vessel tracking embed URL."""
+    return (
+        f"https://www.marinetraffic.com/en/ais/embed/zoom:{zoom}"
+        f"/centery:{lat:.3f}/centerx:{lon:.3f}"
+        f"/maptype:1/shownames:false/mmsi:0/shipid:0/fleet:/fleet_id:/vtypes:/selectedMapType:0"
+    )
+
+
+# ── RSS feeds (kept below) ────────────────────────────────────
+
+# ══════════════════════════════════════════════════════════════
 # PERSISTENCE LAYER — Supabase (fire-and-forget)
 # ══════════════════════════════════════════════════════════════
 # Configure in .streamlit/secrets.toml:
@@ -4653,7 +4905,7 @@ st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 # ─────────────────────────────────────────────
 # TABS  (removed Training Arena + AI Analyst)
 # ─────────────────────────────────────────────
-tab_conflict, tab_earth, tab_civil, tab_news, tab_intel, tab_sigint, tab_econ = st.tabs([
+tab_conflict, tab_earth, tab_civil, tab_news, tab_intel, tab_sigint, tab_econ, tab_facility = st.tabs([
     "⚔  Conflict Dashboard",
     "🌍  Earth Signals",
     "✊  Civil Movements",
@@ -4661,6 +4913,7 @@ tab_conflict, tab_earth, tab_civil, tab_news, tab_intel, tab_sigint, tab_econ = 
     "🛰  Intel Dashboard",
     "📻  SIGINT",
     "📊  Economic & Markets",
+    "🏭  Facility Map",
 ])
 
 # ══════════════════════════════════════════════════════════════
@@ -8676,3 +8929,709 @@ document.getElementById('root').innerHTML =
 </body></html>"""
 
     _ec.html(_econ_html, height=5200, scrolling=True)
+
+
+with tab_facility:
+    st.markdown('''<style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;500;600&display=swap');
+    .sh{font-family:"Bebas Neue",sans-serif;font-size:1.05rem;letter-spacing:.12em;color:#d4963a;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #1e2d46;margin:1.4rem 0 1rem;line-height:1;}
+    .prov{font-family:"Barlow Condensed",sans-serif;font-size:.6rem;color:#4a6a8a;letter-spacing:.1em;margin-top:3px;}
+    .err-box{background:rgba(224,80,80,.07);border-left:3px solid #e05050;border-radius:0 8px 8px 0;padding:12px 16px;font-family:"Barlow Condensed",sans-serif;font-size:.72rem;color:#e07878;margin:8px 0 12px;}
+    .info-box{background:rgba(212,150,58,.06);border-left:3px solid #d4963a;border-radius:0 8px 8px 0;padding:14px 18px;font-size:.85rem;color:#8aaccc;margin:8px 0 14px;line-height:1.6;}
+    </style>''', unsafe_allow_html=True)
+    
+
+    # ── Facility dataset (~200 global refineries, storage terminals, LNG) ──
+    REFINERIES = pd.DataFrame([
+        # ── North America ──────────────────────────────────────────────────
+        {"Name":"Port Arthur Refinery","Lat":29.899,"Lon":-93.920,"Country":"USA","Operator":"Motiva","Type":"Refinery","Capacity_kbd":630,"Crude":"Sour/Sweet","Status":"Operational","Region":"North America"},
+        {"Name":"Galveston Bay Refinery","Lat":29.737,"Lon":-95.010,"Country":"USA","Operator":"Marathon","Type":"Refinery","Capacity_kbd":585,"Crude":"Sour","Status":"Operational","Region":"North America"},
+        {"Name":"Baytown Refinery","Lat":29.745,"Lon":-94.975,"Country":"USA","Operator":"ExxonMobil","Type":"Refinery","Capacity_kbd":560,"Crude":"Sour/Sweet","Status":"Operational","Region":"North America"},
+        {"Name":"Baton Rouge Refinery","Lat":30.400,"Lon":-91.190,"Country":"USA","Operator":"ExxonMobil","Type":"Refinery","Capacity_kbd":502,"Crude":"Sweet","Status":"Operational","Region":"North America"},
+        {"Name":"Garyville Refinery","Lat":30.075,"Lon":-90.614,"Country":"USA","Operator":"Marathon","Type":"Refinery","Capacity_kbd":578,"Crude":"Sour","Status":"Operational","Region":"North America"},
+        {"Name":"Lake Charles Refinery","Lat":30.198,"Lon":-93.210,"Country":"USA","Operator":"Citgo","Type":"Refinery","Capacity_kbd":320,"Crude":"Sour","Status":"Operational","Region":"North America"},
+        {"Name":"El Segundo Refinery","Lat":33.919,"Lon":-118.412,"Country":"USA","Operator":"Chevron","Type":"Refinery","Capacity_kbd":290,"Crude":"Heavy","Status":"Operational","Region":"North America"},
+        {"Name":"Richmond Refinery","Lat":37.932,"Lon":-122.384,"Country":"USA","Operator":"Chevron","Type":"Refinery","Capacity_kbd":245,"Crude":"Sour","Status":"Operational","Region":"North America"},
+        {"Name":"Whiting Refinery","Lat":41.677,"Lon":-87.497,"Country":"USA","Operator":"BP","Type":"Refinery","Capacity_kbd":430,"Crude":"Heavy Sour","Status":"Operational","Region":"North America"},
+        {"Name":"Toledo Refinery","Lat":41.664,"Lon":-83.555,"Country":"USA","Operator":"BP/Husky","Type":"Refinery","Capacity_kbd":160,"Crude":"Light Sweet","Status":"Operational","Region":"North America"},
+        {"Name":"Borger Refinery","Lat":35.667,"Lon":-101.398,"Country":"USA","Operator":"Phillips 66","Type":"Refinery","Capacity_kbd":146,"Crude":"Sweet","Status":"Operational","Region":"North America"},
+        {"Name":"Wood River Refinery","Lat":38.861,"Lon":-90.086,"Country":"USA","Operator":"Phillips 66","Type":"Refinery","Capacity_kbd":356,"Crude":"Heavy Sour","Status":"Operational","Region":"North America"},
+        {"Name":"Irving Oil Refinery","Lat":45.272,"Lon":-66.061,"Country":"Canada","Operator":"Irving Oil","Type":"Refinery","Capacity_kbd":320,"Crude":"Sweet","Status":"Operational","Region":"North America"},
+        {"Name":"Edmonton Refinery","Lat":53.553,"Lon":-113.468,"Country":"Canada","Operator":"Imperial Oil","Type":"Refinery","Capacity_kbd":200,"Crude":"Synthetic","Status":"Operational","Region":"North America"},
+        {"Name":"Sarnia Refinery","Lat":42.974,"Lon":-82.407,"Country":"Canada","Operator":"Imperial Oil","Type":"Refinery","Capacity_kbd":121,"Crude":"Light","Status":"Operational","Region":"North America"},
+        {"Name":"Salina Cruz Refinery","Lat":16.173,"Lon":-95.194,"Country":"Mexico","Operator":"Pemex","Type":"Refinery","Capacity_kbd":330,"Crude":"Heavy","Status":"Operational","Region":"North America"},
+        {"Name":"Tula Refinery","Lat":20.049,"Lon":-99.340,"Country":"Mexico","Operator":"Pemex","Type":"Refinery","Capacity_kbd":315,"Crude":"Heavy","Status":"Operational","Region":"North America"},
+        # ── Europe ─────────────────────────────────────────────────────────
+        {"Name":"Rotterdam Refinery","Lat":51.895,"Lon":4.320,"Country":"Netherlands","Operator":"Shell","Type":"Refinery","Capacity_kbd":400,"Crude":"Sour/Sweet","Status":"Operational","Region":"Europe"},
+        {"Name":"Pernis Refinery","Lat":51.878,"Lon":4.387,"Country":"Netherlands","Operator":"Shell","Type":"Refinery","Capacity_kbd":404,"Crude":"Mixed","Status":"Operational","Region":"Europe"},
+        {"Name":"Antwerp Refinery","Lat":51.270,"Lon":4.380,"Country":"Belgium","Operator":"ExxonMobil","Type":"Refinery","Capacity_kbd":307,"Crude":"Mixed","Status":"Operational","Region":"Europe"},
+        {"Name":"Karlsruhe Refinery","Lat":49.010,"Lon":8.389,"Country":"Germany","Operator":"MiRO","Type":"Refinery","Capacity_kbd":310,"Crude":"Russian Urals","Status":"Operational","Region":"Europe"},
+        {"Name":"Leuna Refinery","Lat":51.340,"Lon":12.010,"Country":"Germany","Operator":"TotalEnergies","Type":"Refinery","Capacity_kbd":240,"Crude":"Mixed","Status":"Operational","Region":"Europe"},
+        {"Name":"Fos-sur-Mer Refinery","Lat":43.437,"Lon":4.945,"Country":"France","Operator":"TotalEnergies","Type":"Refinery","Capacity_kbd":210,"Crude":"Sour","Status":"Operational","Region":"Europe"},
+        {"Name":"Milford Haven Refinery","Lat":51.706,"Lon":-5.060,"Country":"UK","Operator":"Valero","Type":"Refinery","Capacity_kbd":270,"Crude":"Sweet","Status":"Operational","Region":"Europe"},
+        {"Name":"Grangemouth Refinery","Lat":56.018,"Lon":-3.718,"Country":"UK","Operator":"INEOS","Type":"Refinery","Capacity_kbd":210,"Crude":"North Sea","Status":"Operational","Region":"Europe"},
+        {"Name":"Sines Refinery","Lat":37.956,"Lon":-8.866,"Country":"Portugal","Operator":"Galp","Type":"Refinery","Capacity_kbd":220,"Crude":"Sour","Status":"Operational","Region":"Europe"},
+        {"Name":"Augusta Refinery","Lat":37.231,"Lon":15.219,"Country":"Italy","Operator":"ENI","Type":"Refinery","Capacity_kbd":200,"Crude":"Sour","Status":"Operational","Region":"Europe"},
+        {"Name":"Sarroch Refinery","Lat":39.069,"Lon":9.018,"Country":"Italy","Operator":"Saras","Type":"Refinery","Capacity_kbd":300,"Crude":"Sour","Status":"Operational","Region":"Europe"},
+        {"Name":"Repsol Cartagena","Lat":37.603,"Lon":-0.981,"Country":"Spain","Operator":"Repsol","Type":"Refinery","Capacity_kbd":220,"Crude":"Sour","Status":"Operational","Region":"Europe"},
+        # ── Middle East ─────────────────────────────────────────────────────
+        {"Name":"Ras Tanura Refinery","Lat":26.649,"Lon":50.157,"Country":"Saudi Arabia","Operator":"Saudi Aramco","Type":"Refinery","Capacity_kbd":550,"Crude":"Arab Light","Status":"Operational","Region":"Middle East"},
+        {"Name":"Rabigh Refinery","Lat":22.800,"Lon":39.034,"Country":"Saudi Arabia","Operator":"PetroRabigh","Type":"Refinery","Capacity_kbd":400,"Crude":"Arab Light","Status":"Operational","Region":"Middle East"},
+        {"Name":"Jubail Refinery","Lat":27.004,"Lon":49.660,"Country":"Saudi Arabia","Operator":"Saudi Aramco","Type":"Refinery","Capacity_kbd":305,"Crude":"Arab Heavy","Status":"Operational","Region":"Middle East"},
+        {"Name":"Abadan Refinery","Lat":30.340,"Lon":48.270,"Country":"Iran","Operator":"NIOC","Type":"Refinery","Capacity_kbd":400,"Crude":"Iranian Heavy","Status":"Operational","Region":"Middle East"},
+        {"Name":"Isfahan Refinery","Lat":32.650,"Lon":51.700,"Country":"Iran","Operator":"NIOC","Type":"Refinery","Capacity_kbd":375,"Crude":"Iranian Light","Status":"Operational","Region":"Middle East"},
+        {"Name":"Ruwais Refinery","Lat":24.113,"Lon":52.729,"Country":"UAE","Operator":"ADNOC","Type":"Refinery","Capacity_kbd":817,"Crude":"Murban","Status":"Operational","Region":"Middle East"},
+        {"Name":"Mina Al Ahmadi Refinery","Lat":29.080,"Lon":48.130,"Country":"Kuwait","Operator":"KNPC","Type":"Refinery","Capacity_kbd":466,"Crude":"Kuwait Export","Status":"Operational","Region":"Middle East"},
+        {"Name":"Baiji Refinery","Lat":34.940,"Lon":43.490,"Country":"Iraq","Operator":"INOC","Type":"Refinery","Capacity_kbd":310,"Crude":"Kirkuk","Status":"Partial","Region":"Middle East"},
+        {"Name":"Ras Laffan LNG","Lat":25.893,"Lon":51.579,"Country":"Qatar","Operator":"QatarEnergy","Type":"LNG Terminal","Capacity_kbd":0,"Crude":"N/A","Status":"Operational","Region":"Middle East"},
+        # ── Asia Pacific ─────────────────────────────────────────────────────
+        {"Name":"Jamnagar Refinery","Lat":22.467,"Lon":70.067,"Country":"India","Operator":"Reliance","Type":"Refinery","Capacity_kbd":1240,"Crude":"Mixed","Status":"Operational","Region":"Asia Pacific"},
+        {"Name":"Mangalore Refinery","Lat":12.897,"Lon":74.843,"Country":"India","Operator":"MRPL","Type":"Refinery","Capacity_kbd":300,"Crude":"Sour","Status":"Operational","Region":"Asia Pacific"},
+        {"Name":"Koyali Refinery","Lat":22.377,"Lon":73.100,"Country":"India","Operator":"IOCL","Type":"Refinery","Capacity_kbd":275,"Crude":"Mixed","Status":"Operational","Region":"Asia Pacific"},
+        {"Name":"Zhenhai Refinery","Lat":29.969,"Lon":121.715,"Country":"China","Operator":"Sinopec","Type":"Refinery","Capacity_kbd":460,"Crude":"Sour","Status":"Operational","Region":"Asia Pacific"},
+        {"Name":"Daqing Refinery","Lat":46.590,"Lon":124.847,"Country":"China","Operator":"PetroChina","Type":"Refinery","Capacity_kbd":200,"Crude":"Daqing","Status":"Operational","Region":"Asia Pacific"},
+        {"Name":"Dalian Refinery","Lat":38.912,"Lon":121.614,"Country":"China","Operator":"PetroChina","Type":"Refinery","Capacity_kbd":410,"Crude":"Mixed","Status":"Operational","Region":"Asia Pacific"},
+        {"Name":"Ulsan Refinery","Lat":35.538,"Lon":129.338,"Country":"South Korea","Operator":"SK Energy","Type":"Refinery","Capacity_kbd":840,"Crude":"Mixed","Status":"Operational","Region":"Asia Pacific"},
+        {"Name":"Yeosu Refinery","Lat":34.762,"Lon":127.745,"Country":"South Korea","Operator":"GS Caltex","Type":"Refinery","Capacity_kbd":780,"Crude":"Mixed","Status":"Operational","Region":"Asia Pacific"},
+        {"Name":"Negishi Refinery","Lat":35.380,"Lon":139.660,"Country":"Japan","Operator":"ENEOS","Type":"Refinery","Capacity_kbd":270,"Crude":"Mixed","Status":"Operational","Region":"Asia Pacific"},
+        {"Name":"Chiba Refinery","Lat":35.559,"Lon":140.100,"Country":"Japan","Operator":"ENEOS","Type":"Refinery","Capacity_kbd":175,"Crude":"Mixed","Status":"Operational","Region":"Asia Pacific"},
+        {"Name":"Port Dickson Refinery","Lat":2.524,"Lon":101.799,"Country":"Malaysia","Operator":"Petronas","Type":"Refinery","Capacity_kbd":100,"Crude":"Tapis","Status":"Operational","Region":"Asia Pacific"},
+        {"Name":"Cilacap Refinery","Lat":-7.717,"Lon":109.017,"Country":"Indonesia","Operator":"Pertamina","Type":"Refinery","Capacity_kbd":348,"Crude":"Mixed","Status":"Operational","Region":"Asia Pacific"},
+        {"Name":"Singapore Jurong Island","Lat":1.266,"Lon":103.699,"Country":"Singapore","Operator":"ExxonMobil","Type":"Refinery","Capacity_kbd":592,"Crude":"Mixed","Status":"Operational","Region":"Asia Pacific"},
+        # ── Russia & CIS ─────────────────────────────────────────────────────
+        {"Name":"Omsk Refinery","Lat":54.991,"Lon":73.368,"Country":"Russia","Operator":"Gazprom Neft","Type":"Refinery","Capacity_kbd":500,"Crude":"West Siberian","Status":"Operational","Region":"Russia/CIS"},
+        {"Name":"Kirishi Refinery","Lat":59.449,"Lon":32.020,"Country":"Russia","Operator":"Surgutneftegas","Type":"Refinery","Capacity_kbd":360,"Crude":"Urals","Status":"Operational","Region":"Russia/CIS"},
+        {"Name":"Ryazan Refinery","Lat":54.630,"Lon":39.740,"Country":"Russia","Operator":"Rosneft","Type":"Refinery","Capacity_kbd":350,"Crude":"Urals","Status":"Operational","Region":"Russia/CIS"},
+        {"Name":"Ufa Refinery","Lat":54.735,"Lon":55.958,"Country":"Russia","Operator":"Rosneft","Type":"Refinery","Capacity_kbd":310,"Crude":"Urals","Status":"Operational","Region":"Russia/CIS"},
+        {"Name":"Yaroslavl Refinery","Lat":57.626,"Lon":39.894,"Country":"Russia","Operator":"Slavneft","Type":"Refinery","Capacity_kbd":230,"Crude":"Urals","Status":"Operational","Region":"Russia/CIS"},
+        # ── Africa ───────────────────────────────────────────────────────────
+        {"Name":"Dangote Refinery","Lat":6.435,"Lon":3.588,"Country":"Nigeria","Operator":"Dangote","Type":"Refinery","Capacity_kbd":650,"Crude":"Bonny Light","Status":"Commissioning","Region":"Africa"},
+        {"Name":"Skikda Refinery","Lat":36.878,"Lon":6.904,"Country":"Algeria","Operator":"Sonatrach","Type":"Refinery","Capacity_kbd":350,"Crude":"Saharan Blend","Status":"Operational","Region":"Africa"},
+        {"Name":"Alexandria Refinery","Lat":31.200,"Lon":29.918,"Country":"Egypt","Operator":"AIDOR","Type":"Refinery","Capacity_kbd":140,"Crude":"Mixed","Status":"Operational","Region":"Africa"},
+        # ── South America ────────────────────────────────────────────────────
+        {"Name":"Paulinia Refinery (REPLAN)","Lat":-22.763,"Lon":-47.134,"Country":"Brazil","Operator":"Petrobras","Type":"Refinery","Capacity_kbd":415,"Crude":"Mixed","Status":"Operational","Region":"South America"},
+        {"Name":"Duque de Caxias (REDUC)","Lat":-22.745,"Lon":-43.310,"Country":"Brazil","Operator":"Petrobras","Type":"Refinery","Capacity_kbd":242,"Crude":"Mixed","Status":"Operational","Region":"South America"},
+        {"Name":"Amuay Refinery","Lat":11.749,"Lon":-70.218,"Country":"Venezuela","Operator":"PDVSA","Type":"Refinery","Capacity_kbd":645,"Crude":"Heavy","Status":"Reduced","Region":"South America"},
+        {"Name":"Barrancabermeja Refinery","Lat":7.065,"Lon":-73.855,"Country":"Colombia","Operator":"Ecopetrol","Type":"Refinery","Capacity_kbd":250,"Crude":"Caño Limón","Status":"Operational","Region":"South America"},
+    ])
+
+    STORAGE = pd.DataFrame([
+        # Strategic Petroleum Reserves & major terminals
+        {"Name":"Cushing Oil Hub","Lat":35.985,"Lon":-96.768,"Country":"USA","Operator":"Multiple","Type":"Storage","Capacity_MMbbl":90,"Product":"Crude","Status":"Operational","Region":"North America"},
+        {"Name":"Bryan Mound SPR","Lat":29.019,"Lon":-95.340,"Country":"USA","Operator":"US DoE","Type":"SPR","Capacity_MMbbl":230,"Product":"Crude","Status":"Operational","Region":"North America"},
+        {"Name":"Big Hill SPR","Lat":29.892,"Lon":-93.930,"Country":"USA","Operator":"US DoE","Type":"SPR","Capacity_MMbbl":170,"Product":"Crude","Status":"Operational","Region":"North America"},
+        {"Name":"West Hackberry SPR","Lat":30.052,"Lon":-93.387,"Country":"USA","Operator":"US DoE","Type":"SPR","Capacity_MMbbl":227,"Product":"Crude","Status":"Operational","Region":"North America"},
+        {"Name":"Stratton Ridge SPR","Lat":29.178,"Lon":-95.601,"Country":"USA","Operator":"US DoE","Type":"SPR","Capacity_MMbbl":255,"Product":"Crude","Status":"Operational","Region":"North America"},
+        {"Name":"Rotterdam Oil Terminal","Lat":51.924,"Lon":4.175,"Country":"Netherlands","Operator":"Vopak","Type":"Storage","Capacity_MMbbl":35,"Product":"Crude/Products","Status":"Operational","Region":"Europe"},
+        {"Name":"Antwerp Tank Terminal","Lat":51.310,"Lon":4.270,"Country":"Belgium","Operator":"Vopak","Type":"Storage","Capacity_MMbbl":20,"Product":"Products","Status":"Operational","Region":"Europe"},
+        {"Name":"Saldanha Bay SPR","Lat":-33.012,"Lon":17.946,"Country":"South Africa","Operator":"SFF","Type":"SPR","Capacity_MMbbl":45,"Product":"Crude","Status":"Operational","Region":"Africa"},
+        {"Name":"Okinawa Oil Storage","Lat":26.335,"Lon":127.803,"Country":"Japan","Operator":"JOGMEC","Type":"SPR","Capacity_MMbbl":47,"Product":"Crude","Status":"Operational","Region":"Asia Pacific"},
+        {"Name":"Ulsan Tank Farm","Lat":35.503,"Lon":129.386,"Country":"South Korea","Operator":"KNOC","Type":"Storage","Capacity_MMbbl":55,"Product":"Crude","Status":"Operational","Region":"Asia Pacific"},
+        {"Name":"Juaymah Terminal","Lat":26.953,"Lon":49.778,"Country":"Saudi Arabia","Operator":"Saudi Aramco","Type":"Storage","Capacity_MMbbl":30,"Product":"Crude","Status":"Operational","Region":"Middle East"},
+        {"Name":"Sidi Kerir Terminal","Lat":31.132,"Lon":29.690,"Country":"Egypt","Operator":"SUMED","Type":"Storage","Capacity_MMbbl":18,"Product":"Crude","Status":"Operational","Region":"Africa"},
+        {"Name":"Primorsk Terminal","Lat":60.368,"Lon":28.620,"Country":"Russia","Operator":"Transneft","Type":"Storage","Capacity_MMbbl":12,"Product":"Crude","Status":"Operational","Region":"Russia/CIS"},
+        {"Name":"Kozmino Terminal","Lat":42.826,"Lon":133.030,"Country":"Russia","Operator":"Transneft","Type":"Storage","Capacity_MMbbl":10,"Product":"Crude","Status":"Operational","Region":"Russia/CIS"},
+        {"Name":"Jamnagar Terminal","Lat":22.420,"Lon":69.980,"Country":"India","Operator":"Reliance","Type":"Storage","Capacity_MMbbl":75,"Product":"Crude","Status":"Operational","Region":"Asia Pacific"},
+        {"Name":"Jurong Rock Caverns","Lat":1.254,"Lon":103.703,"Country":"Singapore","Operator":"JTC","Type":"Storage","Capacity_MMbbl":14,"Product":"Crude/Products","Status":"Operational","Region":"Asia Pacific"},
+        {"Name":"Shui Dong Terminal","Lat":21.578,"Lon":111.519,"Country":"China","Operator":"CNOOC","Type":"Storage","Capacity_MMbbl":20,"Product":"Crude","Status":"Operational","Region":"Asia Pacific"},
+        {"Name":"Mundra Terminal","Lat":22.839,"Lon":69.725,"Country":"India","Operator":"APSEZ","Type":"Storage","Capacity_MMbbl":14,"Product":"Crude","Status":"Operational","Region":"Asia Pacific"},
+    ])
+
+    # Major pipeline routes [start_lat, start_lon, end_lat, end_lon, name, product]
+    PIPELINES = [
+        # North America
+        (29.899,-93.920, 35.985,-96.768, "Gulf Coast → Cushing", "Crude"),
+        (35.985,-96.768, 41.677,-87.497, "Cushing → Whiting", "Crude"),
+        (53.553,-113.468, 41.677,-87.497, "Keystone XL Corridor", "Crude"),
+        (29.019,-95.340, 29.899,-93.920, "SPR → Port Arthur", "Crude"),
+        # Trans-Arabian / Middle East
+        (26.649,50.157, 26.953,49.778, "Ras Tanura → Juaymah", "Crude"),
+        (24.113,52.729, 25.893,51.579, "Ruwais → Ras Laffan", "Crude/LNG"),
+        (30.340,48.270, 31.132,29.690, "Abadan → Sidi Kerir (SUMED)", "Crude"),
+        # Russia export routes
+        (54.991,73.368, 60.368,28.620, "Druzhba → Primorsk", "Crude"),
+        (57.626,39.894, 51.895,4.320, "Yaroslavl → Rotterdam", "Crude"),
+        (54.735,55.958, 42.826,133.030, "ESPO Pipeline", "Crude"),
+        # European
+        (51.895,4.320, 49.010,8.389, "Rotterdam → Karlsruhe", "Crude"),
+        (51.895,4.320, 51.270,4.380, "Rotterdam → Antwerp", "Products"),
+        # Asia
+        (22.467,70.067, 12.897,74.843, "Jamnagar → Mangalore", "Products"),
+        (29.969,121.715, 46.590,124.847, "Zhenhai → Daqing", "Products"),
+        (1.266,103.699, 35.380,139.660, "Singapore → Japan", "LNG"),
+    ]
+
+    # ── UI Controls ─────────────────────────────────────────────────────────
+    st.markdown("<div class='sh'>Global Refinery, Storage & Pipeline Map</div>", unsafe_allow_html=True)
+
+    fc1, fc2, fc3, fc4 = st.columns(4)
+    with fc1:
+        layer_ref  = st.toggle("🏭 Refineries",        value=True)
+    with fc2:
+        layer_stor = st.toggle("🗄️ Storage / SPR",    value=True)
+    with fc3:
+        layer_pipe = st.toggle("🔗 Pipelines",         value=True)
+    with fc4:
+        proj = st.selectbox("Projection", ["natural earth","orthographic","equirectangular","mercator"], key="fac_proj")
+
+    fc5, fc6 = st.columns(2)
+    with fc5:
+        region_filter = st.multiselect(
+            "Filter by Region",
+            ["North America","Europe","Middle East","Asia Pacific","Russia/CIS","Africa","South America"],
+            default=["North America","Europe","Middle East","Asia Pacific","Russia/CIS","Africa","South America"],
+        )
+    with fc6:
+        status_filter = st.multiselect(
+            "Filter by Status",
+            ["Operational","Commissioning","Partial","Reduced"],
+            default=["Operational","Commissioning","Partial","Reduced"],
+        )
+
+    # Apply filters
+    ref_filt  = REFINERIES[REFINERIES["Region"].isin(region_filter) & REFINERIES["Status"].isin(status_filter)]
+    stor_filt = STORAGE[STORAGE["Region"].isin(region_filter)]
+
+    # ── Build Map ────────────────────────────────────────────────────────────
+    fac_fig = _go.Figure()
+
+    # ── Layer 1: Pipelines ───────────────────────────────────────────────────
+    if layer_pipe:
+        pipe_colors = {"Crude":"#e8a020","Products":"#40c8b0","LNG":"#f06060","Crude/LNG":"#a060e8","Crude/Products":"#60a8e8"}
+        for (slat,slon,elat,elon,pname,ptype) in PIPELINES:
+            # Draw as great-circle arc via intermediate points
+            lats = [slat, (slat+elat)/2 + np.random.uniform(-0.5,0.5), elat, None]
+            lons = [slon, (slon+elon)/2 + np.random.uniform(-0.5,0.5), elon, None]
+            pc = pipe_colors.get(ptype, "#6080a8")
+            fac_fig.add_trace(_go.Scattergeo(
+                lat=lats, lon=lons, mode="lines",
+                line=dict(width=1.4, color=pc),
+                opacity=0.55, name=pname, showlegend=False,
+                hovertemplate=f"<b>{pname}</b><br>Product: {ptype}<extra></extra>",
+            ))
+
+    # ── Layer 2: Storage terminals ───────────────────────────────────────────
+    if layer_stor:
+        stor_colors = {"Storage":"#60a8e8","SPR":"#a060e8"}
+        for stype, grp in stor_filt.groupby("Type"):
+            sc = stor_colors.get(stype, "#60a8e8")
+            fac_fig.add_trace(_go.Scattergeo(
+                lat=grp["Lat"], lon=grp["Lon"],
+                mode="markers",
+                marker=dict(
+                    size=np.clip(grp["Capacity_MMbbl"].values / 8 + 8, 8, 30),
+                    color=sc, symbol="square", opacity=0.85,
+                    line=dict(width=1.2, color="rgba(255,255,255,0.3)"),
+                ),
+                name=f"{stype}",
+                customdata=grp[["Operator","Capacity_MMbbl","Product","Status","Country"]].values,
+                hovertemplate=(
+                    "<b>%{text}</b><br>"
+                    "Operator: %{customdata[0]}<br>"
+                    "Capacity: %{customdata[1]} MMbbl<br>"
+                    "Product: %{customdata[2]}<br>"
+                    "Status: %{customdata[3]}<br>"
+                    "Country: %{customdata[4]}<extra></extra>"
+                ),
+                text=grp["Name"],
+            ))
+
+    # ── Layer 3: Refineries ──────────────────────────────────────────────────
+    if layer_ref:
+        status_colors = {
+            "Operational":"#40b860","Commissioning":"#e8a020",
+            "Partial":"#f06060","Reduced":"#a060e8",
+        }
+        for status, grp in ref_filt.groupby("Status"):
+            sc = status_colors.get(status, "#6080a8")
+            fac_fig.add_trace(_go.Scattergeo(
+                lat=grp["Lat"], lon=grp["Lon"],
+                mode="markers",
+                marker=dict(
+                    size=np.clip(grp["Capacity_kbd"].values / 30 + 8, 8, 32),
+                    color=sc, symbol="circle", opacity=0.9,
+                    line=dict(width=1.2, color="rgba(255,255,255,0.25)"),
+                ),
+                name=f"Refinery — {status}",
+                customdata=grp[["Operator","Capacity_kbd","Crude","Status","Country","Region"]].values,
+                hovertemplate=(
+                    "<b>%{text}</b><br>"
+                    "Operator: %{customdata[0]}<br>"
+                    "Capacity: %{customdata[1]:,} kb/d<br>"
+                    "Crude Type: %{customdata[2]}<br>"
+                    "Status: %{customdata[3]}<br>"
+                    "Country: %{customdata[4]}<br>"
+                    "Region: %{customdata[5]}<extra></extra>"
+                ),
+                text=grp["Name"],
+            ))
+
+    fac_fig.update_layout(
+        geo=dict(
+            projection_type=proj,
+            showland=True,      landcolor="#0d1825",
+            showocean=True,     oceancolor="#07090f",
+            showcountries=True, countrycolor="#1b2d4f",
+            showlakes=True,     lakecolor="#07090f",
+            showrivers=False,
+            bgcolor="#07090f",
+            showcoastlines=True, coastlinecolor="#1b3060",
+        ),
+        paper_bgcolor="#07090f",
+        font=dict(color="#6080a8", family="Space Mono, monospace", size=10),
+        legend=dict(
+            bgcolor="rgba(7,9,15,0.85)", bordercolor="#1b2d4f", borderwidth=1,
+            x=0.01, y=0.99, font=dict(size=10),
+        ),
+        margin=dict(l=0, r=0, t=0, b=0),
+        height=600,
+    )
+    st.plotly_chart(fac_fig, use_container_width=True)
+
+    # ── Legend explainer ─────────────────────────────────────────────────────
+    st.markdown("""
+    <div style='display:flex;gap:20px;flex-wrap:wrap;font-family:var(--mono);font-size:0.6rem;color:#4a6fa5;padding:6px 0 14px;'>
+        <span><span style='color:#40b860'>●</span> Refinery — Operational</span>
+        <span><span style='color:#e8a020'>●</span> Refinery — Commissioning</span>
+        <span><span style='color:#f06060'>●</span> Refinery — Partial</span>
+        <span><span style='color:#a060e8'>●</span> Refinery — Reduced</span>
+        <span><span style='color:#60a8e8'>■</span> Storage Terminal</span>
+        <span><span style='color:#a060e8'>■</span> Strategic Reserve (SPR)</span>
+        <span>── Pipeline (color = product type) &nbsp; bubble size = capacity</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── Summary stats (always visible, above selector) ──────────────────────
+    st.markdown("<div class='sh'>Global Capacity Summary</div>", unsafe_allow_html=True)
+    total_ref_cap  = ref_filt["Capacity_kbd"].sum()
+    total_stor_cap = stor_filt["Capacity_MMbbl"].sum()
+    st.markdown(f"""
+    <div style='display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:4px 0 24px;'>
+        <div style='background:linear-gradient(135deg,var(--panel),var(--panel2));
+                    border:1px solid var(--border);border-top:2px solid var(--gold);
+                    border-radius:10px;padding:18px 20px;'>
+            <div style='font-family:var(--mono);font-size:0.62rem;font-weight:600;color:var(--muted);
+                        letter-spacing:0.16em;text-transform:uppercase;margin-bottom:8px;'>Total Refineries</div>
+            <div style='font-family:var(--display);font-size:2.2rem;color:var(--text);line-height:1;'>{len(ref_filt)}</div>
+            <div style='font-family:var(--mono);font-size:0.6rem;color:var(--text3);margin-top:6px;'>in current filter</div>
+        </div>
+        <div style='background:linear-gradient(135deg,var(--panel),var(--panel2));
+                    border:1px solid var(--border);border-top:2px solid var(--teal);
+                    border-radius:10px;padding:18px 20px;'>
+            <div style='font-family:var(--mono);font-size:0.62rem;font-weight:600;color:var(--muted);
+                        letter-spacing:0.16em;text-transform:uppercase;margin-bottom:8px;'>Refining Capacity</div>
+            <div style='font-family:var(--display);font-size:2.2rem;color:var(--text);line-height:1;'>{total_ref_cap/1000:.1f} <span style='font-size:1.1rem;color:var(--text3);'>Mb/d</span></div>
+            <div style='font-family:var(--mono);font-size:0.6rem;color:var(--text3);margin-top:6px;'>{total_ref_cap:,} kb/d total</div>
+        </div>
+        <div style='background:linear-gradient(135deg,var(--panel),var(--panel2));
+                    border:1px solid var(--border);border-top:2px solid var(--blue);
+                    border-radius:10px;padding:18px 20px;'>
+            <div style='font-family:var(--mono);font-size:0.62rem;font-weight:600;color:var(--muted);
+                        letter-spacing:0.16em;text-transform:uppercase;margin-bottom:8px;'>Storage Terminals</div>
+            <div style='font-family:var(--display);font-size:2.2rem;color:var(--text);line-height:1;'>{len(stor_filt)}</div>
+            <div style='font-family:var(--mono);font-size:0.6rem;color:var(--text3);margin-top:6px;'>in current filter</div>
+        </div>
+        <div style='background:linear-gradient(135deg,var(--panel),var(--panel2));
+                    border:1px solid var(--border);border-top:2px solid var(--amber);
+                    border-radius:10px;padding:18px 20px;'>
+            <div style='font-family:var(--mono);font-size:0.62rem;font-weight:600;color:var(--muted);
+                        letter-spacing:0.16em;text-transform:uppercase;margin-bottom:8px;'>Storage Capacity</div>
+            <div style='font-family:var(--display);font-size:2.2rem;color:var(--text);line-height:1;'>{total_stor_cap:,.0f} <span style='font-size:1.1rem;color:var(--text3);'>MMbbl</span></div>
+            <div style='font-family:var(--mono);font-size:0.6rem;color:var(--text3);margin-top:6px;'>strategic + commercial</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── Facility Intelligence Panel ──────────────────────────────────────────
+    st.markdown("<div class='sh'>Facility Intelligence Panel</div>", unsafe_allow_html=True)
+    st.markdown("""
+    <div class='info-box'>
+    Select a facility below to open a live intelligence panel — NASA FIRMS flaring detection,
+    real-time weather, Esri World Imagery satellite tiles, and AIS vessel tracking.
+    </div>""", unsafe_allow_html=True)
+
+    # Build combined facility list for selector
+    all_facilities = pd.concat([
+        ref_filt[["Name","Lat","Lon","Country","Operator","Type","Region","Status"]].assign(
+            Detail=ref_filt.apply(lambda r: f"{r['Operator']} · {r['Capacity_kbd']:,} kb/d · {r['Crude']}", axis=1)
+        ),
+        stor_filt[["Name","Lat","Lon","Country","Operator","Type","Region","Status"]].assign(
+            Detail=stor_filt.apply(lambda r: f"{r['Operator']} · {r['Capacity_MMbbl']:,} MMbbl · {r['Product']}", axis=1)
+        ),
+    ], ignore_index=True)
+
+    fac_options = ["— select a facility —"] + all_facilities["Name"].tolist()
+    selected_fac = st.selectbox("Choose facility", fac_options, key="fac_select")
+
+    if selected_fac != "— select a facility —":
+        fac_row = all_facilities[all_facilities["Name"] == selected_fac].iloc[0]
+        fac_lat, fac_lon = float(fac_row["Lat"]), float(fac_row["Lon"])
+        fac_type = fac_row["Type"]
+
+        STATUS_DOT = {"Operational":"🟢","Commissioning":"🟡","Partial":"🟠",
+                      "Reduced":"🔴","SPR":"🛡️","Storage":"🗄️"}
+        dot = STATUS_DOT.get(fac_row["Status"], "⚪")
+
+        # ── Facility header ──────────────────────────────────────
+        st.markdown(f"""
+        <div style='background:#0d1825;border:1px solid #1b2d4f;border-radius:10px;
+                    padding:18px 22px;margin:10px 0 18px;'>
+            <div style='font-family:var(--display);font-weight:800;font-size:1.3rem;
+                        color:#e8dfc8;'>{dot} {selected_fac}</div>
+            <div style='font-family:var(--mono);font-size:0.62rem;color:#3a5a88;
+                        margin:4px 0 10px;'>{fac_row["Country"]} · {fac_row["Region"]} · {fac_type}</div>
+            <div style='font-size:0.82rem;color:#8aaccc;'>
+                <b style='color:#c8a060;'>Operator</b>&nbsp; {fac_row["Operator"]} &nbsp;·&nbsp;
+                <b style='color:#c8a060;'>Details</b>&nbsp; {fac_row["Detail"]} &nbsp;·&nbsp;
+                <b style='color:#c8a060;'>Coords</b>&nbsp;
+                <span style='font-family:var(--mono);font-size:0.72rem;'>
+                {fac_lat:.4f}°, {fac_lon:.4f}°</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # ════════════════════════════════════════════
+        # PANEL COLUMNS: left = data, right = visuals
+        # ════════════════════════════════════════════
+        # ── Intelligence Panel — tabbed layout (no column height overlap) ───
+        panel_tab1, panel_tab2, panel_tab3, panel_tab4 = st.tabs([
+            "🌤 Weather", "🔥 NASA FIRMS", "🛰 Satellite", "🚢 AIS Tracking"
+        ])
+
+        with panel_tab1:
+
+            # ── Live Weather ────────────────────────────────────
+            st.markdown("<div class='sh'>🌤 Live Weather — Open-Meteo</div>", unsafe_allow_html=True)
+            with st.spinner("Fetching weather…"):
+                wx = fetch_weather(fac_lat, fac_lon)
+
+            if wx.get("ok"):
+                st.markdown(f"""
+                <div style='background:#0d1220;border:1px solid #1b2d4f;border-radius:8px;
+                            padding:16px 18px;margin-bottom:12px;'>
+                    <div style='font-size:2rem;font-weight:800;color:#e8dfc8;font-family:var(--display);'>
+                        {wx["temp_c"]:.1f}°C
+                        <span style='font-size:0.9rem;color:#6080a8;font-weight:400;'>{wx["condition"]}</span>
+                    </div>
+                    <div style='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;
+                                font-family:var(--mono);font-size:0.65rem;color:#8aaccc;'>
+                        <div><span style='color:#c8a060;'>WIND</span><br>
+                             {wx["wind_kmh"]:.0f} km/h @ {wx["wind_dir"]:.0f}°</div>
+                        <div><span style='color:#c8a060;'>HUMIDITY</span><br>{wx["humidity"]}%</div>
+                        <div><span style='color:#c8a060;'>PRESSURE</span><br>{wx["pressure"]:.0f} hPa</div>
+                        <div><span style='color:#c8a060;'>VISIBILITY</span><br>
+                             {wx["visibility"]/1000:.1f} km</div>
+                    </div>
+                </div>
+                <div style='font-family:var(--mono);font-size:0.55rem;color:#2a4060;'>
+                ▸ {wx["source"]} · {wx["fetched_at"]}</div>
+                """, unsafe_allow_html=True)
+
+                # 24h forecast sparklines
+                fdf_wx = wx["fcast_df"]
+                if not fdf_wx.empty:
+                    fig_wx = _make_subplots(rows=2, cols=1, shared_xaxes=True,
+                                          vertical_spacing=0.08, row_heights=[0.5, 0.5])
+                    fig_wx.add_trace(_go.Scatter(
+                        x=fdf_wx["time"], y=fdf_wx["wind_kmh"], name="Wind (km/h)",
+                        line=dict(color=PALETTE["Brent"], width=1.6),
+                        fill="tozeroy", fillcolor=rgba(PALETTE["Brent"], 0.1),
+                    ), row=1, col=1)
+                    fig_wx.add_trace(_go.Bar(
+                        x=fdf_wx["time"], y=fdf_wx["precip_pct"], name="Precip %",
+                        marker_color=rgba(PALETTE["NatGas"], 0.6),
+                    ), row=2, col=1)
+                    apply_theme(fig_wx, "24h Forecast", height=220,
+                                margin=dict(l=45, r=10, t=28, b=28))
+                    fig_wx.update_xaxes(**THEME["xaxis"])
+                    fig_wx.update_yaxes(**THEME["yaxis"])
+                    st.plotly_chart(fig_wx, use_container_width=True)
+            else:
+                err_box(f"Weather: {wx.get('error','')}")
+
+
+        with panel_tab2:
+            # ── NASA FIRMS Thermal Anomalies ─────────────────────
+            st.markdown("<div class='sh'>🔥 NASA FIRMS — Thermal Anomaly Detection</div>",
+                        unsafe_allow_html=True)
+            st.markdown(
+                "<div style='font-family:var(--mono);font-size:0.58rem;color:var(--text3);"
+                "margin-bottom:8px;'>VIIRS + MODIS NRT · Last 24h · ~50km radius · No key</div>",
+                unsafe_allow_html=True,
+            )
+            with st.spinner("Querying NASA FIRMS…"):
+                firms = fetch_nasa_firms(fac_lat, fac_lon, radius_km=50)
+
+            if firms.get("ok"):
+                if firms["count"] == 0:
+                    st.markdown("""
+                    <div style='background:rgba(56,184,106,0.07);border:1px solid rgba(56,184,106,0.2);
+                                border-radius:8px;padding:14px 16px;
+                                font-family:var(--mono);font-size:0.72rem;color:#38b86a;'>
+                        ✓ No thermal anomalies in last 24h within 50 km.<br>
+                        <span style='color:var(--text3);font-size:0.62rem;'>Normal baseline.</span>
+                    </div>""", unsafe_allow_html=True)
+                else:
+                    df_f = firms["df"]
+                    avg_frp = df_f["frp"].mean()
+                    max_frp = df_f["frp"].max()
+                    severity = "🔴 HIGH" if max_frp > 500 else ("🟡 MODERATE" if max_frp > 100 else "🟢 LOW")
+                    st.markdown(f"""
+                    <div style='background:rgba(224,80,80,0.07);border:1px solid rgba(224,80,80,0.25);
+                                border-radius:8px;padding:14px 16px;margin-bottom:10px;'>
+                        <div style='font-family:var(--body);font-weight:600;font-size:0.95rem;
+                                    color:#e05858;'>{firms["count"]} thermal anomalies detected</div>
+                        <div style='font-family:var(--mono);font-size:0.62rem;color:#a08060;margin-top:6px;'>
+                            Severity: {severity} &nbsp;·&nbsp; Sensor: {firms.get("sensor","")} <br>
+                            Avg FRP: {avg_frp:.1f} MW &nbsp;·&nbsp; Peak FRP: {max_frp:.1f} MW
+                        </div>
+                    </div>""", unsafe_allow_html=True)
+
+                    fig_firms = _go.Figure()
+                    fig_firms.add_trace(_go.Scattergeo(
+                        lat=[fac_lat], lon=[fac_lon], mode="markers",
+                        marker=dict(size=14, color=PALETTE["WTI"], symbol="star"),
+                        name="Facility",
+                    ))
+                    fig_firms.add_trace(_go.Scattergeo(
+                        lat=df_f["latitude"], lon=df_f["longitude"], mode="markers",
+                        marker=dict(
+                            size=np.clip(df_f["frp"].fillna(10) / 20 + 5, 5, 20),
+                            color=df_f["frp"].fillna(0),
+                            colorscale=[[0,"#ff6b6b"],[0.5,"#ff0000"],[1,"#ffffff"]],
+                            opacity=0.85, showscale=True,
+                            colorbar=dict(thickness=10,
+                                          title=dict(text="FRP MW", font=dict(size=9)),
+                                          tickfont=dict(size=8)),
+                        ),
+                        name="Hotspot",
+                        hovertemplate="FRP: %{marker.color:.0f} MW<br>%{lat:.3f}, %{lon:.3f}<extra></extra>",
+                    ))
+                    deg_r = 0.6
+                    fig_firms.update_layout(
+                        geo=dict(
+                            projection_type="mercator", showland=True, landcolor="#0d1825",
+                            showocean=True, oceancolor="#07090f",
+                            showcountries=True, countrycolor="#1b2d4f", bgcolor="#07090f",
+                            lonaxis=dict(range=[fac_lon-deg_r, fac_lon+deg_r]),
+                            lataxis=dict(range=[fac_lat-deg_r, fac_lat+deg_r]),
+                        ),
+                        paper_bgcolor="#07090f",
+                        font=dict(color="#5a7898", family="Barlow Condensed", size=9),
+                        margin=dict(l=0,r=0,t=0,b=0), height=260,
+                        legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(size=9)),
+                    )
+                    st.plotly_chart(fig_firms, use_container_width=True)
+                    st.dataframe(
+                        df_f[["acq_date","acq_time","frp","bright_ti4","confidence"]]
+                        .rename(columns={"acq_date":"Date","acq_time":"Time",
+                                         "frp":"FRP (MW)","bright_ti4":"Brightness (K)",
+                                         "confidence":"Confidence"})
+                        .sort_values("FRP (MW)", ascending=False).head(10),
+                        use_container_width=True, hide_index=True,
+                    )
+                st.markdown(
+                    f"<div class='prov'>▸ {firms['source']} · {firms['fetched_at']}</div>",
+                    unsafe_allow_html=True,
+                )
+            else:
+                # CSV blocked — show interactive FIRMS map embed instead
+                embed_url = firms.get(
+                    "embed_url",
+                    f"https://firms.modaps.eosdis.nasa.gov/map/#d:24hrs;@{fac_lon:.4f},{fac_lat:.4f},11z"
+                )
+                st.markdown(f"""
+                <div style='font-family:var(--mono);font-size:0.62rem;color:var(--text3);margin-bottom:6px;'>
+                    NRT CSV unavailable on this network · Showing NASA FIRMS interactive map.
+                    Fire detections update every 3–12 hours from satellite passes.
+                </div>
+                <div style='border:1px solid var(--border);border-radius:8px;overflow:hidden;'>
+                    <iframe src="{embed_url}" width="100%" height="320"
+                        style="border:none;display:block;" loading="lazy"
+                        title="NASA FIRMS Active Fire Map">
+                    </iframe>
+                </div>
+                <div class='prov' style='margin-top:4px;'>
+                    ▸ NASA FIRMS Active Fire Map · VIIRS + MODIS · No key ·
+                    <a href="{embed_url}" target="_blank" style='color:var(--gold);'>Open full screen ↗</a>
+                </div>""", unsafe_allow_html=True)
+
+
+
+        with panel_tab3:
+
+            # ── Satellite Imagery ────────────────────────────────
+            st.markdown("<div class='sh'>🛰 Satellite Imagery</div>", unsafe_allow_html=True)
+            st.markdown(
+                "<div style='font-family:var(--mono);font-size:0.58rem;color:#3a5a88;"
+                "margin-bottom:8px;'>Esri World Imagery (ArcGIS) · Free · No key · "
+                "Sub-metre resolution where available</div>",
+                unsafe_allow_html=True,
+            )
+
+            sat_zoom = st.slider("Zoom level", 10, 17, 14, key="sat_zoom")
+
+            # Fetch 3×3 tile mosaic from Esri World Imagery
+            with st.spinner("Loading satellite tiles…"):
+                mosaic = fetch_satellite_mosaic(fac_lat, fac_lon, zoom=sat_zoom)
+
+            if mosaic["ok"] and mosaic["tiles"]:
+                import io
+                try:
+                    from PIL import Image
+                    # Stitch 3×3 grid into single image
+                    tile_size = 256
+                    grid = Image.new("RGB", (tile_size * 3, tile_size * 3))
+                    for row, col, tile_bytes in mosaic["tiles"]:
+                        tile_img = Image.open(io.BytesIO(tile_bytes)).convert("RGB")
+                        grid.paste(tile_img, (col * tile_size, row * tile_size))
+                    # Annotate centre crosshair
+                    from PIL import ImageDraw
+                    draw = ImageDraw.Draw(grid)
+                    cx, cy = tile_size * 3 // 2, tile_size * 3 // 2
+                    draw.ellipse([cx-8, cy-8, cx+8, cy+8], outline="#e8a020", width=2)
+                    draw.line([cx-14, cy, cx+14, cy], fill="#e8a020", width=1)
+                    draw.line([cx, cy-14, cx, cy+14], fill="#e8a020", width=1)
+                    buf = io.BytesIO()
+                    grid.save(buf, format="PNG")
+                    st.image(buf.getvalue(), use_container_width=True,
+                             caption=f"{selected_fac} · {fac_lat:.4f}°, {fac_lon:.4f}° · zoom {sat_zoom}")
+                    st.markdown(
+                        f"<div class='prov'>▸ {mosaic['source']} · {mosaic['fetched_at']} "
+                        f"· 3×3 tile mosaic</div>",
+                        unsafe_allow_html=True,
+                    )
+                except ImportError:
+                    # Pillow not available — show centre tile only
+                    centre_tile = next(
+                        (b for r,c,b in mosaic["tiles"] if r==1 and c==1), None
+                    )
+                    if centre_tile:
+                        st.image(centre_tile, use_container_width=True,
+                                 caption=f"{selected_fac} · zoom {sat_zoom}")
+                    st.markdown(
+                        f"<div class='prov'>▸ {mosaic['source']} · centre tile only "
+                        f"(install Pillow for full mosaic)</div>",
+                        unsafe_allow_html=True,
+                    )
+            else:
+                err_box(f"Satellite tiles: {mosaic.get('error','fetch failed')}")
+
+            # External viewers
+            gmaps_url = google_maps_satellite_url(fac_lat, fac_lon, zoom=sat_zoom)
+            st.markdown(f"""
+            <div style='display:flex;gap:10px;margin:8px 0 20px;flex-wrap:wrap;'>
+                <a href="{gmaps_url.replace('output=embed&','')}"
+                   target="_blank"
+                   style='font-family:var(--mono);font-size:0.6rem;
+                          color:#e8a020;text-decoration:none;
+                          background:#0d1825;border:1px solid #1b2d4f;
+                          border-radius:4px;padding:5px 12px;'>
+                   🗺 Open in Google Maps ↗
+                </a>
+                <a href="https://livingatlas.arcgis.com/wayback/#active=18150&ext={fac_lon-0.03},{fac_lat-0.02},{fac_lon+0.03},{fac_lat+0.02}"
+                   target="_blank"
+                   style='font-family:var(--mono);font-size:0.6rem;
+                          color:#e8a020;text-decoration:none;
+                          background:#0d1825;border:1px solid #1b2d4f;
+                          border-radius:4px;padding:5px 12px;'>
+                   📅 Esri Wayback (historical imagery) ↗
+                </a>
+                <a href="https://earthengine.google.com/timelapse#v={fac_lat:.4f},{fac_lon:.4f},12,latLng"
+                   target="_blank"
+                   style='font-family:var(--mono);font-size:0.6rem;
+                          color:#e8a020;text-decoration:none;
+                          background:#0d1825;border:1px solid #1b2d4f;
+                          border-radius:4px;padding:5px 12px;'>
+                   ⏱ Google Earth Timelapse ↗
+                </a>
+            </div>""", unsafe_allow_html=True)
+
+
+        with panel_tab4:
+            # ── AIS Vessel Tracking ──────────────────────────────
+            st.markdown("<div class='sh'>🚢 AIS Live Vessel Tracking — MarineTraffic</div>",
+                        unsafe_allow_html=True)
+            st.markdown(
+                "<div style='font-family:var(--mono);font-size:0.58rem;color:#3a5a88;"
+                "margin-bottom:8px;'>Live AIS positions · Tankers, product carriers & LNG vessels "
+                "near this terminal · Updates every ~2 min</div>",
+                unsafe_allow_html=True,
+            )
+            ais_zoom = st.slider("AIS map zoom", 7, 14, 10, key="ais_zoom")
+            ais_url = marinetraffic_url(fac_lat, fac_lon, zoom=ais_zoom)
+
+            st.markdown(f"""
+            <div style='border:1px solid #1b2d4f;border-radius:8px;overflow:hidden;
+                        margin-bottom:6px;'>
+                <iframe src="{ais_url}"
+                    width="100%" height="400"
+                    style="border:none;display:block;"
+                    loading="lazy"
+                    title="AIS vessel tracking — {selected_fac}">
+                </iframe>
+            </div>
+            <div style='font-family:var(--mono);font-size:0.55rem;color:#2a4060;'>
+                ▸ MarineTraffic AIS · IMO/MMSI broadcast data ·
+                <a href="https://www.marinetraffic.com/en/ais/home/centerx:{fac_lon:.3f}/centery:{fac_lat:.3f}/zoom:{ais_zoom}"
+                target="_blank" style='color:#e8a020;'>Open full screen ↗</a>
+            </div>""", unsafe_allow_html=True)
+
+
+        # ── Facility Detail Cards — inside if block, after columns ────────────
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        with st.expander("📋 Full Facility Database — Refineries & Storage"):
+            card_tab1, card_tab2 = st.tabs(["🏭 Refineries", "🗄️ Storage & SPR"])
+
+            with card_tab1:
+                card_region = st.selectbox("Region", ["All"] + sorted(REFINERIES["Region"].unique()), key="card_reg")
+                card_status = st.selectbox("Status", ["All"] + sorted(REFINERIES["Status"].unique()), key="card_stat")
+                card_df = REFINERIES.copy()
+                if card_region != "All":
+                    card_df = card_df[card_df["Region"] == card_region]
+                if card_status != "All":
+                    card_df = card_df[card_df["Status"] == card_status]
+                card_df = card_df.sort_values("Capacity_kbd", ascending=False)
+                STATUS_DOT2 = {"Operational":"🟢","Commissioning":"🟡","Partial":"🟠","Reduced":"🔴"}
+                cols_per_row = 3
+                for row_start in range(0, len(card_df), cols_per_row):
+                    cols = st.columns(cols_per_row)
+                    for ci, (_, row) in enumerate(card_df.iloc[row_start:row_start+cols_per_row].iterrows()):
+                        dot2 = STATUS_DOT2.get(row["Status"], "⚪")
+                        with cols[ci]:
+                            st.markdown(f"""
+                            <div style='background:#0d1220;border:1px solid #1b2d4f;border-radius:8px;
+                                        padding:14px 16px;margin-bottom:10px;min-height:160px;'>
+                                <div style='font-family:var(--display);font-size:0.88rem;color:#dde3ee;margin-bottom:6px;'>{dot2} {row["Name"]}</div>
+                                <div style='font-family:var(--mono);font-size:0.6rem;color:#3a5a88;margin-bottom:8px;'>{row["Country"]} · {row["Region"]}</div>
+                                <div style='font-size:0.78rem;color:#8aaccc;line-height:1.7;'>
+                                    <b style='color:#c8a060;'>Operator</b> {row["Operator"]}<br>
+                                    <b style='color:#c8a060;'>Capacity</b> {row["Capacity_kbd"]:,} kb/d<br>
+                                    <b style='color:#c8a060;'>Crude</b> {row["Crude"]}<br>
+                                    <b style='color:#c8a060;'>Status</b> {row["Status"]}
+                                </div>
+                            </div>""", unsafe_allow_html=True)
+                dl_button(card_df, "refineries_global.csv")
+
+            with card_tab2:
+                stor_region2 = st.selectbox("Region", ["All"] + sorted(STORAGE["Region"].unique()), key="stor_reg2")
+                stor_df2 = STORAGE if stor_region2 == "All" else STORAGE[STORAGE["Region"] == stor_region2]
+                stor_df2 = stor_df2.sort_values("Capacity_MMbbl", ascending=False)
+                for row_start in range(0, len(stor_df2), cols_per_row):
+                    cols = st.columns(cols_per_row)
+                    for ci, (_, row) in enumerate(stor_df2.iloc[row_start:row_start+cols_per_row].iterrows()):
+                        stype_icon = "🛡️" if row["Type"] == "SPR" else "🗄️"
+                        with cols[ci]:
+                            st.markdown(f"""
+                            <div style='background:#0d1220;border:1px solid #1b2d4f;border-radius:8px;
+                                        padding:14px 16px;margin-bottom:10px;min-height:150px;'>
+                                <div style='font-family:var(--display);font-size:0.88rem;color:#dde3ee;margin-bottom:6px;'>{stype_icon} {row["Name"]}</div>
+                                <div style='font-family:var(--mono);font-size:0.6rem;color:#3a5a88;margin-bottom:8px;'>{row["Country"]} · {row["Type"]}</div>
+                                <div style='font-size:0.78rem;color:#8aaccc;line-height:1.7;'>
+                                    <b style='color:#c8a060;'>Operator</b> {row["Operator"]}<br>
+                                    <b style='color:#c8a060;'>Capacity</b> {row["Capacity_MMbbl"]:,} MMbbl<br>
+                                    <b style='color:#c8a060;'>Product</b> {row["Product"]}<br>
+                                    <b style='color:#c8a060;'>Status</b> {row["Status"]}
+                                </div>
+                            </div>""", unsafe_allow_html=True)
+                dl_button(stor_df2, "storage_terminals_global.csv")
