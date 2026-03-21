@@ -351,24 +351,36 @@ def google_maps_satellite_url(lat: float, lon: float, zoom: int = 14) -> str:
 def fetch_satellite_mosaic(lat: float, lon: float, zoom: int = 14) -> dict:
     """
     Fetch a 3×3 mosaic of Esri World Imagery tiles centred on facility.
-    Returns list of (row, col, bytes) for display as a grid.
+    All 9 tiles fetched concurrently — ~9× faster than serial.
     """
     import math
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     try:
         n = 2 ** zoom
         cx = int((lon + 180) / 360 * n)
         cy = int((1 - math.log(math.tan(math.radians(lat)) +
                   1 / math.cos(math.radians(lat))) / math.pi) / 2 * n)
+
+        def _fetch_tile(dy, dx):
+            tx, ty = cx + dx, cy + dy
+            url = (f"https://server.arcgisonline.com/ArcGIS/rest/services"
+                   f"/World_Imagery/MapServer/tile/{zoom}/{ty}/{tx}")
+            r = requests.get(url, timeout=8,
+                             headers={"User-Agent": "OilGasResearchDashboard/1.0"})
+            if r.status_code == 200:
+                return (dy + 1, dx + 1, r.content)
+            return None
+
+        coords = [(dy, dx) for dy in range(-1, 2) for dx in range(-1, 2)]
         tiles = []
-        for dy in range(-1, 2):
-            for dx in range(-1, 2):
-                tx, ty = cx + dx, cy + dy
-                url = (f"https://server.arcgisonline.com/ArcGIS/rest/services"
-                       f"/World_Imagery/MapServer/tile/{zoom}/{ty}/{tx}")
-                r = requests.get(url, timeout=8,
-                                 headers={"User-Agent": "OilGasResearchDashboard/1.0"})
-                if r.status_code == 200:
-                    tiles.append((dy + 1, dx + 1, r.content))
+        with ThreadPoolExecutor(max_workers=9) as pool:
+            futs = {pool.submit(_fetch_tile, dy, dx): (dy, dx) for dy, dx in coords}
+            for fut in as_completed(futs):
+                result = fut.result()
+                if result:
+                    tiles.append(result)
+        # Sort into row-major order for PIL stitching
+        tiles.sort(key=lambda t: (t[0], t[1]))
         return {
             "ok": bool(tiles),
             "tiles": tiles,
@@ -603,7 +615,7 @@ st.set_page_config(
 # ── Auto-refresh ─────────────────────────────
 try:
     from streamlit_autorefresh import st_autorefresh
-    st_autorefresh(interval=300_000, key="auto5min")
+    st_autorefresh(interval=600_000, key="auto10min")
 except ImportError:
     pass
 
@@ -1470,7 +1482,7 @@ def fetch_eonet():
     except:
         return _se()
 
-@st.cache_data(ttl=180, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def fetch_kp():
     try:
         r = requests.get("https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json", timeout=6)
@@ -1772,6 +1784,10 @@ HISTORICAL_EVENTS = [
     {"date":"2025-02-18","lat":48.85,"lon":2.35,"type":"diplomatic","severity":"HIGH","title":"Paris Ukraine summit — Europe commits to defence","tip":"2025-02-18 | SUMMIT\nEurope Ukraine defence summit — Paris\nEU commits €100B+ defence spending increase"},
     {"date":"2026-01-15","lat":55.75,"lon":37.61,"type":"political","severity":"HIGH","title":"Russia declares wartime economy — conscription expanded","tip":"2026-01-15 | RUSSIA\nRussia expands conscription\nFull wartime economy declared — 500k more troops"},
 ]
+
+# Pre-sorted once at startup — avoids repeated sort() inside render loops
+_HIST_SORTED = sorted(HISTORICAL_EVENTS, key=lambda x: x["date"], reverse=True)
+
 
 # Severity colour map for historical events
 HIST_SEV_COLORS = {
@@ -2303,7 +2319,7 @@ def fetch_news_rss(category: str) -> list:
     return articles[:20]
 
 
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=120, show_spinner=False)
 def fetch_usgs_significant():
     """M5.0+ events in the last 30 days for depth profile chart."""
     try:
@@ -2410,7 +2426,7 @@ def get_all_signals_for_country(country: str) -> dict:
         if c_lower in m.get("country","").lower() or c_lower in m.get("name","").lower():
             signals["military_activity"].append(m["name"])
     # Historical events (recent 5)
-    for e in sorted(HISTORICAL_EVENTS, key=lambda x: x["date"], reverse=True):
+    for e in _HIST_SORTED:
         if c_lower in e.get("title","").lower() or c_lower in e.get("tip","").lower():
             signals["historical_events"].append(e)
             if len(signals["historical_events"]) >= 5:
@@ -3550,14 +3566,35 @@ def media_bias_chart(sources):
     return f
 
 # ─────────────────────────────────────────────
-# FETCH LIVE DATA
+# FETCH LIVE DATA — parallel via ThreadPoolExecutor
+# All 6 calls run concurrently; total wall-time ≈ slowest single request
 # ─────────────────────────────────────────────
-eq_df      = fetch_usgs()
-eonet_df   = fetch_eonet()
-kp_data    = fetch_kp()
-solar_data = fetch_solar()
-firms_cnt  = fetch_firms_count()
-sig_eq_df  = fetch_usgs_significant()
+from concurrent.futures import ThreadPoolExecutor as _TPE, as_completed as _asc
+
+def _startup_fetch():
+    """Run all startup fetches in parallel, return results dict."""
+    _tasks = {
+        "eq":     fetch_usgs,
+        "eonet":  fetch_eonet,
+        "kp":     fetch_kp,
+        "solar":  fetch_solar,
+        "firms":  fetch_firms_count,
+        "sig_eq": fetch_usgs_significant,
+    }
+    _results = {}
+    with _TPE(max_workers=6) as _ex:
+        _futs = {_ex.submit(fn): key for key, fn in _tasks.items()}
+        for _fut in _asc(_futs):
+            _results[_futs[_fut]] = _fut.result()
+    return _results
+
+_sd = _startup_fetch()
+eq_df      = _sd["eq"]
+eonet_df   = _sd["eonet"]
+kp_data    = _sd["kp"]
+solar_data = _sd["solar"]
+firms_cnt  = _sd["firms"]
+sig_eq_df  = _sd["sig_eq"]
 utc_now    = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d  %H:%M UTC")
 
 # ─────────────────────────────────────────────
@@ -3573,13 +3610,13 @@ with st.sidebar:
 
     with st.expander("🌍 Core Layers", expanded=True):
         show_seis  = st.toggle("🟦 Seismic Events",       value=True,  key="lyr_seis")
-        show_volc  = st.toggle("🟠 Volcanic / EONET",     value=True,  key="lyr_volc")
+        show_volc  = st.toggle("🟠 Volcanic / EONET",     value=False, key="lyr_volc")
         show_conf  = st.toggle("🔴 Conflict Incidents",    value=True,  key="lyr_conf")
-        show_mvmt  = st.toggle("🟣 Civil Movements",      value=True,  key="lyr_mvmt")
-        show_supp  = st.toggle("⟶ Supply Arc Lines",      value=True,  key="lyr_supp")
+        show_mvmt  = st.toggle("🟣 Civil Movements",      value=False, key="lyr_mvmt")
+        show_supp  = st.toggle("⟶ Supply Arc Lines",      value=False, key="lyr_supp")
         show_heat  = st.toggle("🌡 Heatmap (Seismic)",    value=False, key="lyr_heat")
-        show_hist  = st.toggle("📅 Historical Events 2022+", value=True, key="lyr_hist")
-        show_live  = st.toggle("⚡ Live Events (GDELT)",  value=True,  key="lyr_live")
+        show_hist  = st.toggle("📅 Historical Events 2022+", value=False, key="lyr_hist")
+        show_live  = st.toggle("⚡ Live Events (GDELT)",  value=False, key="lyr_live")
 
     with st.expander("🎯 Intelligence", expanded=False):
         show_intel   = st.toggle("🎯 Intel Hotspots",       value=False, key="lyr_intel")
@@ -4627,7 +4664,7 @@ window.geoSkip=function(){
 </script>
 </body></html>""", height=700, scrolling=False)
 
-    _it.sleep(10)
+    _it.sleep(3)
     st.session_state["intro_shown"] = True
     st.rerun()
 
@@ -4794,8 +4831,11 @@ else:
     _render_intelligence_panel(_tip, _name, _country, _co)
 
 # ── LIVE EVENTS TRACKER (below global map, always visible) ────────────────
-_live_events = fetch_live_global_events(max_records=15)
-_recent_hist  = sorted(HISTORICAL_EVENTS, key=lambda x: x["date"], reverse=True)[:6]
+# Fetch in background — use cached result if available, otherwise show
+# a lightweight placeholder while the GDELT call completes on next rerun
+_live_events = fetch_live_global_events(max_records=15) if st.session_state.get("_map_loaded", False) else []
+st.session_state["_map_loaded"] = True
+_recent_hist  = _HIST_SORTED[:6]
 
 _tracker_cols = st.columns([2, 1], gap="medium")
 with _tracker_cols[0]:
@@ -4865,7 +4905,7 @@ if kp_data["kp"] >= 5:
 if solar_data["speed"] > 600:
     _brief_lines.append(f"☀ High solar wind: {solar_data['speed']:.0f} km/s — elevated space weather activity")
 # Latest historical event
-_latest_he = sorted(HISTORICAL_EVENTS, key=lambda x: x["date"], reverse=True)[0]
+_latest_he = _HIST_SORTED[0]
 _brief_lines.append(f"📅 Latest tracked event: {_latest_he['date']} — {_latest_he['title'][:60]}")
 # Live feed headline
 if _live_events:
@@ -5713,7 +5753,7 @@ tl.innerHTML = html;
         _ht_q    = st.text_input("Search", placeholder="filter events…", label_visibility="collapsed", key="ht_q")
 
     _filtered_hist = [
-        e for e in sorted(HISTORICAL_EVENTS, key=lambda x: x["date"], reverse=True)
+        e for e in _HIST_SORTED
         if (_ht_type == "All" or e["type"] == _ht_type)
         and (_ht_sev  == "All" or e["severity"] == _ht_sev)
         and (_ht_yr   == "All" or e["date"].startswith(_ht_yr))
@@ -6948,8 +6988,19 @@ with tab_intel:
     import json as _ij
     import streamlit.components.v1 as _ic
     from html import escape as _he
+    from concurrent.futures import ThreadPoolExecutor as _TPE_i
+    # Parallel fetch — cuts 4 serial HTTP calls to ~1× single-call latency
+    with _TPE_i(max_workers=4) as _ex_i:
+        _fi_outage = _ex_i.submit(fetch_outage_feed)
+        _fi_risk   = _ex_i.submit(fetch_live_strategic_risk)
+        _fi_conf   = _ex_i.submit(fetch_news_rss, "conflict")
+        _fi_cyber  = _ex_i.submit(fetch_news_rss, "geopolitics")
+    _outage_arts_pre   = _fi_outage.result()
+    _live_risk_pre     = _fi_risk.result()
+    _live_conf_pre     = _fi_conf.result()
+    _live_cyber_pre    = _fi_cyber.result()
 
-    _outage_arts = fetch_outage_feed()
+    _outage_arts = _outage_arts_pre
 
     # ── helpers ──────────────────────────────────────────────────
     def _bar(pct, col):
@@ -7013,7 +7064,7 @@ with tab_intel:
         return f'<div class="panel"><div class="stitle">Country Instability Index</div><div style="margin-bottom:12px">{pills}</div><div class="scroll">{panes}</div></div>'
 
     # ── Strategic risk panel — LIVE ──────────────────────────────
-    _live_risk = fetch_live_strategic_risk()
+    _live_risk = _live_risk_pre
 
     def _strategic_panel():
         import math
@@ -7050,8 +7101,8 @@ with tab_intel:
 {comp_rows}</div>'''
 
     # ── Intel feed panel — LIVE ───────────────────────────────────
-    _live_conflict_feed = fetch_news_rss("conflict")
-    _live_cyber_feed    = fetch_news_rss("geopolitics")
+    _live_conflict_feed = _live_conf_pre
+    _live_cyber_feed    = _live_cyber_pre
 
     def _feed_panel():
         intel_feed = _live_conflict_feed if _live_conflict_feed else [
@@ -7385,17 +7436,25 @@ with tab_sigint:
     except ImportError:
         pass
 
-    # ── Live data collection ───────────────────────────────────
-    _sigint_news   = fetch_news_rss("geopolitics")
-    _sigint_conf   = fetch_news_rss("conflict")
-    _sigint_events = fetch_live_global_events(max_records=25)
-    _sigint_outage = fetch_outage_feed()
-    _sigint_risk   = fetch_live_strategic_risk()
-    _sigint_kp     = fetch_kp()
-    _sigint_usgs   = fetch_usgs()
-
-    # Live GDELT cyber-signal
-    _sigint_cyber_raw = fetch_gdelt_conflict("cyber attack espionage hacking")
+    # ── Live data collection — parallel ────────────────────────
+    from concurrent.futures import ThreadPoolExecutor as _TPE_s
+    with _TPE_s(max_workers=9) as _ex_s:
+        _fs_news  = _ex_s.submit(fetch_news_rss, "geopolitics")
+        _fs_conf  = _ex_s.submit(fetch_news_rss, "conflict")
+        _fs_evts  = _ex_s.submit(fetch_live_global_events, 25)
+        _fs_out   = _ex_s.submit(fetch_outage_feed)
+        _fs_risk  = _ex_s.submit(fetch_live_strategic_risk)
+        _fs_kp    = _ex_s.submit(fetch_kp)
+        _fs_usgs  = _ex_s.submit(fetch_usgs)
+        _fs_cyber = _ex_s.submit(fetch_gdelt_conflict, "cyber attack espionage hacking")
+    _sigint_news      = _fs_news.result()
+    _sigint_conf      = _fs_conf.result()
+    _sigint_events    = _fs_evts.result()
+    _sigint_outage    = _fs_out.result()
+    _sigint_risk      = _fs_risk.result()
+    _sigint_kp        = _fs_kp.result()
+    _sigint_usgs      = _fs_usgs.result()
+    _sigint_cyber_raw = _fs_cyber.result()
 
     # Seismic events M3.5+ last 24h for MASINT overlay
     _sig_quakes = []
@@ -7985,12 +8044,21 @@ with tab_econ:
     import json as _ej
     import streamlit.components.v1 as _ec
 
-    # ── Fetch live market data ──────────────────────────────────
-    _live_indices     = fetch_live_indices()
-    _live_commodities = fetch_live_commodities()
-    _live_forex       = fetch_live_forex()
-    _live_defense     = fetch_live_defense()
-    _live_crypto      = fetch_live_crypto()
+    # ── Fetch live market data — all 6 sources in parallel ──────
+    from concurrent.futures import ThreadPoolExecutor as _TPE_e
+    with _TPE_e(max_workers=6) as _ex_e:
+        _fe_idx   = _ex_e.submit(fetch_live_indices)
+        _fe_com   = _ex_e.submit(fetch_live_commodities)
+        _fe_fx    = _ex_e.submit(fetch_live_forex)
+        _fe_def   = _ex_e.submit(fetch_live_defense)
+        _fe_cry   = _ex_e.submit(fetch_live_crypto)
+        _fe_pizza = _ex_e.submit(fetch_live_pizza_index)
+    _live_indices     = _fe_idx.result()
+    _live_commodities = _fe_com.result()
+    _live_forex       = _fe_fx.result()
+    _live_defense     = _fe_def.result()
+    _live_crypto      = _fe_cry.result()
+    _econ_pizza_pre   = _fe_pizza.result()
 
     # Live-update oil prices if Yahoo succeeded
     _oil_out = []
@@ -8093,7 +8161,7 @@ with tab_econ:
         "fires":        FIRES_DATA,
         "market":       _market_live,
         "btc_etf":      BTC_ETF,
-        "pizza":        fetch_live_pizza_index(),
+        "pizza":        _econ_pizza_pre,
         "sanctions":    SANCTIONS_DATA,
         "currency_crisis": CURRENCY_CRISIS,
         "geo_risk":     GEO_RISK_PREMIUMS,
@@ -9272,6 +9340,14 @@ with tab_facility:
                       "Reduced":"🔴","SPR":"🛡️","Storage":"🗄️"}
         dot = STATUS_DOT.get(fac_row["Status"], "⚪")
 
+        # Pre-fetch weather + FIRMS in parallel so sub-tabs are instant
+        from concurrent.futures import ThreadPoolExecutor as _TPE_f
+        with _TPE_f(max_workers=2) as _ex_f:
+            _ff_wx    = _ex_f.submit(fetch_weather, fac_lat, fac_lon)
+            _ff_firms = _ex_f.submit(fetch_nasa_firms, fac_lat, fac_lon, 50)
+        _fac_wx_pre    = _ff_wx.result()
+        _fac_firms_pre = _ff_firms.result()
+
         # ── Facility header ──────────────────────────────────────
         st.markdown(f"""
         <div style='background:#0d1825;border:1px solid #1b2d4f;border-radius:10px;
@@ -9303,7 +9379,7 @@ with tab_facility:
             # ── Live Weather ────────────────────────────────────
             st.markdown("<div class='sh'>🌤 Live Weather — Open-Meteo</div>", unsafe_allow_html=True)
             with st.spinner("Fetching weather…"):
-                wx = fetch_weather(fac_lat, fac_lon)
+                wx = _fac_wx_pre
 
             if wx.get("ok"):
                 st.markdown(f"""
@@ -9360,7 +9436,7 @@ with tab_facility:
                 unsafe_allow_html=True,
             )
             with st.spinner("Querying NASA FIRMS…"):
-                firms = fetch_nasa_firms(fac_lat, fac_lon, radius_km=50)
+                firms = _fac_firms_pre
 
             if firms.get("ok"):
                 if firms["count"] == 0:
