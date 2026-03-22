@@ -405,155 +405,6 @@ def marinetraffic_url(lat: float, lon: float, zoom: int = 10) -> str:
 # ── RSS feeds (kept below) ────────────────────────────────────
 
 # ══════════════════════════════════════════════════════════════
-# TELEGRAM INTEGRATION
-# Phase 1 — RSS bridges: already wired into fetch_news_rss()
-# Phase 2 — Bot API + public fetchers below
-#
-# secrets.toml:
-#   TELEGRAM_BOT_TOKEN = "1234567890:ABC..."   # from @BotFather
-#   TELEGRAM_CHANNELS  = "@rybar,@wartranslated,@GeoConfirmed"
-# ══════════════════════════════════════════════════════════════
-
-@st.cache_data(ttl=60, show_spinner=False)
-def fetch_telegram_bot(limit: int = 30) -> list:
-    """
-    Pull channel posts via Bot API getUpdates.
-    Requires: bot token in secrets + bot added as admin to each channel.
-    Returns [] gracefully if unconfigured.
-    """
-    try:
-        token = st.secrets.get("TELEGRAM_BOT_TOKEN", None)
-        if not token:
-            return []
-        channels_raw = st.secrets.get("TELEGRAM_CHANNELS", "")
-        channels = [c.strip().lower().lstrip("@") for c in channels_raw.split(",") if c.strip()]
-        if not channels:
-            return []
-
-        from datetime import datetime, timezone as _ttz
-
-        url = (
-            "https://api.telegram.org/bot" + token
-            + "/getUpdates?limit=" + str(limit)
-            + "&allowed_updates=%5B%22channel_post%22%5D"
-        )
-        r = requests.get(url, timeout=10)
-        if r.status_code != 200:
-            return []
-        data = r.json()
-        if not data.get("ok"):
-            return []
-
-        results = []
-        for upd in data.get("result", []):
-            post = upd.get("channel_post", {})
-            if not post:
-                continue
-            chat = post.get("chat", {})
-            chat_username = (chat.get("username") or "").lower().lstrip("@")
-            if channels and chat_username not in channels:
-                continue
-
-            text = post.get("text") or post.get("caption") or ""
-            msg_id = post.get("message_id", "")
-            date_ts = post.get("date", 0)
-            dt = datetime.fromtimestamp(date_ts, tz=_ttz.utc)
-            age_s = int((datetime.now(tz=_ttz.utc) - dt).total_seconds())
-            if age_s < 60:       age = str(age_s) + "s ago"
-            elif age_s < 3600:   age = str(age_s // 60) + "m ago"
-            elif age_s < 86400:  age = str(age_s // 3600) + "h ago"
-            else:                age = str(age_s // 86400) + "d ago"
-
-            media_type = (
-                "photo"    if "photo"    in post else
-                "video"    if "video"    in post else
-                "document" if "document" in post else
-                "location" if "location" in post else
-                "text"
-            )
-            title = (text[:140].strip() + ("..." if len(text) > 140 else "")) if text else "[" + media_type + "]"
-            tg_url = ("https://t.me/" + chat_username + "/" + str(msg_id)
-                      if chat_username and msg_id else "")
-
-            results.append({
-                "title":      title,
-                "source":     "@" + chat_username.upper(),
-                "url":        tg_url,
-                "time":       age,
-                "ts":         float(date_ts),
-                "media_type": media_type,
-                "text":       text,
-            })
-
-        results.sort(key=lambda x: -x.get("ts", 0))
-        return results[:limit]
-    except Exception:
-        return []
-
-
-@st.cache_data(ttl=90, show_spinner=False)
-def fetch_telegram_public(channel: str, limit: int = 10) -> list:
-    """
-    Fetch recent posts from a public Telegram channel with no bot token,
-    using the RSSHub bridge (primary) and tg.i-c-a.su (fallback).
-    Zero-config — works for any public channel immediately.
-    """
-    import xml.etree.ElementTree as _tET
-    from datetime import datetime, timezone as _ttz
-
-    chan = channel.lstrip("@")
-    bridges = [
-        "https://rsshub.app/telegram/channel/" + chan,
-        "https://tg.i-c-a.su/rss/" + chan,
-    ]
-
-    def _pd(s):
-        for fmt in ["%a, %d %b %Y %H:%M:%S %z", "%a, %d %b %Y %H:%M:%S %Z",
-                    "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ"]:
-            try:
-                return datetime.strptime(s.strip(), fmt).replace(tzinfo=_ttz.utc)
-            except Exception:
-                pass
-        return datetime.now(_ttz.utc)
-
-    for bridge_url in bridges:
-        try:
-            r = requests.get(bridge_url, timeout=10,
-                headers={"User-Agent": "Mozilla/5.0 (compatible; GeoLocator/1.0)"})
-            if r.status_code != 200:
-                continue
-            root = _tET.fromstring(r.content)
-            posts = []
-            for item in root.findall(".//item")[:limit]:
-                title   = (item.findtext("title") or "").strip()
-                link    = (item.findtext("link") or "").strip()
-                pub     = (item.findtext("pubDate") or "").strip()
-                desc    = (item.findtext("description") or "").strip()
-                plain   = re.sub(r"<[^>]+>", "", desc)[:200].strip()
-                if not title:
-                    title = plain[:120]
-                if not title:
-                    continue
-                dt    = _pd(pub)
-                age_s = int((datetime.now(_ttz.utc) - dt).total_seconds())
-                if age_s < 60:       age = str(age_s) + "s ago"
-                elif age_s < 3600:   age = str(age_s // 60) + "m ago"
-                elif age_s < 86400:  age = str(age_s // 3600) + "h ago"
-                else:                age = str(age_s // 86400) + "d ago"
-                posts.append({
-                    "title":   title,
-                    "source":  "@" + chan.upper(),
-                    "url":     link,
-                    "time":    age,
-                    "ts":      dt.timestamp(),
-                    "preview": plain,
-                    "channel": channel,
-                })
-            if posts:
-                return posts
-        except Exception:
-            continue
-    return []
 
 # ══════════════════════════════════════════════════════════════
 # PERSISTENCE LAYER — Supabase (fire-and-forget)
@@ -1440,21 +1291,11 @@ NEWS_SOURCES = [
     {"name":"Carbon Brief",  "cat":"climate",      "color":"#1b5e20", "site":"carbonbrief.org",     "desc":"Climate science & policy analysis",            "rss":"https://www.carbonbrief.org/feed"},
     {"name":"SpaceWeather",  "cat":"spaceweather", "color":"#4a148c", "site":"spaceweather.com",    "desc":"Solar activity, geomagnetic storms, aurora",   "rss":"https://spaceweather.com/index.xml"},
     {"name":"NOAA SWPC",     "cat":"spaceweather", "color":"#0d47a1", "site":"swpc.noaa.gov",       "desc":"NOAA Space Weather Prediction Center",         "rss":"https://www.swpc.noaa.gov/news/rss.xml"},
-    # ── Telegram OSINT channels — via RSSHub public bridge ──────────────────
-    {"name":"Rybar",           "cat":"telegram",     "color":"#2ca5e0", "site":"t.me/rybar",            "desc":"Russian milblogger — frontline reports & analysis",    "rss":"https://rsshub.app/telegram/channel/rybar"},
-    {"name":"War Translated",  "cat":"telegram",     "color":"#2ca5e0", "site":"t.me/wartranslated",    "desc":"Translated Russian/Ukrainian military comms",          "rss":"https://rsshub.app/telegram/channel/wartranslated"},
-    {"name":"Intel Slava Z",   "cat":"telegram",     "color":"#2ca5e0", "site":"t.me/intelslava",       "desc":"Ukrainian & Russian OSINT aggregator",                 "rss":"https://rsshub.app/telegram/channel/intelslava"},
-    {"name":"GeoConfirmed",    "cat":"telegram",     "color":"#2ca5e0", "site":"t.me/GeoConfirmed",     "desc":"Geolocated conflict footage verification",             "rss":"https://rsshub.app/telegram/channel/GeoConfirmed"},
-    {"name":"Mil. Maps",       "cat":"telegram",     "color":"#2ca5e0", "site":"t.me/militarymaps",     "desc":"Daily conflict frontline map updates",                 "rss":"https://rsshub.app/telegram/channel/militarymaps"},
-    {"name":"CIG",             "cat":"telegram",     "color":"#2ca5e0", "site":"t.me/CIGTelegram",      "desc":"Conflict Intelligence Group — OSINT & verification",   "rss":"https://rsshub.app/telegram/channel/CIGTelegram"},
-    {"name":"Middle East Eye",  "cat":"telegram",    "color":"#2ca5e0", "site":"t.me/MiddleEastEye",    "desc":"ME Eye Telegram — regional breaking news",             "rss":"https://rsshub.app/telegram/channel/MiddleEastEye"},
-    {"name":"OSINTdefender",   "cat":"telegram",     "color":"#2ca5e0", "site":"t.me/OSINT_defender",   "desc":"Ukraine/Russia OSINT — verified footage & reports",   "rss":"https://rsshub.app/telegram/channel/OSINT_defender"},
-    {"name":"War Front Witness","cat":"telegram",     "color":"#2ca5e0", "site":"t.me/warfrontwitness", "desc":"Ground-level conflict footage & frontline witness reports","rss":"https://rsshub.app/telegram/channel/warfrontwitness"},
 ]
 
 NEWS_CAT_COLOR = {
     "global":"#ff8c42","science":"#00c8ff","geopolitics":"#9d6eff",
-    "conflict":"#ff3d5a","climate":"#00e676","spaceweather":"#ffb400","telegram":"#2ca5e0",
+    "conflict":"#ff3d5a","climate":"#00e676","spaceweather":"#ffb400",
 }
 NEWS_CAT_CARD = {
     "global":"nc-global","science":"nc-science","geopolitics":"nc-geo",
@@ -1462,7 +1303,7 @@ NEWS_CAT_CARD = {
 }
 
 # ── News category helpers (previously undefined) ──────────────
-CAT_TABS_NEWS = ["ALL", "global", "geopolitics", "conflict", "science", "climate", "spaceweather", "telegram"]
+CAT_TABS_NEWS = ["ALL", "global", "geopolitics", "conflict", "science", "climate", "spaceweather"]
 CAT_NAMES_ART = {
     "ALL":         "🌐 All",
     "global":      "🌍 Global",
@@ -1471,7 +1312,6 @@ CAT_NAMES_ART = {
     "science":     "🔬 Science",
     "climate":     "🌿 Climate",
     "spaceweather":"🌌 Space Weather",
-    "telegram":   "✈ Telegram OSINT",
 }
 
 # ── HLS channel category name map (previously undefined) ──────
@@ -2435,19 +2275,6 @@ def fetch_news_rss(category: str) -> list:
         "climate": [
             "https://www.carbonbrief.org/feed",
         ],
-        # Telegram OSINT via RSSHub public bridge (rsshub.app)
-        # Falls back to tg.i-c-a.su bridge if RSSHub is slow
-        "telegram": [
-            "https://rsshub.app/telegram/channel/rybar",
-            "https://rsshub.app/telegram/channel/wartranslated",
-            "https://rsshub.app/telegram/channel/intelslava",
-            "https://rsshub.app/telegram/channel/GeoConfirmed",
-            "https://rsshub.app/telegram/channel/militarymaps",
-            "https://rsshub.app/telegram/channel/CIGTelegram",
-            "https://rsshub.app/telegram/channel/OSINT_defender",
-            "https://rsshub.app/telegram/channel/MiddleEastEye",
-                    "https://rsshub.app/telegram/channel/warfrontwitness",
-        ],
     }
 
     feeds = CATEGORY_FEEDS.get(category, CATEGORY_FEEDS["global"])
@@ -2460,9 +2287,6 @@ def fetch_news_rss(category: str) -> list:
             except: pass
         return datetime.now(timezone.utc)
 
-    # For telegram category: try all feeds and merge results
-    # For others: try in order, stop at first success (original behaviour)
-    merge_all = (category == "telegram")
 
     for url in feeds:
         try:
@@ -2473,11 +2297,7 @@ def fetch_news_rss(category: str) -> list:
             root = ET.fromstring(r.content)
             # Detect feed source name from URL
             parts = url.split("/")
-            if "telegram/channel" in url:
-                # RSSHub Telegram: channel name is last path segment
-                src_name = "@" + parts[-1].upper()
-            else:
-                src_name = parts[2].replace("www.","").replace("feeds.","").split(".")[0].upper()
+            src_name = parts[2].replace("www.","").replace("feeds.","").split(".")[0].upper()
             feed_arts = []
             # RSS 2.0 items
             for item in root.findall(".//item")[:8]:
@@ -2485,7 +2305,6 @@ def fetch_news_rss(category: str) -> list:
                 link  = (item.findtext("link") or "").strip()
                 pub   = (item.findtext("pubDate") or "").strip()
                 desc  = (item.findtext("description") or "").strip()
-                # Telegram posts often have no title — use first 120 chars of description
                 if not title and desc:
                     title = re.sub(r"<[^>]+>", "", desc)[:120].strip()
                 if not title:
@@ -2499,7 +2318,7 @@ def fetch_news_rss(category: str) -> list:
                 feed_arts.append({"title": title, "url": link, "time": age,
                                    "source": src_name, "ts": dt.timestamp()})
             articles.extend(feed_arts)
-            if articles and not merge_all:
+            if articles:
                 break  # Standard behaviour: stop at first working feed
         except Exception:
             continue
@@ -6426,10 +6245,9 @@ with tab_civil:
 # TAB 4 — LIVE NEWS
 # ══════════════════════════════════════════════════════════════
 with tab_news:
-    sub_tv, sub_articles, sub_telegram, sub_directory = st.tabs([
+    sub_tv, sub_articles, sub_directory = st.tabs([
         "📺  Live TV Streams",
         "📰  Article Feeds",
-        "✈  Telegram OSINT",
         "📋  Source Directory",
     ])
 
@@ -6723,167 +6541,6 @@ renderGrid();
                     f'style="font-family:IBM Plex Mono,monospace;font-size:10px;color:#00c8ff;'
                     f'text-decoration:none;margin-right:12px">{_fs["name"]} →</a>',
                     unsafe_allow_html=True)
-
-    # ── SUB-TAB C: TELEGRAM OSINT ───────────────────────────────
-    with sub_telegram:
-        from html import escape as _tghe
-        from concurrent.futures import ThreadPoolExecutor as _TGTPE
-        _tg_cyan   = "#2ca5e0"
-        _tg_dark   = "#0b1524"
-        _tg_border = "rgba(44,165,224,.18)"
-
-        TG_CHANNELS = [
-            {"name": "Rybar",            "handle": "rybar",           "desc": "Russian milblogger — frontline analysis",            "flag": "🇷🇺"},
-            {"name": "War Translated",   "handle": "wartranslated",   "desc": "Translated Russian/Ukrainian military comms",        "flag": "🔤"},
-            {"name": "Intel Slava Z",    "handle": "intelslava",      "desc": "Ukraine & Russia OSINT aggregator",                  "flag": "🔍"},
-            {"name": "GeoConfirmed",     "handle": "GeoConfirmed",    "desc": "Geolocated footage verification",                    "flag": "📍"},
-            {"name": "Mil. Maps",        "handle": "militarymaps",    "desc": "Daily frontline map updates",                        "flag": "🗺"},
-            {"name": "CIG",              "handle": "CIGTelegram",     "desc": "Conflict Intelligence Group",                        "flag": "🛰"},
-            {"name": "OSINTdefender",    "handle": "OSINT_defender",  "desc": "Ukraine/Russia verified footage",                    "flag": "🔭"},
-            {"name": "Middle East Eye",  "handle": "MiddleEastEye",   "desc": "Regional breaking news & analysis",                  "flag": "🌙"},
-            {"name": "War Front Witness","handle": "warfrontwitness",  "desc": "Ground-level conflict footage & witness reports",    "flag": "🎥"},
-        ]
-
-        # ── Header ───────────────────────────────────────────────
-        st.markdown(
-            '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">'
-            '<div style="width:32px;height:32px;border-radius:50%;background:#2ca5e0;'
-            'display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">✈</div>'
-            '<div>'
-            '<div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:700;'
-            'letter-spacing:.06em;color:#e2ecf8">TELEGRAM OSINT CHANNELS</div>'
-            '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:#4a6b85;margin-top:2px">'
-            + str(len(TG_CHANNELS)) + " channels · live via RSSHub bridge · ~5-15 min delay · no login required"
-            + '</div></div>'
-            '<div style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;'
-            'padding:4px 11px;background:rgba(44,165,224,.08);border:1px solid rgba(44,165,224,.25);'
-            'border-radius:20px;font-family:IBM Plex Mono,monospace;font-size:9px;color:#2ca5e0">'
-            '<span style="width:6px;height:6px;border-radius:50%;background:#2ca5e0;display:inline-block;'
-            'animation:blink 1.2s ease-in-out infinite"></span> LIVE'
-            '</div></div>',
-            unsafe_allow_html=True
-        )
-
-        # ── Channel selector ──────────────────────────────────────
-        _tg_all_label = "📡 All channels"
-        _tg_options   = [_tg_all_label] + [c["flag"] + " " + c["name"] for c in TG_CHANNELS]
-        _tg_sel_label = st.selectbox(
-            "Channel:", _tg_options, key="tg_chan_sel",
-            label_visibility="collapsed"
-        )
-        _tg_sel_idx = _tg_options.index(_tg_sel_label) - 1  # -1 = all
-
-        # ── Fetch posts ───────────────────────────────────────────
-        _tg_posts = []
-        if _tg_sel_idx >= 0:
-            _tg_posts = fetch_telegram_public(TG_CHANNELS[_tg_sel_idx]["handle"], limit=20)
-        else:
-            with _TGTPE(max_workers=9) as _tgex:
-                _tg_futs = {_tgex.submit(fetch_telegram_public, c["handle"], 10): c
-                            for c in TG_CHANNELS}
-                for _tgf in _tg_futs:
-                    try:
-                        _tg_posts.extend(_tgf.result())
-                    except Exception:
-                        pass
-
-        # Dedup + sort newest first
-        _tg_seen, _tg_unique = set(), []
-        for _tgp in sorted(_tg_posts, key=lambda x: -x.get("ts", 0)):
-            _k = _tgp["title"][:60].lower()
-            if _k not in _tg_seen:
-                _tg_seen.add(_k)
-                _tg_unique.append(_tgp)
-
-        # ── Status line ───────────────────────────────────────────
-        _tg_ch_label = (TG_CHANNELS[_tg_sel_idx]["name"] if _tg_sel_idx >= 0 else "all channels")
-        st.markdown(
-            '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:#4a6b85;'
-            'margin-bottom:14px">'
-            + ("✅ " if _tg_unique else "⏳ ")
-            + str(len(_tg_unique)) + " posts · " + _tg_ch_label
-            + "</div>",
-            unsafe_allow_html=True
-        )
-
-        # ── Posts grid ────────────────────────────────────────────
-        if _tg_unique:
-            _tg_cols = st.columns(2)
-            for _tgi, _tgp in enumerate(_tg_unique[:40]):
-                with _tg_cols[_tgi % 2]:
-                    _tg_src     = _tghe(_tgp.get("source", ""))
-                    _tg_time    = _tghe(_tgp.get("time", ""))
-                    _tg_title   = _tghe((_tgp.get("title") or "")[:160])
-                    _tg_preview = _tghe((_tgp.get("preview") or "")[:200])
-                    _tg_url     = _tgp.get("url", "")
-                    _tg_media   = _tgp.get("media_type", "")
-                    _tg_link = (
-                        '<a href="' + _tghe(_tg_url) + '" target="_blank" rel="noopener" '
-                        'style="font-family:IBM Plex Mono,monospace;font-size:10px;'
-                        'color:' + _tg_cyan + ';text-decoration:none;padding:3px 10px;'
-                        'border:1px solid ' + _tg_border + ';border-radius:5px">'
-                        'Open in Telegram ↗</a>'
-                    ) if _tg_url else ""
-                    _tg_media_badge = (
-                        '<span style="font-family:IBM Plex Mono,monospace;font-size:8px;'
-                        'color:#4a6b85;background:rgba(74,107,133,.15);padding:1px 6px;'
-                        'border-radius:3px;margin-left:6px">' + _tghe(_tg_media) + '</span>'
-                    ) if _tg_media and _tg_media != "text" else ""
-                    _tg_preview_html = (
-                        '<div style="font-size:11px;color:#6080a0;line-height:1.55;margin-bottom:8px">'
-                        + _tg_preview + '</div>'
-                    ) if _tg_preview and _tg_preview != _tg_title else ""
-                    st.markdown(
-                        '<div style="background:' + _tg_dark + ';border:1px solid ' + _tg_border + ';'
-                        'border-left:3px solid ' + _tg_cyan + ';border-radius:10px;'
-                        'padding:14px 16px;margin-bottom:10px;">'
-                        '<div style="display:flex;align-items:center;justify-content:space-between;'
-                        'margin-bottom:6px">'
-                        '<div style="display:flex;align-items:center;gap:6px">'
-                        '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;font-weight:700;'
-                        'letter-spacing:.05em;color:' + _tg_cyan + '">' + _tg_src + '</span>'
-                        + _tg_media_badge
-                        + '</div>'
-                        '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;'
-                        'color:#4a6b85">' + _tg_time + '</span></div>'
-                        '<div style="font-size:13px;font-weight:600;color:#e2ecf8;'
-                        'line-height:1.5;margin-bottom:8px">' + _tg_title + '</div>'
-                        + _tg_preview_html
-                        + '<div style="display:flex;justify-content:flex-end">' + _tg_link + '</div>'
-                        '</div>',
-                        unsafe_allow_html=True
-                    )
-        else:
-            # Fallback: direct channel link cards while RSS loads
-            st.markdown(
-                '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:#ff8c42;'
-                'padding:16px;border:1px solid rgba(255,140,66,.25);border-radius:8px;'
-                'background:rgba(255,140,66,.05);margin-bottom:16px">'
-                '⏳ RSS bridge loading — posts appear within 30s. '
-                'Try selecting a single channel from the dropdown.</div>',
-                unsafe_allow_html=True
-            )
-            st.markdown(
-                '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;'
-                'color:#4a6b85;margin-bottom:8px;letter-spacing:.1em">OPEN DIRECTLY IN TELEGRAM</div>',
-                unsafe_allow_html=True
-            )
-            _fb_cols = st.columns(3)
-            for _fbi, _fbc in enumerate(TG_CHANNELS):
-                with _fb_cols[_fbi % 3]:
-                    st.markdown(
-                        '<a href="https://t.me/' + _fbc["handle"] + '" target="_blank" rel="noopener" '
-                        'style="display:block;background:#0b1524;border:1px solid rgba(44,165,224,.18);'
-                        'border-radius:8px;padding:10px 12px;text-decoration:none;margin-bottom:8px">'
-                        '<div style="font-size:16px;margin-bottom:4px">' + _fbc["flag"] + '</div>'
-                        '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;font-weight:700;'
-                        'color:#2ca5e0">' + _tghe(_fbc["name"]) + '</div>'
-                        '<div style="font-family:IBM Plex Mono,monospace;font-size:8px;color:#4a6b85;'
-                        'margin-top:3px">@' + _fbc["handle"] + '</div>'
-                        '</a>',
-                        unsafe_allow_html=True
-                    )
-
 
     # ── SUB-TAB C: SOURCE DIRECTORY ──────────────────────────
     with sub_directory:
