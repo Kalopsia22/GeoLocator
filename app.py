@@ -1449,6 +1449,7 @@ NEWS_SOURCES = [
     {"name":"CIG",             "cat":"telegram",     "color":"#2ca5e0", "site":"t.me/CIGTelegram",      "desc":"Conflict Intelligence Group — OSINT & verification",   "rss":"https://rsshub.app/telegram/channel/CIGTelegram"},
     {"name":"Middle East Eye",  "cat":"telegram",    "color":"#2ca5e0", "site":"t.me/MiddleEastEye",    "desc":"ME Eye Telegram — regional breaking news",             "rss":"https://rsshub.app/telegram/channel/MiddleEastEye"},
     {"name":"OSINTdefender",   "cat":"telegram",     "color":"#2ca5e0", "site":"t.me/OSINT_defender",   "desc":"Ukraine/Russia OSINT — verified footage & reports",   "rss":"https://rsshub.app/telegram/channel/OSINT_defender"},
+    {"name":"War Front Witness","cat":"telegram",     "color":"#2ca5e0", "site":"t.me/warfrontwitness", "desc":"Ground-level conflict footage & frontline witness reports","rss":"https://rsshub.app/telegram/channel/warfrontwitness"},
 ]
 
 NEWS_CAT_COLOR = {
@@ -2445,6 +2446,7 @@ def fetch_news_rss(category: str) -> list:
             "https://rsshub.app/telegram/channel/CIGTelegram",
             "https://rsshub.app/telegram/channel/OSINT_defender",
             "https://rsshub.app/telegram/channel/MiddleEastEye",
+                    "https://rsshub.app/telegram/channel/warfrontwitness",
         ],
     }
 
@@ -6725,90 +6727,59 @@ renderGrid();
     # ── SUB-TAB C: TELEGRAM OSINT ───────────────────────────────
     with sub_telegram:
         from html import escape as _tghe
+        from concurrent.futures import ThreadPoolExecutor as _TGTPE
         _tg_cyan   = "#2ca5e0"
         _tg_dark   = "#0b1524"
         _tg_border = "rgba(44,165,224,.18)"
 
+        TG_CHANNELS = [
+            {"name": "Rybar",            "handle": "rybar",           "desc": "Russian milblogger — frontline analysis",            "flag": "🇷🇺"},
+            {"name": "War Translated",   "handle": "wartranslated",   "desc": "Translated Russian/Ukrainian military comms",        "flag": "🔤"},
+            {"name": "Intel Slava Z",    "handle": "intelslava",      "desc": "Ukraine & Russia OSINT aggregator",                  "flag": "🔍"},
+            {"name": "GeoConfirmed",     "handle": "GeoConfirmed",    "desc": "Geolocated footage verification",                    "flag": "📍"},
+            {"name": "Mil. Maps",        "handle": "militarymaps",    "desc": "Daily frontline map updates",                        "flag": "🗺"},
+            {"name": "CIG",              "handle": "CIGTelegram",     "desc": "Conflict Intelligence Group",                        "flag": "🛰"},
+            {"name": "OSINTdefender",    "handle": "OSINT_defender",  "desc": "Ukraine/Russia verified footage",                    "flag": "🔭"},
+            {"name": "Middle East Eye",  "handle": "MiddleEastEye",   "desc": "Regional breaking news & analysis",                  "flag": "🌙"},
+            {"name": "War Front Witness","handle": "warfrontwitness",  "desc": "Ground-level conflict footage & witness reports",    "flag": "🎥"},
+        ]
+
         # ── Header ───────────────────────────────────────────────
         st.markdown(
-            '<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">'
-            '<div style="width:28px;height:28px;border-radius:50%;background:#2ca5e0;'
-            'display:flex;align-items:center;justify-content:center;font-size:16px;">✈</div>'
+            '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">'
+            '<div style="width:32px;height:32px;border-radius:50%;background:#2ca5e0;'
+            'display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">✈</div>'
             '<div>'
             '<div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:700;'
             'letter-spacing:.06em;color:#e2ecf8">TELEGRAM OSINT CHANNELS</div>'
             '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:#4a6b85;margin-top:2px">'
-            'Live feeds via RSSHub bridge + Bot API · ~5-15 min delay · Public channels'
-            '</div></div></div>',
+            + str(len(TG_CHANNELS)) + " channels · live via RSSHub bridge · ~5-15 min delay · no login required"
+            + '</div></div>'
+            '<div style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;'
+            'padding:4px 11px;background:rgba(44,165,224,.08);border:1px solid rgba(44,165,224,.25);'
+            'border-radius:20px;font-family:IBM Plex Mono,monospace;font-size:9px;color:#2ca5e0">'
+            '<span style="width:6px;height:6px;border-radius:50%;background:#2ca5e0;display:inline-block;'
+            'animation:blink 1.2s ease-in-out infinite"></span> LIVE'
+            '</div></div>',
             unsafe_allow_html=True
         )
 
-        # ── Bot API status badge ──────────────────────────────────
-        _tg_token = None
-        _tg_channels_cfg = ""
-        try:
-            _tg_token = st.secrets.get("TELEGRAM_BOT_TOKEN", None)
-            _tg_channels_cfg = st.secrets.get("TELEGRAM_CHANNELS", "")
-        except Exception:
-            pass
-        _bot_configured = bool(_tg_token)
-
-        if _bot_configured:
-            st.markdown(
-                '<div style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;'
-                'background:rgba(44,165,224,.08);border:1px solid rgba(44,165,224,.3);'
-                'border-radius:20px;font-family:IBM Plex Mono,monospace;font-size:9px;'
-                'color:#2ca5e0;margin-bottom:12px">'
-                '<span style="width:6px;height:6px;border-radius:50%;background:#2ca5e0;'
-                'display:inline-block;animation:blink 1.2s ease-in-out infinite"></span>'
-                ' Bot API active</div>',
-                unsafe_allow_html=True)
-        else:
-            st.markdown(
-                '<div style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;'
-                'background:rgba(74,107,133,.06);border:1px solid rgba(74,107,133,.2);'
-                'border-radius:20px;font-family:IBM Plex Mono,monospace;font-size:9px;'
-                'color:#4a6b85;margin-bottom:12px">'
-                'RSS bridge mode - add TELEGRAM_BOT_TOKEN to secrets for real-time</div>',
-                unsafe_allow_html=True)
-
-        # ── Channel config ────────────────────────────────────────
-        TG_CHANNELS = [
-            {"name": "Rybar",           "handle": "rybar",          "desc": "Russian milblogger - frontline analysis",       "flag": "🇷🇺"},
-            {"name": "War Translated",  "handle": "wartranslated",  "desc": "Translated Russian/Ukrainian military comms",   "flag": "🔤"},
-            {"name": "Intel Slava Z",   "handle": "intelslava",     "desc": "Ukraine & Russia OSINT aggregator",             "flag": "🔍"},
-            {"name": "GeoConfirmed",    "handle": "GeoConfirmed",   "desc": "Geolocated footage verification",               "flag": "📍"},
-            {"name": "Mil. Maps",       "handle": "militarymaps",   "desc": "Daily frontline map updates",                   "flag": "🗺"},
-            {"name": "CIG",             "handle": "CIGTelegram",    "desc": "Conflict Intelligence Group",                   "flag": "🛰"},
-            {"name": "OSINTdefender",   "handle": "OSINT_defender", "desc": "Ukraine/Russia verified footage",               "flag": "🔭"},
-            {"name": "Middle East Eye", "handle": "MiddleEastEye",  "desc": "Regional breaking news & analysis",            "flag": "🌙"},
-        ]
-
-        _tg_all_label = "All channels"
+        # ── Channel selector ──────────────────────────────────────
+        _tg_all_label = "📡 All channels"
         _tg_options   = [_tg_all_label] + [c["flag"] + " " + c["name"] for c in TG_CHANNELS]
-        _tg_sel_label = st.selectbox("Channel:", _tg_options, key="tg_chan_sel",
-                                     label_visibility="collapsed")
-        _tg_sel_idx   = _tg_options.index(_tg_sel_label) - 1  # -1 = all
+        _tg_sel_label = st.selectbox(
+            "Channel:", _tg_options, key="tg_chan_sel",
+            label_visibility="collapsed"
+        )
+        _tg_sel_idx = _tg_options.index(_tg_sel_label) - 1  # -1 = all
 
         # ── Fetch posts ───────────────────────────────────────────
         _tg_posts = []
-
-        # Bot API path
-        if _bot_configured:
-            _bot_posts = fetch_telegram_bot(limit=40)
-            if _tg_sel_idx >= 0:
-                _sel_h = TG_CHANNELS[_tg_sel_idx]["handle"].lower()
-                _bot_posts = [p for p in _bot_posts if _sel_h in p.get("source","").lower()]
-            _tg_posts.extend(_bot_posts)
-
-        # RSS bridge path (always runs; augments or replaces bot posts)
         if _tg_sel_idx >= 0:
-            _rss_posts = fetch_telegram_public(TG_CHANNELS[_tg_sel_idx]["handle"], limit=15)
-            _tg_posts.extend(_rss_posts)
+            _tg_posts = fetch_telegram_public(TG_CHANNELS[_tg_sel_idx]["handle"], limit=20)
         else:
-            from concurrent.futures import ThreadPoolExecutor as _TGTPE
-            with _TGTPE(max_workers=8) as _tgex:
-                _tg_futs = {_tgex.submit(fetch_telegram_public, c["handle"], 8): c
+            with _TGTPE(max_workers=9) as _tgex:
+                _tg_futs = {_tgex.submit(fetch_telegram_public, c["handle"], 10): c
                             for c in TG_CHANNELS}
                 for _tgf in _tg_futs:
                     try:
@@ -6825,31 +6796,33 @@ renderGrid();
                 _tg_unique.append(_tgp)
 
         # ── Status line ───────────────────────────────────────────
+        _tg_ch_label = (TG_CHANNELS[_tg_sel_idx]["name"] if _tg_sel_idx >= 0 else "all channels")
         st.markdown(
             '<div style="font-family:IBM Plex Mono,monospace;font-size:9px;color:#4a6b85;'
-            'margin-bottom:12px">'
+            'margin-bottom:14px">'
             + ("✅ " if _tg_unique else "⏳ ")
-            + str(len(_tg_unique)) + " posts"
-            + (" · Bot API + RSS bridge" if _bot_configured else " · RSS bridge")
+            + str(len(_tg_unique)) + " posts · " + _tg_ch_label
             + "</div>",
-            unsafe_allow_html=True)
+            unsafe_allow_html=True
+        )
 
         # ── Posts grid ────────────────────────────────────────────
         if _tg_unique:
             _tg_cols = st.columns(2)
-            for _tgi, _tgp in enumerate(_tg_unique[:30]):
+            for _tgi, _tgp in enumerate(_tg_unique[:40]):
                 with _tg_cols[_tgi % 2]:
-                    _tg_src     = _tghe(_tgp.get("source",""))
-                    _tg_time    = _tghe(_tgp.get("time",""))
+                    _tg_src     = _tghe(_tgp.get("source", ""))
+                    _tg_time    = _tghe(_tgp.get("time", ""))
                     _tg_title   = _tghe((_tgp.get("title") or "")[:160])
                     _tg_preview = _tghe((_tgp.get("preview") or "")[:200])
-                    _tg_url     = _tgp.get("url","")
-                    _tg_media   = _tgp.get("media_type","")
+                    _tg_url     = _tgp.get("url", "")
+                    _tg_media   = _tgp.get("media_type", "")
                     _tg_link = (
                         '<a href="' + _tghe(_tg_url) + '" target="_blank" rel="noopener" '
                         'style="font-family:IBM Plex Mono,monospace;font-size:10px;'
                         'color:' + _tg_cyan + ';text-decoration:none;padding:3px 10px;'
-                        'border:1px solid ' + _tg_border + ';border-radius:5px">Open in Telegram ↗</a>'
+                        'border:1px solid ' + _tg_border + ';border-radius:5px">'
+                        'Open in Telegram ↗</a>'
                     ) if _tg_url else ""
                     _tg_media_badge = (
                         '<span style="font-family:IBM Plex Mono,monospace;font-size:8px;'
@@ -6867,9 +6840,10 @@ renderGrid();
                         '<div style="display:flex;align-items:center;justify-content:space-between;'
                         'margin-bottom:6px">'
                         '<div style="display:flex;align-items:center;gap:6px">'
-                        '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;'
-                        'font-weight:700;letter-spacing:.05em;color:' + _tg_cyan + '">' + _tg_src + '</span>'
-                        + _tg_media_badge + '</div>'
+                        '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;font-weight:700;'
+                        'letter-spacing:.05em;color:' + _tg_cyan + '">' + _tg_src + '</span>'
+                        + _tg_media_badge
+                        + '</div>'
                         '<span style="font-family:IBM Plex Mono,monospace;font-size:9px;'
                         'color:#4a6b85">' + _tg_time + '</span></div>'
                         '<div style="font-size:13px;font-weight:600;color:#e2ecf8;'
@@ -6877,36 +6851,39 @@ renderGrid();
                         + _tg_preview_html
                         + '<div style="display:flex;justify-content:flex-end">' + _tg_link + '</div>'
                         '</div>',
-                        unsafe_allow_html=True)
+                        unsafe_allow_html=True
+                    )
         else:
+            # Fallback: direct channel link cards while RSS loads
             st.markdown(
-                '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;'
-                'color:#ff8c42;padding:16px;border:1px solid rgba(255,140,66,.25);'
-                'border-radius:8px;background:rgba(255,140,66,.05)">'
-                'No posts loaded. RSSHub may be rate-limiting - try a single channel '
-                'or add TELEGRAM_BOT_TOKEN to secrets for direct access.</div>',
-                unsafe_allow_html=True)
+                '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:#ff8c42;'
+                'padding:16px;border:1px solid rgba(255,140,66,.25);border-radius:8px;'
+                'background:rgba(255,140,66,.05);margin-bottom:16px">'
+                '⏳ RSS bridge loading — posts appear within 30s. '
+                'Try selecting a single channel from the dropdown.</div>',
+                unsafe_allow_html=True
+            )
+            st.markdown(
+                '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;'
+                'color:#4a6b85;margin-bottom:8px;letter-spacing:.1em">OPEN DIRECTLY IN TELEGRAM</div>',
+                unsafe_allow_html=True
+            )
+            _fb_cols = st.columns(3)
+            for _fbi, _fbc in enumerate(TG_CHANNELS):
+                with _fb_cols[_fbi % 3]:
+                    st.markdown(
+                        '<a href="https://t.me/' + _fbc["handle"] + '" target="_blank" rel="noopener" '
+                        'style="display:block;background:#0b1524;border:1px solid rgba(44,165,224,.18);'
+                        'border-radius:8px;padding:10px 12px;text-decoration:none;margin-bottom:8px">'
+                        '<div style="font-size:16px;margin-bottom:4px">' + _fbc["flag"] + '</div>'
+                        '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;font-weight:700;'
+                        'color:#2ca5e0">' + _tghe(_fbc["name"]) + '</div>'
+                        '<div style="font-family:IBM Plex Mono,monospace;font-size:8px;color:#4a6b85;'
+                        'margin-top:3px">@' + _fbc["handle"] + '</div>'
+                        '</a>',
+                        unsafe_allow_html=True
+                    )
 
-        # ── Setup guide ───────────────────────────────────────────
-        with st.expander("⚙ Setup: Bot API for real-time access", expanded=(not _bot_configured)):
-            st.markdown("""
-**Phase 1 — RSS bridges (active now, no config needed)**
-Posts from 8 OSINT channels via RSSHub.app, ~5–15 min delay.
-
-**Phase 2 — Bot API (optional, near real-time)**
-
-1. Message `@BotFather` on Telegram → `/newbot` → copy the token
-2. Add your bot as **admin** to each channel you want to monitor
-3. Add to `.streamlit/secrets.toml`:
-```toml
-TELEGRAM_BOT_TOKEN = "1234567890:ABCdef..."
-TELEGRAM_CHANNELS  = "@rybar,@wartranslated,@GeoConfirmed"
-```
-4. Redeploy — the status badge turns blue when Bot API is active.
-
-> **Note:** `getUpdates` only returns messages received *after* the bot joined.
-> For channels you don't manage, the RSS bridge is the correct path.
-            """)
 
     # ── SUB-TAB C: SOURCE DIRECTORY ──────────────────────────
     with sub_directory:
