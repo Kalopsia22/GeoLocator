@@ -4973,6 +4973,189 @@ tab_conflict, tab_earth, tab_civil, tab_news, tab_intel, tab_sigint, tab_econ, t
     "🏭  Facility Map",
 ])
 
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_live_layoffs() -> list:
+    """
+    Pull live layoff reports from Google News RSS + GDELT Doc API.
+    Returns list of dicts: {company, headline, count, sector, date, age, source, url, severity, ts}
+    Falls back to static LAYOFFS constant if all sources fail.
+    """
+    import xml.etree.ElementTree as ET
+    from datetime import datetime, timezone
+
+    results = []
+    seen_titles = set()
+
+    LAYOFF_KWS = [
+        "layoffs", "job cuts", "job losses", "workforce reduction",
+        "redundancies", "downsizing", "headcount reduction",
+        "cutting jobs", "eliminating positions", "mass layoff",
+        "let go", "retrenchment", "restructuring workers",
+    ]
+
+    def _age(dt):
+        s = int((datetime.now(tz=timezone.utc) - dt).total_seconds())
+        if s < 3600:  return str(s // 60) + "m ago"
+        if s < 86400: return str(s // 3600) + "h ago"
+        return str(s // 86400) + "d ago"
+
+    def _parse_dt(raw):
+        for fmt in ["%a, %d %b %Y %H:%M:%S %z", "%a, %d %b %Y %H:%M:%S %Z",
+                    "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ"]:
+            try: return datetime.strptime(raw.strip(), fmt).astimezone(timezone.utc)
+            except Exception: pass
+        return datetime.now(tz=timezone.utc)
+
+    def _severity(text):
+        t = text.lower()
+        nums = re.findall(r"([0-9][0-9,]*)\s*(?:jobs?|workers?|employees?|roles?|people|staff)", t)
+        n = max((int(x.replace(",", "")) for x in nums if x.replace(",","").isdigit()), default=0)
+        if n >= 5000 or any(w in t for w in ["massive","sweeping","thousands"]): return "Critical"
+        if n >= 1000 or any(w in t for w in ["significant","hundreds"]): return "High"
+        if n >= 200: return "Med"
+        return "Low"
+
+    def _count(text):
+        nums = re.findall(r"([0-9][0-9,]*)\s*(?:jobs?|workers?|employees?|roles?|people|staff)", text.lower())
+        if nums: return "~" + max(nums, key=lambda x: int(x.replace(",","0")))
+        pcts = re.findall(r"([0-9]+(?:[.][0-9]+)?)\s*%\s*(?:of\s*)?(?:workforce|staff|employees?)", text.lower())
+        if pcts: return "~" + pcts[0] + "% workforce"
+        return "undisclosed"
+
+    def _sector(text):
+        t = text.lower()
+        if any(w in t for w in ["tech","software","google","microsoft","amazon","meta","apple","nvidia","ai ","chip","semiconductor"]): return "Tech"
+        if any(w in t for w in ["bank","finance","goldman","jpmorgan","citi","hedge","insurance","fintech"]): return "Finance"
+        if any(w in t for w in ["pharma","biotech","healthcare","hospital","medical","pfizer","drug"]): return "Health"
+        if any(w in t for w in ["auto","ford","gm","tesla","vehicle","toyota","volkswagen","car "]): return "Auto"
+        if any(w in t for w in ["retail","walmart","target","shop","store","consumer"]): return "Retail"
+        if any(w in t for w in ["media","disney","netflix","streaming","entertainment","cnn","nbc"]): return "Media"
+        if any(w in t for w in ["airline","boeing","airbus","travel","hotel","hospitality"]): return "Travel"
+        if any(w in t for w in ["energy","oil","gas","mining","shell","bp ","exxon"]): return "Energy"
+        if any(w in t for w in ["telecom","at&t","verizon","comms","wireless","t-mobile"]): return "Telecom"
+        return "Other"
+
+    def _company(title):
+        m2 = re.match(
+            r"^([A-Z][A-Za-z0-9&\.\- ]{1,28}?)"
+            r"(?:\s+(?:to\s+)?(?:lay\s*off|cut|slash|fire|eliminat|reduc|announc|plan|axe))",
+            title
+        )
+        return m2.group(1).strip() if m2 else title.split()[0][:22]
+
+    # ── Source 1: Google News RSS ─────────────────────────────────────────────
+    gn_queries = [
+        "company layoffs job cuts 2026",
+        "workforce reduction employees fired 2026",
+        "tech layoffs jobs eliminated",
+    ]
+    for q in gn_queries:
+        try:
+            url = (
+                "https://news.google.com/rss/search?q="
+                + requests.utils.quote(q)
+                + "&hl=en-US&gl=US&ceid=US:en"
+            )
+            r = requests.get(url, timeout=10,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; GeoLocator/1.0)"})
+            if r.status_code != 200:
+                continue
+            root = ET.fromstring(r.content)
+            for item in root.findall(".//item")[:15]:
+                title = (item.findtext("title") or "").strip()
+                link  = (item.findtext("link") or "").strip()
+                pub   = (item.findtext("pubDate") or "").strip()
+                desc  = (item.findtext("description") or "").strip()
+                full  = (title + " " + desc).lower()
+                if not any(kw in full for kw in LAYOFF_KWS):
+                    continue
+                key = title[:55].lower()
+                if key in seen_titles:
+                    continue
+                seen_titles.add(key)
+                dt = _parse_dt(pub)
+                results.append({
+                    "company":  _company(title),
+                    "headline": title[:110],
+                    "count":    _count(title + " " + desc),
+                    "sector":   _sector(title + " " + desc),
+                    "date":     dt.strftime("%Y-%m-%d"),
+                    "age":      _age(dt),
+                    "source":   "Google News",
+                    "url":      link,
+                    "severity": _severity(title + " " + desc),
+                    "ts":       dt.timestamp(),
+                })
+        except Exception:
+            continue
+
+    # ── Source 2: GDELT Doc API ───────────────────────────────────────────────
+    try:
+        gdelt_q = "layoffs job cuts workforce reduction employees fired restructuring"
+        r = requests.get(
+            "https://api.gdeltproject.org/api/v2/doc/doc",
+            params={
+                "query":      gdelt_q,
+                "mode":       "artlist",
+                "maxrecords": "20",
+                "format":     "json",
+                "timespan":   "3d",
+                "sort":       "DateDesc",
+                "sourcelang": "english",
+            },
+            timeout=10,
+        )
+        if r.status_code == 200:
+            for a in r.json().get("articles", []):
+                title = (a.get("title") or "").strip()
+                url   = a.get("url", "")
+                full  = title.lower()
+                if not any(kw in full for kw in LAYOFF_KWS):
+                    continue
+                key = title[:55].lower()
+                if key in seen_titles:
+                    continue
+                seen_titles.add(key)
+                raw_dt = str(a.get("seendate", ""))
+                try:
+                    dt = datetime.strptime(raw_dt[:14], "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
+                except Exception:
+                    dt = datetime.now(tz=timezone.utc)
+                domain = (a.get("domain") or "").split(".")[0].upper()[:20]
+                results.append({
+                    "company":  _company(title),
+                    "headline": title[:110],
+                    "count":    _count(title),
+                    "sector":   _sector(title),
+                    "date":     dt.strftime("%Y-%m-%d"),
+                    "age":      _age(dt),
+                    "source":   domain,
+                    "url":      url,
+                    "severity": _severity(title),
+                    "ts":       dt.timestamp(),
+                })
+    except Exception:
+        pass
+
+    # ── Deduplicate + sort newest first ──────────────────────────────────────
+    seen2, unique = set(), []
+    for item in sorted(results, key=lambda x: -x.get("ts", 0)):
+        key = item["company"][:15].lower() + item["date"]
+        if key not in seen2:
+            seen2.add(key)
+            unique.append(item)
+
+    if unique:
+        return unique[:30]
+
+    # ── Static fallback ───────────────────────────────────────────────────────
+    return [
+        {**lo, "headline": lo["company"] + " — " + lo["count"] + " jobs cut",
+         "age": lo["date"], "url": "", "ts": 0.0}
+        for lo in LAYOFFS
+    ]
+
+
 # ══════════════════════════════════════════════════════════════
 # TAB 1 — CONFLICT DASHBOARD
 # ══════════════════════════════════════════════════════════════
@@ -8063,19 +8246,21 @@ with tab_econ:
 
     # ── Fetch live market data — all 6 sources in parallel ──────
     from concurrent.futures import ThreadPoolExecutor as _TPE_e
-    with _TPE_e(max_workers=6) as _ex_e:
-        _fe_idx   = _ex_e.submit(fetch_live_indices)
-        _fe_com   = _ex_e.submit(fetch_live_commodities)
-        _fe_fx    = _ex_e.submit(fetch_live_forex)
-        _fe_def   = _ex_e.submit(fetch_live_defense)
-        _fe_cry   = _ex_e.submit(fetch_live_crypto)
-        _fe_pizza = _ex_e.submit(fetch_live_pizza_index)
+    with _TPE_e(max_workers=7) as _ex_e:
+        _fe_idx     = _ex_e.submit(fetch_live_indices)
+        _fe_com     = _ex_e.submit(fetch_live_commodities)
+        _fe_fx      = _ex_e.submit(fetch_live_forex)
+        _fe_def     = _ex_e.submit(fetch_live_defense)
+        _fe_cry     = _ex_e.submit(fetch_live_crypto)
+        _fe_pizza   = _ex_e.submit(fetch_live_pizza_index)
+        _fe_layoffs = _ex_e.submit(fetch_live_layoffs)
     _live_indices     = _fe_idx.result()
     _live_commodities = _fe_com.result()
     _live_forex       = _fe_fx.result()
     _live_defense     = _fe_def.result()
     _live_crypto      = _fe_cry.result()
     _econ_pizza_pre   = _fe_pizza.result()
+    _live_layoffs     = _fe_layoffs.result()
 
     # Live-update oil prices if Yahoo succeeded
     _oil_out = []
@@ -8174,7 +8359,7 @@ with tab_econ:
         "minerals":     CRIT_MIN_DATA,
         "crypto":       CRYPTO_DATA,
         "sectors":      _sectors_out,
-        "layoffs":      LAYOFFS,
+        "layoffs":      _live_layoffs,
         "fires":        FIRES_DATA,
         "market":       _market_live,
         "btc_etf":      BTC_ETF,
@@ -8747,19 +8932,59 @@ function finPanel() {{
 
 // ── Row 2: Layoffs + Fires ────────────────────────────────────
 function row2() {{
-  const layoffRows = D.layoffs.map(l=>{{
-    const sc=l.severity==='Critical'?'var(--rose)':l.severity==='High'?'var(--coral)':'var(--gold)';
-    return `<div class="card-row" style="border-left-color:${{sc}}">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-        <span style="font-size:13px;font-weight:600;color:var(--ink)">${{esc(l.company)}}</span>
-        ${{badge(l.severity.toUpperCase(),sevCls(l.severity))}}
+  // ── Sector filter state ──────────────────────────────────────
+  const allSectors = [...new Set((D.layoffs||[]).map(l=>l.sector||'Other'))].sort();
+  const selSec = window._layoffSector || 'All';
+
+  const filtered = (D.layoffs||[]).filter(l=>
+    selSec === 'All' || (l.sector||'Other') === selSec
+  );
+
+  const sectorBtns = ['All',...allSectors].map(s=>
+    `<button onclick="window._layoffSector='${{s}}';doRender()"
+      style="font-family:JetBrains Mono,monospace;font-size:9px;padding:3px 10px;border-radius:3px;
+             cursor:pointer;border:1px solid ${{s===selSec?'var(--sky)':'rgba(148,163,184,.15)'}};
+             background:${{s===selSec?'rgba(56,189,248,.1)':'transparent'}};
+             color:${{s===selSec?'var(--sky)':'var(--ink3)'}};margin:0 3px 4px 0">${{s}}</button>`
+  ).join('');
+
+  const layoffRows = filtered.slice(0,20).map(l=>{{
+    const sc=l.severity==='Critical'?'var(--rose)':l.severity==='High'?'var(--coral)':l.severity==='Med'?'var(--gold)':'var(--mint)';
+    const hasUrl = l.url && l.url.length > 4;
+    const readBtn = hasUrl
+      ? `<a href="${{esc(l.url)}}" target="_blank" rel="noopener"
+           style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--sky);
+                  text-decoration:none;padding:2px 8px;border:1px solid rgba(56,189,248,.25);
+                  border-radius:3px;white-space:nowrap">Read ↗</a>`
+      : '';
+    const ageBadge = l.age
+      ? `<span class="mono" style="font-size:8px;color:var(--ink3);margin-left:6px">${{esc(l.age)}}</span>`
+      : '';
+    return `<div class="card-row" style="border-left-color:${{sc}};padding:10px 12px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap">
+            <span style="font-size:13px;font-weight:700;color:var(--ink)">${{esc(l.company)}}</span>
+            ${{badge(l.severity.toUpperCase(),sevCls(l.severity))}}
+            ${{ageBadge}}
+          </div>
+          <div style="font-size:11px;color:var(--ink2);line-height:1.45;margin-bottom:4px">${{esc((l.headline||'').slice(0,100))}}</div>
+        </div>
+        <div style="flex-shrink:0;margin-left:10px;text-align:right">
+          <div class="mono" style="font-size:11px;color:var(--gold);font-weight:600">${{esc(l.count)}}</div>
+          <div class="mono" style="font-size:9px;color:var(--ink3);margin-top:2px">${{esc(l.sector||'')}}</div>
+        </div>
       </div>
-      <div style="display:flex;justify-content:space-between">
-        <span class="mono" style="font-size:10px;color:var(--gold)">${{esc(l.count)}} jobs</span>
-        <span class="mono" style="font-size:9px;color:var(--ink3)">${{esc(l.sector)}} · ${{l.date}}</span>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="mono" style="font-size:9px;color:var(--ink3)">${{esc(l.source||'')}} · ${{esc(l.date||'')}}</span>
+        ${{readBtn}}
       </div>
     </div>`;
   }}).join('');
+
+  const emptyMsg = filtered.length === 0
+    ? `<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--ink3);padding:20px;text-align:center">No layoffs reported for this sector.</div>`
+    : '';
 
   const fireRows = D.fires.map(f=>{{
     const ic=f.high>50?'var(--rose)':f.high>20?'var(--coral)':'var(--gold)';
@@ -8773,9 +8998,20 @@ function row2() {{
   }}).join('');
 
   return `<div class="duo-grid">
-    <div class="card">
-      <div class="section-title">Layoffs Tracker <span class="live-chip" style="margin-left:4px"><span class="live-dot"></span>Live</span></div>
-      <div class="scroll">${{layoffRows}}</div>
+    <div class="card" style="grid-column:1/-1">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="section-title" style="margin:0">Corporate Layoffs</div>
+          <span class="live-chip"><span class="live-dot"></span>Live · Google News + GDELT</span>
+        </div>
+        <div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--ink3)">
+          ${{filtered.length}} reports · refreshes every 5 min
+        </div>
+      </div>
+      <div style="margin-bottom:10px;display:flex;flex-wrap:wrap">${{sectorBtns}}</div>
+      <div class="scroll" style="max-height:420px">
+        ${{layoffRows}}${{emptyMsg}}
+      </div>
     </div>
     <div class="card">
       <div class="section-title">🔥 Active Wildfires</div>
