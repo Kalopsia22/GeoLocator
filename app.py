@@ -617,7 +617,7 @@ st.set_page_config(
 # ── Auto-refresh ─────────────────────────────
 try:
     from streamlit_autorefresh import st_autorefresh
-    st_autorefresh(interval=600_000, key="auto10min")
+    st_autorefresh(interval=600_000, key="auto10min")  # 10 min global refresh
 except ImportError:
     pass
 
@@ -7632,7 +7632,7 @@ with tab_sigint:
     # ── SIGINT-specific auto-refresh (60 seconds) ─────────────
     try:
         from streamlit_autorefresh import st_autorefresh as _sar
-        _sar(interval=60_000, key="sigint_refresh")
+        _sar(interval=180_000, key="sigint_refresh")  # 3 min — was 60s
     except ImportError:
         pass
 
@@ -7748,7 +7748,7 @@ with tab_sigint:
         "kp_status":       _kp_status,
         "kp_series":       (_sigint_kp.get("series") or [])[-24:],
         "ts":              _sig_ts,
-        "refresh_interval": 60,
+        "refresh_interval": 180,
     })
 
 
@@ -8207,7 +8207,7 @@ function doRender(){{
 }}
 doRender();
 
-var _el=0,_rs=D.refresh_interval||60;
+var _el=0,_rs=D.refresh_interval||180;
 setInterval(()=>{{_el++;var l=Math.max(0,_rs-_el);var e=document.getElementById('cd');if(e)e.textContent=l;if(l===0)_el=0;}},1000);
 
 var _ls={{feed:D.live_feed||[],cyber:D.live_cyber||[],quakes:D.live_quakes||[],kp:D.kp_current||0,kpStatus:D.kp_status||'Quiet',kpSeries:D.kp_series||[]}};
@@ -8235,7 +8235,7 @@ async function pollAll(){{if(_polling)return;_polling=true;var ps=document.getEl
   _polling=false;patchFeed();patchCyber();patchSeismic();patchKP();patchTicker();updateHeader();
   if(ps)ps.textContent='LIVE';
 }}
-setTimeout(pollAll,2000);setInterval(pollAll,60000);
+setTimeout(pollAll,4000);setInterval(pollAll,180000);
 </script></body></html>"""
     _sc.html(_sigint_html, height=5600, scrolling=True)
 
