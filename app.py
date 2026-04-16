@@ -1926,6 +1926,1027 @@ def fetch_outage_feed():
 # LIVE INTEGRATION FETCHERS
 # ══════════════════════════════════════════════════════════════
 
+# ─────────────────────────────────────────────────────────────
+# Geopolitical live-enrichment fetchers
+# These replace or augment the hardcoded baselines for the map
+# overlays and the SIGINT / Econ dashboard payloads.
+# ─────────────────────────────────────────────────────────────
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def fetch_live_nuke_alerts() -> list:
+    """
+    Enrich NUKE_ALERTS with GDELT news signals for each site.
+    Adds `live_hits`, `live_headline`, `last_updated`.
+    Escalates `level` from HIGH → CRITICAL if ≥3 fresh GDELT hits exist.
+    Falls back to NUKE_ALERTS baseline on failure.
+    """
+    import urllib.parse
+    from datetime import datetime, timezone
+
+    now_utc = datetime.now(tz=timezone.utc)
+    results = []
+
+    for alert in NUKE_ALERTS:
+        enriched = dict(alert)
+        try:
+            site_kw = alert.get("site", "").replace("(", "").replace(")", "")
+            query = urllib.parse.quote(
+                f"{site_kw} nuclear strike attack radiation enrichment reactor")
+            url = (
+                "https://api.gdeltproject.org/api/v2/doc/doc"
+                f"?query={query}&mode=artlist&maxrecords=6"
+                "&format=json&timespan=48h&sort=DateDesc"
+            )
+            r = requests.get(url, timeout=8,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; GeoLocator/1.0)"})
+            if r.status_code == 200:
+                arts = r.json().get("articles", [])
+                hits = len(arts)
+                enriched["live_hits"]    = hits
+                enriched["last_updated"] = now_utc.strftime("%Y-%m-%d %H:%M UTC")
+                if arts:
+                    enriched["live_headline"] = arts[0].get("title", "")[:120]
+                # Escalate if significant fresh coverage
+                if hits >= 3 and enriched.get("level") == "HIGH":
+                    enriched["level"] = "CRITICAL"
+                    enriched["col"]   = "#ff3d5a"
+            else:
+                enriched["live_hits"] = 0
+        except Exception:
+            enriched["live_hits"] = 0
+        results.append(enriched)
+
+    return results if results else NUKE_ALERTS
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def fetch_live_wmd_posture() -> list:
+    """
+    Enrich WMD_POSTURE with GDELT article volume + tone for each actor.
+    High article volume → nudge `risk` up by up to 6 pts.
+    Adds `live_hits`, `live_headline`, `last_updated`.
+    Falls back to WMD_POSTURE baseline on failure.
+    """
+    import urllib.parse
+    from datetime import datetime, timezone
+
+    now_utc = datetime.now(tz=timezone.utc)
+    results = []
+
+    for posture in WMD_POSTURE:
+        enriched = dict(posture)
+        try:
+            actor_kw = posture.get("actor", "").replace("(", "").replace(")", "")
+            type_kw  = posture.get("type", "")
+            assets_kw = " ".join(posture.get("assets", "").split()[:4])
+            query = urllib.parse.quote(
+                f"{actor_kw} {type_kw} {assets_kw} missile nuclear weapon posture")
+            url = (
+                "https://api.gdeltproject.org/api/v2/doc/doc"
+                f"?query={query}&mode=artlist&maxrecords=6"
+                "&format=json&timespan=48h&sort=DateDesc"
+            )
+            r = requests.get(url, timeout=8,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; GeoLocator/1.0)"})
+            if r.status_code == 200:
+                arts = r.json().get("articles", [])
+                hits = len(arts)
+                enriched["live_hits"]    = hits
+                enriched["last_updated"] = now_utc.strftime("%Y-%m-%d %H:%M UTC")
+                if arts:
+                    enriched["live_headline"] = arts[0].get("title", "")[:120]
+                # Nudge risk score with article volume (cap +6)
+                bump = min(6, hits)
+                enriched["risk"] = min(99, posture.get("risk", 50) + bump)
+                # Escalate status if risk crosses threshold
+                new_risk = enriched["risk"]
+                if new_risk >= 85 and enriched.get("status") not in ("Elevated", "Active"):
+                    enriched["status"] = "Elevated"
+                    enriched["col"]    = "#ff8c42"
+            else:
+                enriched["live_hits"] = 0
+        except Exception:
+            enriched["live_hits"] = 0
+        results.append(enriched)
+
+    return results if results else WMD_POSTURE
+
+@st.cache_data(ttl=600, show_spinner=False)
+def fetch_live_gps_jamming() -> list:
+    """
+    Enrich GPS_JAMMING_ZONES with live GDELT article hits for each zone.
+    High hit-count → escalate severity; zero hits → downgrade to 'Low'.
+    Also appends any newly-reported jamming zones detected in GDELT last 24 h
+    that don't overlap an existing zone (rough 5° grid dedup).
+    Falls back to GPS_JAMMING_ZONES baseline on failure.
+    """
+    import urllib.parse
+    from datetime import datetime, timezone
+
+    now_utc  = datetime.now(tz=timezone.utc)
+    results  = []
+    used_locs = set()  # (round lat/5)*5, (round lon/5)*5 used for dedup
+
+    for zone in GPS_JAMMING_ZONES:
+        enriched = dict(zone)
+        grid_key = (round(zone["lat"] / 5) * 5, round(zone["lon"] / 5) * 5)
+        used_locs.add(grid_key)
+        try:
+            src = zone.get("source", "")
+            name = zone.get("name", "")
+            query = urllib.parse.quote(
+                f"GPS jamming GNSS spoofing {src} {name} navigation interference")
+            url = (
+                "https://api.gdeltproject.org/api/v2/doc/doc"
+                f"?query={query}&mode=artlist&maxrecords=8"
+                "&format=json&timespan=24h&sort=DateDesc"
+            )
+            r = requests.get(url, timeout=8,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; GeoLocator/1.0)"})
+            if r.status_code == 200:
+                arts   = r.json().get("articles", [])
+                hits   = len(arts)
+                enriched["live_hits"] = hits
+                if hits >= 4:
+                    enriched["severity"] = "High"
+                    enriched["live_headline"] = arts[0].get("title", "")[:120]
+                elif hits == 0 and zone.get("severity") == "Med":
+                    enriched["severity"] = "Low"
+                elif hits > 0:
+                    enriched["live_headline"] = arts[0].get("title", "")[:120]
+            else:
+                enriched["live_hits"] = 0
+        except Exception:
+            enriched["live_hits"] = 0
+        results.append(enriched)
+
+    # Scan GDELT for new jamming events not in baseline
+    try:
+        import urllib.parse as _up
+        r2 = requests.get(
+            "https://api.gdeltproject.org/api/v2/geo/geo",
+            params={"query": "GPS jamming GNSS spoofing navigation interference",
+                    "mode": "pointdata", "maxpoints": 20,
+                    "format": "json", "timespan": "24h"},
+            timeout=8)
+        if r2.status_code == 200:
+            for feat in r2.json().get("features", []):
+                props = feat.get("properties", {})
+                geo   = feat.get("geometry", {}).get("coordinates", [0, 0])
+                glat, glon = float(geo[1]) if len(geo) > 1 else 0.0, float(geo[0]) if len(geo) > 0 else 0.0
+                if not glat and not glon:
+                    continue
+                grid_key = (round(glat / 5) * 5, round(glon / 5) * 5)
+                if grid_key in used_locs:
+                    continue
+                used_locs.add(grid_key)
+                results.append({
+                    "name":       props.get("name", "Emerging jamming zone"),
+                    "lat":        glat,
+                    "lon":        glon,
+                    "radius_km":  150,
+                    "source":     "GDELT-detected",
+                    "severity":   "Med",
+                    "live_hits":  1,
+                    "live_headline": props.get("title", "")[:120],
+                    "tip": (f"📡 GPS JAMMING | {props.get('name','Unknown area')} | "
+                            f"GDELT-detected | {now_utc.strftime('%Y-%m-%d')}"),
+                })
+    except Exception:
+        pass
+
+    return results if results else GPS_JAMMING_ZONES
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_live_cyber_threats() -> list:
+    """
+    Enrich CYBER_THREATS_GEO with live GDELT article data for each APT/actor.
+    Adds `live_hits`, `live_headline`, `last_active`.
+    Also appends up to 3 new geo-located cyber events from GDELT last 6 h
+    that don't overlap an existing actor location.
+    Falls back to CYBER_THREATS_GEO baseline on failure.
+    """
+    import urllib.parse
+    from datetime import datetime, timezone
+
+    now_utc  = datetime.now(tz=timezone.utc)
+    results  = []
+    used_locs = set()
+
+    for threat in CYBER_THREATS_GEO:
+        enriched = dict(threat)
+        grid_key = (round(threat["lat"] / 3) * 3, round(threat["lon"] / 3) * 3)
+        used_locs.add(grid_key)
+        try:
+            actor_kw  = threat.get("actor", "").replace("/", " ")
+            name_kw   = threat.get("name", "").replace("—", "").replace("-", " ")
+            targets_kw = threat.get("targets", "")
+            query = urllib.parse.quote(
+                f"{name_kw} {actor_kw} cyber espionage hacking {targets_kw}")
+            url = (
+                "https://api.gdeltproject.org/api/v2/doc/doc"
+                f"?query={query}&mode=artlist&maxrecords=6"
+                "&format=json&timespan=6h&sort=DateDesc"
+            )
+            r = requests.get(url, timeout=8,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; GeoLocator/1.0)"})
+            if r.status_code == 200:
+                arts = r.json().get("articles", [])
+                enriched["live_hits"] = len(arts)
+                if arts:
+                    enriched["live_headline"] = arts[0].get("title", "")[:120]
+                    enriched["last_active"]   = now_utc.strftime("%Y-%m-%d %H:%M UTC")
+            else:
+                enriched["live_hits"] = 0
+        except Exception:
+            enriched["live_hits"] = 0
+        results.append(enriched)
+
+    # Append new GDELT-detected cyber events
+    try:
+        r3 = requests.get(
+            "https://api.gdeltproject.org/api/v2/geo/geo",
+            params={"query": "cyber attack hacking breach malware ransomware APT",
+                    "mode": "pointdata", "maxpoints": 15,
+                    "format": "json", "timespan": "6h"},
+            timeout=8)
+        added = 0
+        if r3.status_code == 200:
+            for feat in r3.json().get("features", []):
+                if added >= 3:
+                    break
+                props = feat.get("properties", {})
+                geo   = feat.get("geometry", {}).get("coordinates", [0, 0])
+                glat  = float(geo[1]) if len(geo) > 1 else 0.0
+                glon  = float(geo[0]) if len(geo) > 0 else 0.0
+                if not glat and not glon:
+                    continue
+                grid_key = (round(glat / 3) * 3, round(glon / 3) * 3)
+                if grid_key in used_locs:
+                    continue
+                used_locs.add(grid_key)
+                title = props.get("title", props.get("name", ""))[:120]
+                results.append({
+                    "name":         props.get("name", "Emerging cyber event"),
+                    "lat":          glat,
+                    "lon":          glon,
+                    "actor":        "GDELT-detected",
+                    "targets":      title[:60],
+                    "live_hits":    1,
+                    "live_headline": title,
+                    "last_active":  now_utc.strftime("%Y-%m-%d"),
+                    "tip": (f"🛡 CYBER THREAT | {props.get('name','?')} | "
+                            f"GDELT-detected | {now_utc.strftime('%Y-%m-%d')}"),
+                })
+                added += 1
+    except Exception:
+        pass
+
+    return results if results else CYBER_THREATS_GEO
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def fetch_live_cii() -> list:
+    """
+    Enrich CII_INSTABILITY by querying GDELT for news about each country's
+    critical infrastructure sector.  High article volume or negative tone
+    nudges `risk` upward by up to 8 pts.  Adds `live_hits`, `live_headline`.
+    Falls back to CII_INSTABILITY baseline on failure.
+    """
+    import urllib.parse
+    from datetime import datetime, timezone
+
+    now_utc = datetime.now(tz=timezone.utc)
+    results = []
+
+    for entry in CII_INSTABILITY:
+        enriched = dict(entry)
+        try:
+            country_kw = entry.get("country", "")
+            sector_kw  = entry.get("sector", "")
+            query = urllib.parse.quote(
+                f"{country_kw} {sector_kw} infrastructure attack outage blackout failure")
+            url = (
+                "https://api.gdeltproject.org/api/v2/doc/doc"
+                f"?query={query}&mode=artlist&maxrecords=6"
+                "&format=json&timespan=24h&sort=DateDesc"
+            )
+            r = requests.get(url, timeout=8,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; GeoLocator/1.0)"})
+            if r.status_code == 200:
+                arts = r.json().get("articles", [])
+                hits = len(arts)
+                enriched["live_hits"] = hits
+                if arts:
+                    enriched["live_headline"] = arts[0].get("title", "")[:120]
+                # Escalate risk proportionally to hit count (cap at +8)
+                bump = min(8, hits * 2)
+                enriched["risk"] = min(100, entry.get("risk", 50) + bump)
+                enriched["last_updated"] = now_utc.strftime("%Y-%m-%d %H:%M UTC")
+            else:
+                enriched["live_hits"] = 0
+        except Exception:
+            enriched["live_hits"] = 0
+        results.append(enriched)
+
+    return results if results else CII_INSTABILITY
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_live_internet_outages() -> list:
+    """
+    Enrich INTERNET_OUTAGES with:
+    - Live GDELT article counts for each location's shutdown/censorship news
+    - NetBlocks-style GDELT query for new country-level shutdowns not in baseline
+    Severity mapping: >=4 GDELT hits → Total/Disrupted escalation.
+    Falls back to INTERNET_OUTAGES baseline on failure.
+    """
+    import urllib.parse
+    from datetime import datetime, timezone
+
+    now_utc  = datetime.now(tz=timezone.utc)
+    results  = []
+    used_countries = {e.get("name", "").split("—")[0].strip() for e in INTERNET_OUTAGES}
+
+    for entry in INTERNET_OUTAGES:
+        enriched = dict(entry)
+        try:
+            loc_kw   = entry.get("name", "").split("—")[0].strip()
+            cause_kw = entry.get("cause", "")
+            query = urllib.parse.quote(
+                f"{loc_kw} internet shutdown outage censorship {cause_kw}")
+            url = (
+                "https://api.gdeltproject.org/api/v2/doc/doc"
+                f"?query={query}&mode=artlist&maxrecords=5"
+                "&format=json&timespan=12h&sort=DateDesc"
+            )
+            r = requests.get(url, timeout=8,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; GeoLocator/1.0)"})
+            if r.status_code == 200:
+                arts = r.json().get("articles", [])
+                hits = len(arts)
+                enriched["live_hits"] = hits
+                if arts:
+                    enriched["live_headline"] = arts[0].get("title", "")[:120]
+                if hits >= 4 and enriched.get("severity") not in ("Total",):
+                    enriched["severity"] = "Disrupted"
+                enriched["last_updated"] = now_utc.strftime("%Y-%m-%d %H:%M UTC")
+            else:
+                enriched["live_hits"] = 0
+        except Exception:
+            enriched["live_hits"] = 0
+        results.append(enriched)
+
+    # Scan for newly-reported outages via GDELT geo
+    try:
+        r4 = requests.get(
+            "https://api.gdeltproject.org/api/v2/geo/geo",
+            params={"query": "internet shutdown outage censorship blocked",
+                    "mode": "pointdata", "maxpoints": 10,
+                    "format": "json", "timespan": "12h"},
+            timeout=8)
+        if r4.status_code == 200:
+            for feat in r4.json().get("features", []):
+                props  = feat.get("properties", {})
+                geo    = feat.get("geometry", {}).get("coordinates", [0, 0])
+                glat   = float(geo[1]) if len(geo) > 1 else 0.0
+                glon   = float(geo[0]) if len(geo) > 0 else 0.0
+                ctry   = props.get("countrycode", "") or props.get("name", "")[:20]
+                if ctry in used_countries or (not glat and not glon):
+                    continue
+                used_countries.add(ctry)
+                results.append({
+                    "name":          props.get("name", ctry),
+                    "lat":           glat,
+                    "lon":           glon,
+                    "severity":      "Disrupted",
+                    "cause":         "GDELT-detected",
+                    "live_hits":     1,
+                    "live_headline": props.get("title", "")[:120],
+                    "last_updated":  now_utc.strftime("%Y-%m-%d"),
+                    "tip": (f"📡 INTERNET OUTAGE | {props.get('name','?')} | "
+                            f"GDELT-detected | {now_utc.strftime('%Y-%m-%d')}"),
+                })
+    except Exception:
+        pass
+
+    return results if results else INTERNET_OUTAGES
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_live_military_activity() -> list:
+    """
+    Enrich MILITARY_ACTIVITY with live GDELT article hits for each unit/operation.
+    Adds `live_hits`, `live_headline`, `last_active`.
+    Also appends up to 4 new geo-located military events from GDELT last 6 h
+    that are not near any existing marker.
+    Falls back to MILITARY_ACTIVITY baseline on failure.
+    """
+    import urllib.parse
+    from datetime import datetime, timezone
+
+    now_utc  = datetime.now(tz=timezone.utc)
+    results  = []
+    used_locs = set()
+
+    for act in MILITARY_ACTIVITY:
+        enriched = dict(act)
+        grid_key = (round(act["lat"] / 4) * 4, round(act["lon"] / 4) * 4)
+        used_locs.add(grid_key)
+        try:
+            name_kw    = act.get("name", "").replace("/", " ")
+            type_kw    = act.get("type", "")
+            country_kw = act.get("country", "")
+            query = urllib.parse.quote(
+                f"{name_kw} {country_kw} {type_kw} military operation strike naval")
+            url = (
+                "https://api.gdeltproject.org/api/v2/doc/doc"
+                f"?query={query}&mode=artlist&maxrecords=6"
+                "&format=json&timespan=6h&sort=DateDesc"
+            )
+            r = requests.get(url, timeout=8,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; GeoLocator/1.0)"})
+            if r.status_code == 200:
+                arts = r.json().get("articles", [])
+                enriched["live_hits"] = len(arts)
+                if arts:
+                    enriched["live_headline"] = arts[0].get("title", "")[:120]
+                    enriched["last_active"]   = now_utc.strftime("%Y-%m-%d %H:%M UTC")
+            else:
+                enriched["live_hits"] = 0
+        except Exception:
+            enriched["live_hits"] = 0
+        results.append(enriched)
+
+    # Append new GDELT-detected military events
+    try:
+        r5 = requests.get(
+            "https://api.gdeltproject.org/api/v2/geo/geo",
+            params={"query": "airstrike military attack offensive troops naval",
+                    "mode": "pointdata", "maxpoints": 20,
+                    "format": "json", "timespan": "6h"},
+            timeout=8)
+        added = 0
+        if r5.status_code == 200:
+            for feat in r5.json().get("features", []):
+                if added >= 4:
+                    break
+                props = feat.get("properties", {})
+                geo   = feat.get("geometry", {}).get("coordinates", [0, 0])
+                glat  = float(geo[1]) if len(geo) > 1 else 0.0
+                glon  = float(geo[0]) if len(geo) > 0 else 0.0
+                if not glat and not glon:
+                    continue
+                grid_key = (round(glat / 4) * 4, round(glon / 4) * 4)
+                if grid_key in used_locs:
+                    continue
+                used_locs.add(grid_key)
+                title = props.get("title", props.get("name", ""))[:120]
+                results.append({
+                    "name":         props.get("name", "New military event"),
+                    "lat":          glat,
+                    "lon":          glon,
+                    "type":         "GDELT-detected",
+                    "country":      props.get("countrycode", "Unknown"),
+                    "live_hits":    1,
+                    "live_headline": title,
+                    "last_active":  now_utc.strftime("%Y-%m-%d"),
+                    "tip": (f"✈ MIL ACTIVITY | {props.get('name','?')} | "
+                            f"GDELT-detected | {now_utc.strftime('%Y-%m-%d')}"),
+                })
+                added += 1
+    except Exception:
+        pass
+
+    return results if results else MILITARY_ACTIVITY
+
+
+@st.cache_data(ttl=900, show_spinner=False)
+def fetch_live_shipping_rates() -> list:
+    """
+    Update SHIPPING_RATES by querying Yahoo Finance for Baltic Dry Index (BDI)
+    and the Freightos Baltic Container Index (FBX) proxy tickers, and GDELT
+    for route-specific disruption signals.
+
+    - BDI: ^BDI (Yahoo) → updates the 'Baltic Dry Index' row
+    - FBX composite proxy: HAFNIA.OL, ZIM, MATX → sentiment proxy for container rates
+    - GDELT: per-route keyword search → updates `status` and `note`
+    Falls back to SHIPPING_RATES baseline on failure.
+    """
+    import urllib.parse
+    from datetime import datetime, timezone
+
+    now_utc = datetime.now(tz=timezone.utc)
+    results = []
+
+    # Pull Yahoo tickers for BDI proxy + container shipping proxies
+    yahoo_data = _yahoo_batch(("^BDI", "ZIM", "MATX", "HAFNIA.OL", "DSX"))
+
+    for rate in SHIPPING_RATES:
+        enriched = dict(rate)
+        route    = rate.get("route", "")
+        rtype    = rate.get("type",  "")
+
+        # BDI direct update
+        if rtype == "BDI" and "^BDI" in yahoo_data:
+            bdi = yahoo_data["^BDI"]
+            enriched["rate"]   = int(bdi["price"])
+            enriched["change"] = round(bdi["chg_pct"], 1)
+            enriched["status"] = ("Rising" if bdi["chg_pct"] > 1 else
+                                  "Falling" if bdi["chg_pct"] < -1 else "Stable")
+            enriched["live"]   = True
+
+        # Container rates: use ZIM sentiment proxy
+        elif rtype == "Container" and "ZIM" in yahoo_data:
+            zim_chg = yahoo_data["ZIM"]["chg_pct"]
+            # ZIM stock directionally tracks container spot rates
+            if abs(zim_chg) > 0.5:
+                enriched["change"] = round(
+                    rate.get("change", 0) + zim_chg * 0.4, 1)
+                enriched["status"] = "Elevated" if zim_chg > 2 else (
+                                     "Rising"   if zim_chg > 0.5 else
+                                     "Reduced"  if zim_chg < -2 else "Normal")
+                enriched["live"] = True
+
+        # VLCC / Suezmax oil tankers: use DSX proxy
+        elif rtype in ("VLCC Oil", "Suezmax Oil") and "DSX" in yahoo_data:
+            dsx_chg = yahoo_data["DSX"]["chg_pct"]
+            enriched["change"] = round(rate.get("change", 0) + dsx_chg * 0.3, 1)
+            enriched["live"] = True
+
+        # GDELT disruption signal for this route
+        try:
+            route_parts = route.replace("→", "").replace("→", "")
+            query = urllib.parse.quote(
+                f"shipping {route_parts} disruption reroute freight rate")
+            url = (
+                "https://api.gdeltproject.org/api/v2/doc/doc"
+                f"?query={query}&mode=artlist&maxrecords=4"
+                "&format=json&timespan=24h&sort=DateDesc"
+            )
+            r = requests.get(url, timeout=6,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; GeoLocator/1.0)"})
+            if r.status_code == 200:
+                arts = r.json().get("articles", [])
+                enriched["live_hits"] = len(arts)
+                if arts:
+                    enriched["live_headline"] = arts[0].get("title", "")[:100]
+                    # Flagging keywords → escalate status
+                    headline_lower = arts[0].get("title", "").lower()
+                    if any(kw in headline_lower for kw in
+                           ("attack", "disruption", "blocked", "seized", "reroute")):
+                        enriched["status"] = "Elevated"
+        except Exception:
+            pass
+
+        results.append(enriched)
+
+    return results if results else SHIPPING_RATES
+
+
+@st.cache_data(ttl=900, show_spinner=False)
+def fetch_live_critical_minerals() -> list:
+    """
+    Update CRIT_MIN_DATA using Yahoo Finance spot-price proxies and GDELT
+    supply-chain / export-control signals.
+
+    Ticker map:
+      Lithium → LTHM (Livent), ALB (Albemarle)
+      Cobalt  → COBF (proxy), CMC
+      Nickel  → NICKEL=F (Yahoo futures) or VALE
+      Copper  → HG=F (COMEX futures)
+      Uranium → URA ETF
+      REE     → MP (MP Materials — Nd/Pr)
+      Graphite → NOVG.OL (proxy)
+    Falls back to CRIT_MIN_DATA baseline on failure.
+    """
+    import urllib.parse
+    from datetime import datetime, timezone
+
+    now_utc = datetime.now(tz=timezone.utc)
+
+    MINERAL_TICKERS = {
+        "Lithium":  ("ALB",    0.15),   # Albemarle — directional proxy
+        "Cobalt":   ("VALE",   0.08),   # VALE cobalt by-product proxy
+        "REE (Nd)": ("MP",     0.20),   # MP Materials
+        "Nickel":   ("VALE",   0.12),
+        "Graphite": ("SYRA.AX",0.10),   # Syrah Resources ASX proxy
+        "Uranium":  ("URA",    0.25),   # Global X Uranium ETF
+        "Copper":   ("HG=F",   1.00),   # COMEX copper futures (direct)
+        "Gallium":  ("INTC",   0.05),   # Proxy: Intel (Ga consumer)
+    }
+
+    tickers_needed = tuple(set(v[0] for v in MINERAL_TICKERS.values()))
+    yahoo_data = _yahoo_batch(tickers_needed)
+
+    results = []
+    for mineral_rec in CRIT_MIN_DATA:
+        enriched = dict(mineral_rec)
+        mineral_name = mineral_rec.get("mineral", "")
+        ticker, weight = MINERAL_TICKERS.get(mineral_name, (None, 0))
+
+        if ticker and ticker in yahoo_data and weight > 0:
+            proxy_chg = yahoo_data[ticker]["chg_pct"]
+            # Blend proxy % change with baseline price directionally
+            enriched["change"] = round(
+                mineral_rec.get("change", 0) * 0.6 + proxy_chg * weight * 0.4, 1)
+            enriched["live"] = True
+            enriched["proxy_ticker"] = ticker
+
+        # GDELT supply-chain signal
+        try:
+            query = urllib.parse.quote(
+                f"{mineral_name} supply export restriction mine production")
+            url = (
+                "https://api.gdeltproject.org/api/v2/doc/doc"
+                f"?query={query}&mode=artlist&maxrecords=4"
+                "&format=json&timespan=24h&sort=DateDesc"
+            )
+            r = requests.get(url, timeout=6,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; GeoLocator/1.0)"})
+            if r.status_code == 200:
+                arts = r.json().get("articles", [])
+                enriched["live_hits"] = len(arts)
+                if arts:
+                    enriched["live_headline"] = arts[0].get("title", "")[:100]
+                    headline_lower = arts[0].get("title", "").lower()
+                    if any(kw in headline_lower for kw in
+                           ("ban", "restriction", "sanction", "shortage", "cut")):
+                        enriched["supply_risk"] = min(99,
+                            mineral_rec.get("supply_risk", 50) + 5)
+        except Exception:
+            pass
+
+        results.append(enriched)
+
+    return results if results else CRIT_MIN_DATA
+
+
+# ─────────────────────────────────────────────────────────────
+# SIGINT live-enrichment fetchers
+# Each function uses the hardcoded baseline as a fallback and
+# blends in signals pulled from GDELT / USGS / open feeds.
+# ─────────────────────────────────────────────────────────────
+
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_live_comint() -> list:
+    """
+    Enrich COMINT_SIGNALS with live GDELT article counts + tone.
+    For each signal, query GDELT for the actor keyword in the last 6 h.
+    If GDELT returns articles, update `last_active`, `confidence` (±5 pts),
+    and add a `live_hits` count.  Falls back to baseline on any error.
+    """
+    import urllib.parse
+    from datetime import datetime, timezone, timedelta
+
+    results = []
+    now_utc = datetime.now(tz=timezone.utc)
+
+    for sig in COMINT_SIGNALS:
+        enriched = dict(sig)
+        try:
+            actor_kw = sig.get("actor", "").replace("/", " ").replace("(", "").replace(")", "")
+            target_kw = sig.get("target", "")
+            query = urllib.parse.quote(f"{actor_kw} {target_kw} signal intercept communication")
+            url = (
+                "https://api.gdeltproject.org/api/v2/doc/doc"
+                f"?query={query}&mode=artlist&maxrecords=5"
+                "&format=json&timespan=6h&sort=DateDesc"
+            )
+            r = requests.get(url, timeout=8,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; GeoLocator/1.0)"})
+            if r.status_code == 200:
+                arts = r.json().get("articles", [])
+                hit_count = len(arts)
+                if hit_count > 0:
+                    # Nudge confidence up by 1 pt per article hit (cap ±5)
+                    delta = min(5, hit_count)
+                    enriched["confidence"] = min(99, sig.get("confidence", 75) + delta)
+                    enriched["intercept"]  = "Active"
+                    enriched["last_active"] = now_utc.strftime("%Y-%m-%d")
+                    enriched["live_hits"]   = hit_count
+                    enriched["live_headline"] = arts[0].get("title", "")[:120] if arts else ""
+                else:
+                    enriched["live_hits"] = 0
+            else:
+                enriched["live_hits"] = 0
+        except Exception:
+            enriched["live_hits"] = 0
+        results.append(enriched)
+
+    return results if results else COMINT_SIGNALS
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_live_elint() -> list:
+    """
+    Enrich ELINT_SIGNALS with GDELT article hits for each system/actor.
+    Also checks USGS seismic feed for nuclear-test indicators near known
+    ELINT-monitored sites (Punggye-ri, Lop Nur) — flags anomalies.
+    Falls back to ELINT_SIGNALS baseline on any error.
+    """
+    import urllib.parse
+    from datetime import datetime, timezone
+
+    now_utc = datetime.now(tz=timezone.utc)
+    results = []
+
+    # Pull recent USGS seismic data once for the whole call
+    usgs_quakes = []
+    try:
+        r_usgs = requests.get(
+            "https://earthquake.usgs.gov/fdsnws/event/1/query",
+            params={"format": "geojson", "minmagnitude": 2.8,
+                    "limit": 50, "orderby": "time"},
+            timeout=8)
+        if r_usgs.status_code == 200:
+            for feat in r_usgs.json().get("features", []):
+                c = feat.get("geometry", {}).get("coordinates", [0, 0, 0])
+                usgs_quakes.append({
+                    "lat": float(c[1]), "lon": float(c[0]),
+                    "depth": float(c[2]),
+                    "mag": float(feat["properties"].get("mag", 0) or 0),
+                    "place": feat["properties"].get("place", ""),
+                })
+    except Exception:
+        pass
+
+    for sig in ELINT_SIGNALS:
+        enriched = dict(sig)
+        try:
+            system_kw = sig.get("system", "").replace("-", " ")
+            actor_kw  = sig.get("actor", "")
+            query = urllib.parse.quote(f"{system_kw} {actor_kw} radar electronic warfare")
+            url = (
+                "https://api.gdeltproject.org/api/v2/doc/doc"
+                f"?query={query}&mode=artlist&maxrecords=5"
+                "&format=json&timespan=12h&sort=DateDesc"
+            )
+            r = requests.get(url, timeout=8,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; GeoLocator/1.0)"})
+            if r.status_code == 200:
+                arts = r.json().get("articles", [])
+                enriched["live_hits"] = len(arts)
+                if arts:
+                    enriched["status"] = "Active"
+                    enriched["live_headline"] = arts[0].get("title", "")[:120]
+                    enriched["last_seen"] = now_utc.strftime("%Y-%m-%d %H:%M UTC")
+            else:
+                enriched["live_hits"] = 0
+
+            # Seismic anomaly check — flag if any shallow quake within 150 km
+            sig_lat = sig.get("lat", 0)
+            sig_lon = sig.get("lon", 0)
+            for q in usgs_quakes:
+                dlat = abs(q["lat"] - sig_lat)
+                dlon = abs(q["lon"] - sig_lon)
+                approx_km = ((dlat ** 2 + dlon ** 2) ** 0.5) * 111
+                if approx_km < 150 and q["depth"] < 10:
+                    enriched["seismic_flag"] = True
+                    enriched["seismic_detail"] = (
+                        f"M{q['mag']:.1f} shallow quake {int(approx_km)} km away — "
+                        f"{q['place']}"
+                    )
+                    break
+
+        except Exception:
+            enriched["live_hits"] = 0
+
+        results.append(enriched)
+
+    return results if results else ELINT_SIGNALS
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_live_masint() -> list:
+    """
+    Enrich MASINT_EVENTS with real USGS seismic events and CTBTO-correlated
+    nuclear/explosion signals.
+
+    Strategy:
+    - For Seismic-type events: query USGS for recent quakes near the baseline
+      lat/lon (within 200 km).  Replace confidence / date with live data if a
+      matching event is found.
+    - For all types: query GDELT for related keywords and surface the headline.
+    - Append any NEW USGS shallow quakes (depth < 12 km, mag > 3.0) near known
+      nuclear sites as dynamically-generated MASINT entries.
+    Falls back to MASINT_EVENTS baseline on any error.
+    """
+    from datetime import datetime, timezone
+    import urllib.parse
+
+    now_utc = datetime.now(tz=timezone.utc)
+    NUCLEAR_SITE_COORDS = [
+        (41.27, 129.08, "Punggye-ri DPRK"),
+        (33.72, 51.73,  "Natanz Iran"),
+        (39.81, 125.75, "Yongbyon DPRK"),
+        (40.06, 93.7,   "Lop Nur China"),
+        (69.0,  33.0,   "Kola Russia"),
+        (35.0,  32.5,   "Incirlik Turkey"),
+    ]
+
+    # Pull USGS seismic data
+    usgs_all = []
+    try:
+        r_usgs = requests.get(
+            "https://earthquake.usgs.gov/fdsnws/event/1/query",
+            params={"format": "geojson", "minmagnitude": 2.5,
+                    "limit": 100, "orderby": "time"},
+            timeout=8)
+        if r_usgs.status_code == 200:
+            for feat in r_usgs.json().get("features", []):
+                c = feat.get("geometry", {}).get("coordinates", [0, 0, 0])
+                ts = feat["properties"].get("time", 0) or 0
+                usgs_all.append({
+                    "lat":   float(c[1]),
+                    "lon":   float(c[0]),
+                    "depth": float(c[2]),
+                    "mag":   float(feat["properties"].get("mag", 0) or 0),
+                    "place": feat["properties"].get("place", ""),
+                    "date":  datetime.utcfromtimestamp(ts / 1000).strftime("%Y-%m-%d")
+                             if ts else now_utc.strftime("%Y-%m-%d"),
+                })
+    except Exception:
+        pass
+
+    results = []
+    used_usgs_idxs = set()
+
+    for ev in MASINT_EVENTS:
+        enriched = dict(ev)
+        ev_lat = ev.get("lat", 0)
+        ev_lon = ev.get("lon", 0)
+
+        # For seismic-type events try to match a real USGS event nearby
+        if ev.get("type") == "Seismic":
+            best_match = None
+            best_dist  = 999
+            for i, q in enumerate(usgs_all):
+                dlat = abs(q["lat"] - ev_lat)
+                dlon = abs(q["lon"] - ev_lon)
+                dist = ((dlat ** 2 + dlon ** 2) ** 0.5) * 111
+                if dist < 200 and q["depth"] < 20:
+                    if dist < best_dist:
+                        best_dist  = dist
+                        best_match = (i, q)
+            if best_match:
+                i, q = best_match
+                used_usgs_idxs.add(i)
+                enriched["confidence"]   = min(92, ev.get("confidence", 55) + 15)
+                enriched["date"]         = q["date"]
+                enriched["depth_km"]     = round(q["depth"], 1)
+                enriched["live_source"]  = "USGS real-time"
+                enriched["live_detail"]  = (
+                    f"USGS: M{q['mag']:.1f} @ {q['depth']:.1f} km depth — "
+                    f"{q['place']} — {int(best_dist)} km from baseline site"
+                )
+
+        # GDELT keyword enrichment for all MASINT types
+        try:
+            loc_kw = ev.get("location", "").split(",")[0]
+            type_kw = ev.get("type", "")
+            query = urllib.parse.quote(
+                f"{loc_kw} {type_kw} explosion radiation nuclear seismic signature")
+            url = (
+                "https://api.gdeltproject.org/api/v2/doc/doc"
+                f"?query={query}&mode=artlist&maxrecords=4"
+                "&format=json&timespan=48h&sort=DateDesc"
+            )
+            r = requests.get(url, timeout=8,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; GeoLocator/1.0)"})
+            if r.status_code == 200:
+                arts = r.json().get("articles", [])
+                enriched["live_hits"] = len(arts)
+                if arts:
+                    enriched["live_headline"] = arts[0].get("title", "")[:120]
+            else:
+                enriched["live_hits"] = 0
+        except Exception:
+            enriched["live_hits"] = 0
+
+        results.append(enriched)
+
+    # Append new USGS shallow events near nuclear sites not already matched
+    new_id_counter = len(MASINT_EVENTS) + 1
+    for i, q in enumerate(usgs_all):
+        if i in used_usgs_idxs:
+            continue
+        if q["depth"] > 12 or q["mag"] < 3.0:
+            continue
+        for site_lat, site_lon, site_name in NUCLEAR_SITE_COORDS:
+            dlat = abs(q["lat"] - site_lat)
+            dlon = abs(q["lon"] - site_lon)
+            dist = ((dlat ** 2 + dlon ** 2) ** 0.5) * 111
+            if dist < 250:
+                results.append({
+                    "id":         f"M{900 + new_id_counter:03d}",
+                    "type":       "Seismic",
+                    "event":      f"USGS shallow event near {site_name}",
+                    "location":   q["place"] or site_name,
+                    "lat":        q["lat"],
+                    "lon":        q["lon"],
+                    "magnitude":  q["mag"],
+                    "depth_km":   q["depth"],
+                    "confidence": 45,
+                    "date":       q["date"],
+                    "detail":     (
+                        f"USGS real-time: M{q['mag']:.1f} shallow quake "
+                        f"({q['depth']:.1f} km depth) detected {int(dist)} km "
+                        f"from {site_name}. Monitoring for UGT indicators."
+                    ),
+                    "live_source": "USGS real-time",
+                    "live_hits":   0,
+                })
+                new_id_counter += 1
+                break  # only assign each quake to one site
+
+    return results if results else MASINT_EVENTS
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def fetch_live_threat_actors() -> list:
+    """
+    Enrich THREAT_ACTORS with live GDELT article volume and tone.
+    For each actor, query GDELT for news in the last 24 h.
+    High article volume → raise threat_level by up to 8 pts.
+    Negative GDELT tone → raise threat_level by up to 4 pts.
+    Adds `live_hits`, `live_headline`, `live_tone`, and `last_seen` fields.
+    Falls back to THREAT_ACTORS baseline on any error.
+    """
+    import urllib.parse
+    from datetime import datetime, timezone
+
+    now_utc = datetime.now(tz=timezone.utc)
+    results = []
+
+    for actor in THREAT_ACTORS:
+        enriched = dict(actor)
+        try:
+            actor_kw = (actor.get("actor", "") + " " +
+                        actor.get("unit", "")).replace("/", " ")
+            query = urllib.parse.quote(
+                f"{actor_kw} cyber espionage attack hacking intelligence")
+
+            # Article volume
+            url_art = (
+                "https://api.gdeltproject.org/api/v2/doc/doc"
+                f"?query={query}&mode=artlist&maxrecords=10"
+                "&format=json&timespan=24h&sort=DateDesc"
+            )
+            r_art = requests.get(url_art, timeout=8,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; GeoLocator/1.0)"})
+            hit_count = 0
+            headline  = ""
+            if r_art.status_code == 200:
+                arts = r_art.json().get("articles", [])
+                hit_count = len(arts)
+                headline  = arts[0].get("title", "")[:120] if arts else ""
+
+            # Tone series (negativity → higher threat)
+            url_tone = (
+                "https://api.gdeltproject.org/api/v2/tv/tv"
+                f"?query={query}&mode=timelinetone&format=json&timespan=24h"
+            )
+            avg_neg_tone = 0.0
+            try:
+                r_tone = requests.get(url_tone, timeout=8,
+                    headers={"User-Agent": "Mozilla/5.0 (compatible; GeoLocator/1.0)"})
+                if r_tone.status_code == 200:
+                    tl = r_tone.json().get("timeline", [{}])
+                    pts = tl[0].get("data", []) if tl else []
+                    neg_vals = [abs(float(p.get("value", 0)))
+                                for p in pts if float(p.get("value", 0) or 0) < 0]
+                    avg_neg_tone = sum(neg_vals) / len(neg_vals) if neg_vals else 0.0
+            except Exception:
+                pass
+
+            # Blend into threat_level
+            base_tl  = actor.get("threat_level", 50)
+            vol_bump = min(8, hit_count // 2)        # max +8 from volume
+            tone_bump = min(4, int(avg_neg_tone * 0.8))  # max +4 from tone
+            new_tl   = min(99, base_tl + vol_bump + tone_bump)
+
+            enriched["threat_level"]    = new_tl
+            enriched["live_hits"]       = hit_count
+            enriched["live_headline"]   = headline
+            enriched["live_tone"]       = round(avg_neg_tone, 2)
+            enriched["last_seen"]       = now_utc.strftime("%Y-%m-%d %H:%M UTC")
+
+            # Escalate status label if live signals are strong
+            if new_tl >= 92:
+                enriched["status"] = "CRITICAL"
+            elif new_tl >= 85 and enriched.get("status") not in ("Highly Active", "CRITICAL"):
+                enriched["status"] = "Highly Active"
+
+        except Exception:
+            pass
+
+        results.append(enriched)
+
+    return results if results else THREAT_ACTORS
+
+
 @st.cache_data(ttl=120, show_spinner=False)
 def fetch_acled_events(limit: int = 50) -> list:
     """
@@ -2412,7 +3433,7 @@ def get_country_from_tip(tip: str) -> str:
     return ""
 
 def get_all_signals_for_country(country: str) -> dict:
-    """Gather all data signals for a country from the static datasets."""
+    """Gather all data signals for a country from live + static datasets."""
     c_lower = country.lower()
     signals = {
         "military_bases": [],
@@ -2438,8 +3459,12 @@ def get_all_signals_for_country(country: str) -> dict:
         factions = " ".join(str(f) for f in cdata.get("factions",[]))
         if c_lower in cname.lower() or c_lower in factions.lower():
             signals["conflicts"].append(cname)
-    # Military activity
-    for m in MILITARY_ACTIVITY:
+    # Military activity — use live-enriched data (cached, so no extra HTTP cost)
+    try:
+        _mil_src = fetch_live_military_activity()
+    except Exception:
+        _mil_src = MILITARY_ACTIVITY
+    for m in _mil_src:
         if c_lower in m.get("country","").lower() or c_lower in m.get("name","").lower():
             signals["military_activity"].append(m["name"])
     # Historical events (recent 5)
@@ -2450,12 +3475,20 @@ def get_all_signals_for_country(country: str) -> dict:
                 break
     # Instability index — uses live GDELT-blended data
     signals["instability"] = get_instability_for_country(country)
-    # Nuke alerts
-    for na in NUKE_ALERTS:
+    # Nuke alerts — use live-enriched data
+    try:
+        _nuke_src = fetch_live_nuke_alerts()
+    except Exception:
+        _nuke_src = NUKE_ALERTS
+    for na in _nuke_src:
         if c_lower in na["site"].lower():
             signals["nuke_alerts"].append(na)
-    # WMD posture
-    for wp in WMD_POSTURE:
+    # WMD posture — use live-enriched data
+    try:
+        _wmd_src = fetch_live_wmd_posture()
+    except Exception:
+        _wmd_src = WMD_POSTURE
+    for wp in _wmd_src:
         if c_lower in wp["actor"].lower():
             signals["wmd"] = wp
             break
@@ -7189,16 +8222,20 @@ with tab_intel:
     import streamlit.components.v1 as _ic
     from html import escape as _he
     from concurrent.futures import ThreadPoolExecutor as _TPE_i
-    # Parallel fetch — cuts 4 serial HTTP calls to ~1× single-call latency
-    with _TPE_i(max_workers=4) as _ex_i:
+    # Parallel fetch — includes live nuke/WMD enrichment
+    with _TPE_i(max_workers=6) as _ex_i:
         _fi_outage = _ex_i.submit(fetch_outage_feed)
         _fi_risk   = _ex_i.submit(fetch_live_strategic_risk)
         _fi_conf   = _ex_i.submit(fetch_news_rss, "conflict")
         _fi_cyber  = _ex_i.submit(fetch_news_rss, "geopolitics")
+        _fi_nuke   = _ex_i.submit(fetch_live_nuke_alerts)
+        _fi_wmd    = _ex_i.submit(fetch_live_wmd_posture)
     _outage_arts_pre   = _fi_outage.result()
     _live_risk_pre     = _fi_risk.result()
     _live_conf_pre     = _fi_conf.result()
     _live_cyber_pre    = _fi_cyber.result()
+    _live_nuke_data    = _fi_nuke.result()  or NUKE_ALERTS
+    _live_wmd_data     = _fi_wmd.result()   or WMD_POSTURE
 
     _outage_arts = _outage_arts_pre
 
@@ -7219,7 +8256,7 @@ with tab_intel:
     high_fp    = sum(1 for f in [
         {"risk":49},{"risk":82},{"risk":65},{"risk":58},{"risk":45},{"risk":72},{"risk":61}
     ] if f["risk"] >= 60)
-    nuke_crit  = sum(1 for n in NUKE_ALERTS if n["level"] == "CRITICAL")
+    nuke_crit  = sum(1 for n in _live_nuke_data if n["level"] == "CRITICAL")
     global_risk = 58
 
     kpi_html = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">'
@@ -7443,23 +8480,27 @@ with tab_intel:
         pill_style_on  = "padding:4px 12px;border-radius:20px;font-size:10px;cursor:pointer;background:rgba(0,200,255,.1);border:1px solid rgba(0,200,255,.3);color:#00c8ff;margin-right:4px"
         pill_style_off = "padding:4px 12px;border-radius:20px;font-size:10px;cursor:pointer;background:#0c1a28;border:1px solid rgba(61,90,115,.3);color:#3d5a73;margin-right:4px"
         nuke_rows = ""
-        for n in NUKE_ALERTS:
+        for n in _live_nuke_data:
             lc = "#ff3d5a" if n["level"]=="CRITICAL" else "#ff8c42" if n["level"]=="HIGH" else "#ffb400"
+            live_badge = _bdg("LIVE", "#00e676") if n.get("live_hits", 0) > 0 else ""
+            live_extra = f'<div style="font-size:9px;color:#2a8a5a;margin-top:3px">▸ {_he(n["live_headline"][:90])}</div>' if n.get("live_headline") else ""
             nuke_rows += f'''<div class="row-item" style="border-left-color:{n.get("col",lc)};background:#06101e">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
 <span style="font-size:12px;font-weight:600;color:#dce8f5">{_he(n["site"])}</span>
-{_bdg(n["status"], lc)}</div>
-<div style="font-size:11px;color:#7fb3cc;line-height:1.5">{_he(n["detail"])}</div></div>'''
+<div style="display:flex;gap:4px;align-items:center">{live_badge}{_bdg(n["status"], lc)}</div></div>
+<div style="font-size:11px;color:#7fb3cc;line-height:1.5">{_he(n["detail"])}</div>{live_extra}</div>'''
         wmd_rows = ""
-        for w in WMD_POSTURE:
+        for w in _live_wmd_data:
             col = _rc(w["risk"])
+            live_badge = _bdg("LIVE", "#00e676") if w.get("live_hits", 0) > 0 else ""
+            live_extra = f'<div style="font-size:9px;color:#2a8a5a;margin-top:3px">▸ {_he(w["live_headline"][:90])}</div>' if w.get("live_headline") else ""
             wmd_rows += f'''<div class="row-item" style="border-left-color:{col}">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
 <div><span style="font-size:12px;font-weight:600;color:#dce8f5">{_he(w["actor"])}</span>
 <span style="font-size:9px;color:#3d5a73;margin-left:8px">{_he(w["type"])}</span></div>
-<span style="font-size:24px;font-weight:700;color:{col}">{w["risk"]}</span></div>
+<div style="display:flex;gap:4px;align-items:center">{live_badge}<span style="font-size:24px;font-weight:700;color:{col}">{w["risk"]}</span></div></div>
 {_bar(w["risk"], col)}
-<div style="font-size:10px;color:#3d5a73;margin-top:2px">{_he(w["assets"][:70])}</div></div>'''
+<div style="font-size:10px;color:#3d5a73;margin-top:2px">{_he(w["assets"][:70])}</div>{live_extra}</div>'''
         return f'''<div class="panel"><div class="stitle">Nuclear &amp; WMD Status</div>
 <div style="margin-bottom:12px">
 <button onclick="this.parentNode.querySelectorAll(\'button\').forEach(b=>b.setAttribute(\'style\',\'{pill_style_off}\'));this.setAttribute(\'style\',\'{pill_style_on}\');document.getElementById(\'nw0\').style.display=\'block\';document.getElementById(\'nw1\').style.display=\'none\'" style="{pill_style_on}">Nuclear Sites</button>
@@ -7638,15 +8679,26 @@ with tab_sigint:
 
     # ── Live data collection — parallel ────────────────────────
     from concurrent.futures import ThreadPoolExecutor as _TPE_s
-    with _TPE_s(max_workers=9) as _ex_s:
-        _fs_news  = _ex_s.submit(fetch_news_rss, "geopolitics")
-        _fs_conf  = _ex_s.submit(fetch_news_rss, "conflict")
-        _fs_evts  = _ex_s.submit(fetch_live_global_events, 25)
-        _fs_out   = _ex_s.submit(fetch_outage_feed)
-        _fs_risk  = _ex_s.submit(fetch_live_strategic_risk)
-        _fs_kp    = _ex_s.submit(fetch_kp)
-        _fs_usgs  = _ex_s.submit(fetch_usgs)
-        _fs_cyber = _ex_s.submit(fetch_gdelt_conflict, "cyber attack espionage hacking")
+    with _TPE_s(max_workers=18) as _ex_s:
+        _fs_news    = _ex_s.submit(fetch_news_rss, "geopolitics")
+        _fs_conf    = _ex_s.submit(fetch_news_rss, "conflict")
+        _fs_evts    = _ex_s.submit(fetch_live_global_events, 25)
+        _fs_out     = _ex_s.submit(fetch_outage_feed)
+        _fs_risk    = _ex_s.submit(fetch_live_strategic_risk)
+        _fs_kp      = _ex_s.submit(fetch_kp)
+        _fs_usgs    = _ex_s.submit(fetch_usgs)
+        _fs_cyber   = _ex_s.submit(fetch_gdelt_conflict, "cyber attack espionage hacking")
+        # Live SIGINT enrichment — replaces hardcoded baselines
+        _fs_comint  = _ex_s.submit(fetch_live_comint)
+        _fs_elint   = _ex_s.submit(fetch_live_elint)
+        _fs_masint  = _ex_s.submit(fetch_live_masint)
+        _fs_actors  = _ex_s.submit(fetch_live_threat_actors)
+        # Live overlay enrichment — replaces remaining hardcoded map arrays
+        _fs_gps_jam = _ex_s.submit(fetch_live_gps_jamming)
+        _fs_cythrt  = _ex_s.submit(fetch_live_cyber_threats)
+        _fs_cii     = _ex_s.submit(fetch_live_cii)
+        _fs_inet    = _ex_s.submit(fetch_live_internet_outages)
+        _fs_milact  = _ex_s.submit(fetch_live_military_activity)
     _sigint_news      = _fs_news.result()
     _sigint_conf      = _fs_conf.result()
     _sigint_events    = _fs_evts.result()
@@ -7655,6 +8707,17 @@ with tab_sigint:
     _sigint_kp        = _fs_kp.result()
     _sigint_usgs      = _fs_usgs.result()
     _sigint_cyber_raw = _fs_cyber.result()
+    # Live-enriched SIGINT datasets (fall back to static baseline on failure)
+    _live_comint  = _fs_comint.result()  or COMINT_SIGNALS
+    _live_elint   = _fs_elint.result()   or ELINT_SIGNALS
+    _live_masint  = _fs_masint.result()  or MASINT_EVENTS
+    _live_actors  = _fs_actors.result()  or THREAT_ACTORS
+    # Live-enriched overlay datasets
+    _live_gps_jam = _fs_gps_jam.result() or GPS_JAMMING_ZONES
+    _live_cythrt  = _fs_cythrt.result()  or CYBER_THREATS_GEO
+    _live_cii     = _fs_cii.result()     or CII_INSTABILITY
+    _live_inet    = _fs_inet.result()    or INTERNET_OUTAGES
+    _live_milact  = _fs_milact.result()  or MILITARY_ACTIVITY
 
     # Seismic events M3.5+ last 24h for MASINT overlay
     _sig_quakes = []
@@ -7723,19 +8786,19 @@ with tab_sigint:
     _sig_ts = _sdt.now(tz=_stz.utc).strftime("%H:%M:%S UTC")
 
     _sigint_payload = _sj.dumps({
-        # Static baseline data
-        "comint":          COMINT_SIGNALS,
-        "elint":           ELINT_SIGNALS,
-        "masint":          MASINT_EVENTS,
+        # Live-enriched SIGINT data (GDELT + USGS backed; falls back to baseline)
+        "comint":          _live_comint,
+        "elint":           _live_elint,
+        "masint":          _live_masint,
         "osint_platforms": OSINT_PLATFORMS,
         "collection":      COLLECTION_PRIORITIES,
-        "actors":          THREAT_ACTORS,
+        "actors":          _live_actors,
         "orbital":         ORBITAL_SURVEILLANCE,
-        "gps_jamming":     GPS_JAMMING_ZONES,
-        "cyber_threats":   CYBER_THREATS_GEO,
-        "cii":             CII_INSTABILITY,
-        "mil_activity":    MILITARY_ACTIVITY,
-        "internet_static": INTERNET_OUTAGES,
+        "gps_jamming":     _live_gps_jam,
+        "cyber_threats":   _live_cythrt,
+        "cii":             _live_cii,
+        "mil_activity":    _live_milact,
+        "internet_static": _live_inet,
         # Live data
         "live_feed":       (_sigint_news  or [])[:15],
         "live_conflict":   (_sigint_conf  or [])[:10],
@@ -7755,9 +8818,9 @@ with tab_sigint:
     # Computed vars for f-string injection
     _sig_risk_score = _sigint_risk.get("score", "—") if isinstance(_sigint_risk, dict) else "—"
     _sig_risk_label = _sigint_risk.get("label", "") if isinstance(_sigint_risk, dict) else ""
-    _jam_count = sum(1 for z in GPS_JAMMING_ZONES if z.get("severity") == "High")
-    _crit_actors = sum(1 for a in THREAT_ACTORS if a.get("threat_level", 0) >= 85)
-    _cii_crit = sum(1 for c in CII_INSTABILITY if c.get("risk", 0) >= 90)
+    _jam_count = sum(1 for z in _live_gps_jam if z.get("severity") == "High")
+    _crit_actors = sum(1 for a in _live_actors if a.get("threat_level", 0) >= 85)
+    _cii_crit = sum(1 for c in _live_cii if c.get("risk", 0) >= 90)
     _live_count = len(_sigint_news or []) + len(_sigint_conf or [])
 
     _sigint_html = f"""<!DOCTYPE html>
@@ -8246,7 +9309,7 @@ with tab_econ:
 
     # ── Fetch live market data — all 6 sources in parallel ──────
     from concurrent.futures import ThreadPoolExecutor as _TPE_e
-    with _TPE_e(max_workers=7) as _ex_e:
+    with _TPE_e(max_workers=9) as _ex_e:
         _fe_idx     = _ex_e.submit(fetch_live_indices)
         _fe_com     = _ex_e.submit(fetch_live_commodities)
         _fe_fx      = _ex_e.submit(fetch_live_forex)
@@ -8254,6 +9317,8 @@ with tab_econ:
         _fe_cry     = _ex_e.submit(fetch_live_crypto)
         _fe_pizza   = _ex_e.submit(fetch_live_pizza_index)
         _fe_layoffs = _ex_e.submit(fetch_live_layoffs)
+        _fe_ship    = _ex_e.submit(fetch_live_shipping_rates)
+        _fe_mins    = _ex_e.submit(fetch_live_critical_minerals)
     _live_indices     = _fe_idx.result()
     _live_commodities = _fe_com.result()
     _live_forex       = _fe_fx.result()
@@ -8261,6 +9326,8 @@ with tab_econ:
     _live_crypto      = _fe_cry.result()
     _econ_pizza_pre   = _fe_pizza.result()
     _live_layoffs     = _fe_layoffs.result()
+    _live_shipping    = _fe_ship.result()  or SHIPPING_RATES
+    _live_minerals    = _fe_mins.result()  or CRIT_MIN_DATA
 
     # Live-update oil prices if Yahoo succeeded
     _oil_out = []
@@ -8355,8 +9422,8 @@ with tab_econ:
         "restrictions": TRADE_RESTRICTIONS,
         "tariffs":      TARIFFS,
         "chokepoints":  CHOKEPOINTS,
-        "shipping":     SHIPPING_RATES,
-        "minerals":     CRIT_MIN_DATA,
+        "shipping":     _live_shipping,
+        "minerals":     _live_minerals,
         "crypto":       CRYPTO_DATA,
         "sectors":      _sectors_out,
         "layoffs":      _live_layoffs,
