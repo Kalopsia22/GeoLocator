@@ -5243,478 +5243,451 @@ section[data-testid="stMain"] > div:first-child > div > iframe {
     # Step 2: Full intro in components.html — JS runs fine here
     _ic.html("""<!DOCTYPE html>
 <html><head><meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=IBM+Plex+Mono:wght@300;400;500&family=Bebas+Neue&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
-html,body{width:100%;height:100%;overflow:hidden;background:#020609;}
-
-/* ── Root ── */
-#gi{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;font-family:'IBM Plex Mono',monospace;}
-
-/* ── Canvas layers ── */
-#c-bg,#c-globe,#c-fx{position:absolute;inset:0;width:100%;height:100%;}
-#c-globe,#c-fx{pointer-events:none;}
-#c-scan{position:absolute;inset:0;pointer-events:none;z-index:5;
-  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.03) 3px,rgba(0,0,0,.03) 4px);}
-#c-vig{position:absolute;inset:0;pointer-events:none;z-index:4;
-  background:radial-gradient(ellipse 88% 88% at 50% 50%,transparent 22%,rgba(2,6,9,.96) 100%);}
-
-/* ── Boot flash ── */
-#p1{position:absolute;z-index:20;text-align:center;width:100%;
-  opacity:0;animation:fi .3s ease .1s forwards,fo .4s ease 1.7s forwards;}
-@keyframes fi{to{opacity:1}} @keyframes fo{to{opacity:0}}
-.cbar{height:1px;background:linear-gradient(90deg,transparent,#ff2d55,transparent);
-  margin:6px auto;width:clamp(180px,35vw,480px);
-  animation:sx .8s ease .15s forwards;opacity:0;transform:scaleX(0);}
-@keyframes sx{to{opacity:1;transform:scaleX(1)}}
-.cline{font-size:clamp(8px,1.1vw,12px);letter-spacing:.3em;color:#ff2d55;text-transform:uppercase;margin:4px 0;}
-
-/* ── Main layer ── */
-#p2{position:absolute;z-index:20;text-align:center;width:100%;
-  opacity:0;animation:fi .7s ease 2s forwards;}
-
-/* ── Logo ── */
-#lw{opacity:0;transform:translateY(10px);animation:li 1s cubic-bezier(.16,1,.3,1) 3s forwards;}
-@keyframes li{to{opacity:1;transform:translateY(0)}}
-#logo{font-family:'Orbitron',monospace;font-weight:900;
-  font-size:clamp(36px,8vw,100px);letter-spacing:.14em;color:#00d4ff;line-height:1;
-  text-shadow:0 0 60px rgba(0,212,255,.8),0 0 120px rgba(0,212,255,.3),0 0 3px rgba(255,255,255,.4);}
-#logo em{color:#f0a500;font-style:normal;
-  text-shadow:0 0 60px rgba(240,165,0,.8),0 0 120px rgba(240,165,0,.3);}
-#sub{font-size:clamp(7px,1.1vw,13px);letter-spacing:.42em;text-transform:uppercase;
-  color:rgba(0,212,255,.4);margin-top:9px;}
-#ver{font-size:clamp(7px,.9vw,11px);letter-spacing:.28em;color:rgba(0,212,255,.25);margin-top:4px;}
-
-/* ── Divider ── */
-#divl{height:1px;margin:14px auto;width:0;
-  background:linear-gradient(90deg,transparent,rgba(0,212,255,.4),rgba(240,165,0,.4),transparent);
-  animation:dw .7s ease 4.2s forwards;}
-@keyframes dw{to{width:clamp(240px,48vw,640px)}}
-
-/* ── Feature chips ── */
-#chips{opacity:0;transform:translateY(6px);animation:li .8s ease 4.6s forwards;
-  display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:10px;
-  max-width:clamp(320px,60vw,780px);padding:0 12px;}
-.chip{font-size:clamp(7px,.85vw,10px);letter-spacing:.18em;text-transform:uppercase;
-  padding:3px 10px;border-radius:2px;border:1px solid;white-space:nowrap;}
-.ch-c{color:#ff2d55;border-color:rgba(255,45,85,.3);background:rgba(255,45,85,.06);}
-.ch-s{color:#a855f7;border-color:rgba(168,85,247,.3);background:rgba(168,85,247,.06);}
-.ch-e{color:#f0a500;border-color:rgba(240,165,0,.3);background:rgba(240,165,0,.06);}
-.ch-i{color:#00d4ff;border-color:rgba(0,212,255,.3);background:rgba(0,212,255,.06);}
-.ch-g{color:#00e5a0;border-color:rgba(0,229,160,.3);background:rgba(0,229,160,.06);}
-
-/* ── HUD corners ── */
-.hud{position:absolute;z-index:20;opacity:0;animation:fi .5s ease 5.8s forwards;}
-#tl{top:20px;left:20px;} #tr{top:20px;right:20px;text-align:right;}
-#bl{bottom:56px;left:20px;} #br{bottom:56px;right:20px;text-align:right;}
-.hbox{position:relative;padding:8px 12px;
-  border:1px solid rgba(0,212,255,.1);border-radius:2px;background:rgba(2,6,9,.8);}
-.hbox::before,.hbox::after,.hbox>.bc::before,.hbox>.bc::after{
-  content:'';position:absolute;width:8px;height:8px;border-color:rgba(0,212,255,.35);border-style:solid;}
-.hbox::before{top:-1px;left:-1px;border-width:2px 0 0 2px;}
-.hbox::after{top:-1px;right:-1px;border-width:2px 2px 0 0;}
-.hbox>.bc::before{bottom:-1px;left:-1px;border-width:0 0 2px 2px;}
-.hbox>.bc::after{bottom:-1px;right:-1px;border-width:0 2px 2px 0;}
-.hl{font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:rgba(0,212,255,.35);line-height:1.9;}
-.hv{font-size:10px;font-weight:500;color:rgba(0,212,255,.7);}
-
-/* ── Centre threat bar ── */
-#thrbar{position:absolute;top:20px;left:50%;transform:translateX(-50%);
-  z-index:20;display:flex;align-items:center;gap:8px;
-  opacity:0;animation:fi .5s ease 6.2s forwards;}
-.tl{font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.28);}
-.tb{display:flex;gap:2px;}
-.tb span{width:clamp(12px,1.8vw,20px);height:7px;border-radius:1px;background:rgba(255,255,255,.06);}
-.tb span.on{animation:bp 2s ease-in-out infinite;}
-@keyframes bp{0%,100%{opacity:1}50%{opacity:.45}}
-
-/* ── AIS / airspace counters ── */
-#live-ct{position:absolute;top:48px;left:50%;transform:translateX(-50%);
-  z-index:20;display:flex;gap:14px;align-items:center;
-  opacity:0;animation:fi .5s ease 6.4s forwards;}
-.lct{font-size:8px;letter-spacing:.15em;text-transform:uppercase;
-  color:rgba(0,229,160,.6);display:flex;align-items:center;gap:5px;}
-.lct-dot{width:5px;height:5px;border-radius:50%;animation:bp 1.4s ease-in-out infinite;}
-
-/* ── Ticker ── */
-#tick{position:absolute;bottom:46px;left:0;right:0;height:26px;
-  background:rgba(3,6,9,.9);border-top:1px solid rgba(0,212,255,.12);
-  display:flex;align-items:center;overflow:hidden;
-  opacity:0;animation:fi .5s ease 6s forwards;}
-.tlbl{flex-shrink:0;background:#ff2d55;color:#fff;
-  font-size:9px;font-weight:500;letter-spacing:.12em;
-  padding:0 12px;height:100%;display:flex;align-items:center;white-space:nowrap;}
-.tks{display:inline-block;white-space:nowrap;
-  font-size:10px;color:rgba(194,212,238,.42);letter-spacing:.05em;
-  padding-left:100%;animation:scroll 18s linear infinite;}
+html,body{width:100%;height:100%;overflow:hidden;background:#02040a;}
+#geo-intro{position:fixed;inset:0;background:#02040a;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;font-family:'IBM Plex Mono',monospace;}
+#gi-bg,#gi-globe,#gi-fx{position:absolute;inset:0;width:100%;height:100%;}
+#gi-globe,#gi-fx{pointer-events:none;}
+#gi-scan{position:absolute;inset:0;pointer-events:none;z-index:5;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.04) 3px,rgba(0,0,0,.04) 6px);}
+#gi-vig{position:absolute;inset:0;pointer-events:none;z-index:4;background:radial-gradient(ellipse 90% 90% at 50% 50%,transparent 28%,rgba(2,4,10,.94) 100%);}
+#gi-p1{position:absolute;z-index:20;text-align:center;width:100%;opacity:0;animation:fadein .3s ease .1s forwards,fadeout .4s ease 1.7s forwards;}
+@keyframes fadein{to{opacity:1}}@keyframes fadeout{to{opacity:0}}
+.cbar{height:1px;background:linear-gradient(90deg,transparent,#ff3d5a,transparent);margin:6px auto;width:clamp(180px,35vw,480px);animation:scaleX .8s ease .15s forwards;opacity:0;transform:scaleX(0);}
+@keyframes scaleX{to{opacity:1;transform:scaleX(1)}}
+.cline{font-size:clamp(8px,1.1vw,12px);letter-spacing:.3em;color:#ff3d5a;text-transform:uppercase;margin:4px 0;}
+#gi-p2{position:absolute;z-index:20;text-align:center;width:100%;opacity:0;animation:fadein .7s ease 2s forwards;}
+#gi-lw{opacity:0;transform:translateY(10px);animation:logoin 1s cubic-bezier(.16,1,.3,1) 3s forwards;}
+@keyframes logoin{to{opacity:1;transform:translateY(0)}}
+#gi-logo{font-family:'Bebas Neue','Impact',sans-serif;font-size:clamp(40px,9vw,110px);letter-spacing:.18em;color:#00c8ff;line-height:1;text-shadow:0 0 60px rgba(0,200,255,.8),0 0 120px rgba(0,200,255,.3),0 0 3px rgba(255,255,255,.5);}
+#gi-logo em{color:#ffb400;font-style:normal;text-shadow:0 0 60px rgba(255,180,0,.8),0 0 120px rgba(255,180,0,.3);}
+#gi-sub{font-size:clamp(8px,1.2vw,14px);letter-spacing:.38em;text-transform:uppercase;color:rgba(0,200,255,.45);margin-top:8px;}
+#gi-div{height:1px;margin:14px auto;width:0;background:linear-gradient(90deg,transparent,rgba(0,200,255,.45),rgba(255,180,0,.45),transparent);animation:divexp .7s ease 4.2s forwards;}
+@keyframes divexp{to{width:clamp(240px,46vw,620px)}}
+/* Live event list fades in below logo */
+#gi-events{margin-top:10px;opacity:0;transform:translateY(6px);animation:logoin .8s ease 4.8s forwards;max-width:clamp(280px,44vw,580px);margin-left:auto;margin-right:auto;}
+.gi-ev{display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;text-align:left;}
+.gi-ev-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px;animation:evpulse 1.5s ease-in-out infinite;}
+@keyframes evpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.6)}}
+.gi-ev-text{font-size:clamp(8px,.9vw,11px);color:rgba(226,236,248,.55);line-height:1.5;letter-spacing:.04em;}
+.gi-ev-tag{font-size:clamp(7px,.8vw,9px);font-weight:600;letter-spacing:.18em;text-transform:uppercase;margin-right:6px;}
+.gi-hud{position:absolute;z-index:20;opacity:0;animation:fadein .5s ease 5.8s forwards;}
+#gi-tl{top:20px;left:20px;}#gi-tr{top:20px;right:20px;text-align:right;}#gi-bl{bottom:56px;left:20px;}
+.gi-hbox{position:relative;padding:8px 12px;border:1px solid rgba(0,200,255,.1);border-radius:2px;background:rgba(2,4,10,.75);}
+.gi-hbox::before,.gi-hbox::after,.gi-hbox>.gi-bc::before,.gi-hbox>.gi-bc::after{content:'';position:absolute;width:8px;height:8px;border-color:rgba(0,200,255,.4);border-style:solid;}
+.gi-hbox::before{top:-1px;left:-1px;border-width:2px 0 0 2px;}.gi-hbox::after{top:-1px;right:-1px;border-width:2px 2px 0 0;}
+.gi-hbox>.gi-bc::before{bottom:-1px;left:-1px;border-width:0 0 2px 2px;}.gi-hbox>.gi-bc::after{bottom:-1px;right:-1px;border-width:0 2px 2px 0;}
+.hl{font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:rgba(0,200,255,.4);line-height:1.9;}
+.hv{font-size:10px;font-weight:500;color:rgba(0,200,255,.75);}
+#gi-thr{position:absolute;top:20px;left:50%;transform:translateX(-50%);z-index:20;display:flex;align-items:center;gap:8px;opacity:0;animation:fadein .5s ease 6.2s forwards;}
+.tl{font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.3);}
+.tb{display:flex;gap:2px;}.tb span{width:clamp(12px,1.8vw,20px);height:7px;border-radius:1px;background:rgba(255,255,255,.07);}
+.tb span.on{animation:bp 2s ease-in-out infinite;}@keyframes bp{0%,100%{opacity:1}50%{opacity:.5}}
+#gi-tick{position:absolute;bottom:46px;left:0;right:0;height:26px;background:rgba(6,13,24,.9);border-top:1px solid rgba(255,61,90,.2);display:flex;align-items:center;overflow:hidden;opacity:0;animation:fadein .5s ease 6s forwards;}
+.tklbl{flex-shrink:0;background:#ff3d5a;color:#fff;font-size:9px;font-weight:500;letter-spacing:.12em;padding:0 12px;height:100%;display:flex;align-items:center;white-space:nowrap;}
+.tkscroll{display:inline-block;white-space:nowrap;font-size:10px;color:rgba(226,236,248,.45);letter-spacing:.05em;padding-left:100%;animation:scroll 16s linear infinite;}
 @keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-
-/* ── Progress bar ── */
-#prog{position:absolute;bottom:0;left:0;height:2px;
-  background:linear-gradient(90deg,#ff2d55,#f0a500,#00d4ff,#00e5a0);
-  animation:pw 10s linear forwards;}
-@keyframes pw{0%{width:0%}100%{width:100%}}
-
-/* ── Skip ── */
-#skip{position:absolute;bottom:14px;right:18px;z-index:30;
-  font-size:9px;letter-spacing:.15em;text-transform:uppercase;
-  color:rgba(255,255,255,.22);background:transparent;
-  border:1px solid rgba(255,255,255,.08);padding:4px 12px;
-  border-radius:2px;cursor:pointer;transition:all .2s;}
-#skip:hover{color:#00d4ff;border-color:rgba(0,212,255,.3);}
-
-/* ── Supabase badge (shows if persistence active) ── */
-#sbadge{position:absolute;bottom:56px;right:20px;
-  opacity:0;animation:fi .5s ease 6.8s forwards;
-  font-size:8px;letter-spacing:.14em;text-transform:uppercase;
-  color:rgba(0,229,160,.5);display:flex;align-items:center;gap:5px;}
+#gi-prog{position:absolute;bottom:0;left:0;height:2px;background:linear-gradient(90deg,#ff3d5a,#ff8c42,#ffb400,#00c8ff);animation:prog 10s linear forwards;}
+@keyframes prog{0%{width:0%}100%{width:100%}}
+#gi-skip{position:absolute;bottom:14px;right:18px;z-index:30;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.25);background:transparent;border:1px solid rgba(255,255,255,.1);padding:4px 12px;border-radius:2px;cursor:pointer;transition:all .2s;}
+#gi-skip:hover{color:#00c8ff;border-color:rgba(0,200,255,.3);}
 </style>
 </head>
 <body>
-<div id="gi">
-  <canvas id="c-bg"></canvas>
-  <canvas id="c-globe"></canvas>
-  <canvas id="c-fx"></canvas>
-  <div id="c-vig"></div>
-  <div id="c-scan"></div>
-
-  <!-- HUD: top-left -->
-  <div class="hud" id="tl">
-    <div class="hbox"><div class="bc"></div>
-      <div class="hl">SYSTEM STATUS</div>
-      <div class="hv" style="color:#00e5a0">OPERATIONAL</div>
-      <div class="hl" id="utc">UTC 00:00:00</div>
+<div id="geo-intro">
+  <canvas id="gi-bg"></canvas>
+  <canvas id="gi-globe"></canvas>
+  <canvas id="gi-fx"></canvas>
+  <div id="gi-vig"></div><div id="gi-scan"></div>
+  <div class="gi-hud" id="gi-tl">
+    <div class="gi-hbox"><div class="gi-bc"></div>
+      <div class="hl">SYSTEM STATUS</div><div class="hv" style="color:#00e676">OPERATIONAL</div>
+      <div class="hl" id="gi-utc">UTC 00:00:00</div>
     </div>
   </div>
-
-  <!-- HUD: top-right — updated feed count -->
-  <div class="hud" id="tr">
-    <div class="hbox"><div class="bc"></div>
-      <div class="hl">LIVE FEEDS</div>
-      <div class="hv" style="color:#00e5a0">25+ SOURCES ACTIVE</div>
-      <div class="hl">GDELT &middot; USGS &middot; ACLED &middot; OPENSKY &middot; AIS</div>
+  <div class="gi-hud" id="gi-tr">
+    <div class="gi-hbox"><div class="gi-bc"></div>
+      <div class="hl">FEEDS ACTIVE</div><div class="hv" style="color:#00e676" id="gi-feeds">CONNECTING...</div>
+      <div class="hl">GDELT &middot; USGS &middot; NOAA &middot; YAHOO</div>
     </div>
   </div>
-
-  <!-- HUD: bottom-left — updated theatres -->
-  <div class="hud" id="bl">
-    <div class="hbox"><div class="bc"></div>
+  <div class="gi-hud" id="gi-bl">
+    <div class="gi-hbox"><div class="gi-bc"></div>
       <div class="hl">ACTIVE THEATRES</div>
-      <div class="hv" style="color:#ff2d55">UKRAINE &middot; GAZA &middot; IRAN</div>
-      <div class="hv" style="color:#f0a500">SUDAN &middot; MYANMAR &middot; PAK-AFG</div>
-      <div class="hv" style="color:rgba(0,212,255,.6)">HAITI</div>
+      <div class="hv" style="color:#ff3d5a">UKRAINE &middot; GAZA &middot; IRAN</div>
+      <div class="hv" style="color:#ff8c42">SUDAN &middot; MYANMAR &middot; YEMEN</div>
     </div>
   </div>
-
-  <!-- HUD: bottom-right — persistence status -->
-  <div class="hud" id="br">
-    <div class="hbox"><div class="bc"></div>
-      <div class="hl">PERSISTENCE</div>
-      <div class="hv" id="persist-status" style="color:#00e5a0">SUPABASE ACTIVE</div>
-      <div class="hl">ACLED &middot; AIS &middot; SEISMIC &middot; GDELT</div>
-    </div>
-  </div>
-
-  <!-- Centre: threat level -->
-  <div id="thrbar">
+  <div id="gi-thr">
     <div class="tl">GLOBAL THREAT</div>
-    <div class="tb" id="tb"></div>
-    <div class="tl" style="color:#f0a500;font-weight:700;letter-spacing:.1em">ELEVATED</div>
+    <div class="tb" id="gi-tb"></div>
+    <div class="tl" style="color:#ff8c42;font-weight:700;letter-spacing:.1em">ELEVATED</div>
   </div>
-
-  <!-- Live counters row -->
-  <div id="live-ct">
-    <div class="lct"><span class="lct-dot" style="background:#00d4ff"></span>AIS VESSELS LIVE</div>
-    <div class="lct"><span class="lct-dot" style="background:#f0a500;animation-delay:.4s"></span>OPENSKY AIRSPACE</div>
-    <div class="lct"><span class="lct-dot" style="background:#ff2d55;animation-delay:.8s"></span>SIGINT ACTIVE</div>
-  </div>
-
-  <!-- Boot flash -->
-  <div id="p1">
+  <div id="gi-p1">
     <div class="cbar"></div>
     <div class="cline">&#x25BC; INITIALISING GLOBAL INTELLIGENCE FEED &#x25BC;</div>
-    <div class="cline" style="color:rgba(255,45,85,.5);font-size:clamp(6px,.9vw,9px);margin-top:3px">
-      AUTHORISED ACCESS ONLY &nbsp;/&nbsp; ALL ACTIVITY LOGGED
-    </div>
+    <div class="cline" style="color:rgba(255,61,90,.5);font-size:clamp(6px,.9vw,9px);margin-top:3px">AUTHORISED ACCESS ONLY &nbsp;/&nbsp; ALL ACTIVITY MONITORED</div>
     <div class="cbar"></div>
   </div>
-
-  <!-- Main -->
-  <div id="p2">
-    <div id="lw">
-      <div id="logo">THE&nbsp;GEO&#8209;<em>LOCATOR</em></div>
-      <div id="sub">Global Intelligence Operations Center</div>
-      <div id="ver">v7 &nbsp;&middot;&nbsp; 8 TABS &nbsp;&middot;&nbsp; 37 MAP LAYERS &nbsp;&middot;&nbsp; 22 LIVE FEEDS</div>
+  <div id="gi-p2">
+    <div id="gi-lw">
+      <div id="gi-logo">THE&nbsp;GEO&#8209;<em>LOCATOR</em></div>
+      <div id="gi-sub">Global Intelligence Operations Center</div>
     </div>
-    <div id="divl"></div>
-    <!-- Feature chips replacing chess board -->
-    <div id="chips">
-      <span class="chip ch-c">&#9876; Conflict Dashboard</span>
-      <span class="chip ch-s">&#128251; SIGINT</span>
-      <span class="chip ch-e">&#128202; Economic &amp; Markets</span>
-      <span class="chip ch-i">&#128752; Intel Dashboard</span>
-      <span class="chip ch-g">&#127758; Earth Signals</span>
-      <span class="chip ch-c">&#9876; ACLED Live Events</span>
-      <span class="chip ch-i">&#128674; AIS Vessel Tracking</span>
-      <span class="chip ch-s">&#9992; OpenSky Airspace</span>
-      <span class="chip ch-e">&#128196; SitRep Export</span>
-      <span class="chip ch-g">&#128225; Live News</span>
-      <span class="chip ch-i">&#128278; Supabase Persistence</span>
-      <span class="chip ch-c">61 Military Bases</span>
-      <span class="chip ch-s">37 Nuclear Sites</span>
-      <span class="chip ch-e">&#127829; Pizza Index</span>
+    <div id="gi-div"></div>
+    <div id="gi-events">
+      <!-- Populated by JS: live GDELT events or static fallback -->
     </div>
   </div>
-
-  <!-- Ticker: updated headlines -->
-  <div id="tick">
-    <div class="tlbl">&#9679;&nbsp;LIVE</div>
+  <div id="gi-tick">
+    <div class="tklbl">&#9679;&nbsp;LIVE</div>
     <div style="overflow:hidden;flex:1;height:100%;display:flex;align-items:center;padding-left:80px">
-      <div class="tks">
-        &#x25C6;&nbsp;UKRAINE: Russian missile salvo targets Kyiv energy grid &mdash; 12 casualties &nbsp;&nbsp;&nbsp;
-        &#x25C6;&nbsp;IRAN: IDF destroys Fordow enrichment complex &mdash; IAEA access lost &nbsp;&nbsp;&nbsp;
-        &#x25C6;&nbsp;GAZA: IDF operations in Rafah continue &mdash; aid corridor blocked &nbsp;&nbsp;&nbsp;
-        &#x25C6;&nbsp;PAK-AFG: PAF airstrikes in Paktika &mdash; TTP cross-border attack KPK &nbsp;&nbsp;&nbsp;
-        &#x25C6;&nbsp;SUDAN: RSF advancing North Darfur &mdash; famine declared 5 regions &nbsp;&nbsp;&nbsp;
-        &#x25C6;&nbsp;RED SEA: Houthi anti-ship drone intercepted 40nm from Bab el-Mandeb &nbsp;&nbsp;&nbsp;
-        &#x25C6;&nbsp;AIS: 3 tankers transiting dark through Hormuz &mdash; AIS off &nbsp;&nbsp;&nbsp;
-        &#x25C6;&nbsp;SIGINT: GPS jamming active Eastern Baltic &mdash; Russia source &nbsp;&nbsp;&nbsp;
-        &#x25C6;&nbsp;MARKETS: Brent +2.1% &mdash; Hormuz closure risk premium elevated &nbsp;&nbsp;&nbsp;
-        &#x25C6;&nbsp;OPENSKY: Military callsign REAPER tracked over Mediterranean &nbsp;&nbsp;&nbsp;
-        &#x25C6;&nbsp;HAITI: Viv Ansanm controls 85% Port-au-Prince &mdash; MSS mission under-resourced &nbsp;&nbsp;&nbsp;
-        &#x25C6;&nbsp;UKRAINE: Russian missile salvo targets Kyiv energy grid &mdash; 12 casualties &nbsp;&nbsp;&nbsp;
-        &#x25C6;&nbsp;IRAN: IDF destroys Fordow enrichment complex &mdash; IAEA access lost &nbsp;&nbsp;&nbsp;
-        &#x25C6;&nbsp;GAZA: IDF operations in Rafah continue &mdash; aid corridor blocked &nbsp;&nbsp;&nbsp;
-        &#x25C6;&nbsp;PAK-AFG: PAF airstrikes in Paktika &mdash; TTP cross-border attack KPK &nbsp;&nbsp;&nbsp;
-        &#x25C6;&nbsp;SUDAN: RSF advancing North Darfur &mdash; famine declared 5 regions &nbsp;&nbsp;&nbsp;
+      <div class="tkscroll" id="gi-tkscroll">
+        &#x25C6;&nbsp;UKRAINE: Russian missile salvo targets Kyiv power grid &nbsp;&nbsp;&nbsp;
+        &#x25C6;&nbsp;GAZA: Ground operations continue &mdash; civilian corridor closed &nbsp;&nbsp;&nbsp;
+        &#x25C6;&nbsp;IRAN: IRGC ballistic missile posture elevated following strikes &nbsp;&nbsp;&nbsp;
+        &#x25C6;&nbsp;RED SEA: Houthi drone intercepted 40nm from Bab el-Mandeb &nbsp;&nbsp;&nbsp;
+        &#x25C6;&nbsp;SUDAN: RSF advancing in North Darfur &mdash; UN declares famine &nbsp;&nbsp;&nbsp;
+        &#x25C6;&nbsp;MARKETS: Brent crude +2.1% &mdash; Hormuz closure risk premium rising &nbsp;&nbsp;&nbsp;
+        &#x25C6;&nbsp;UKRAINE: Russian missile salvo targets Kyiv power grid &nbsp;&nbsp;&nbsp;
+        &#x25C6;&nbsp;GAZA: Ground operations continue &mdash; civilian corridor closed &nbsp;&nbsp;&nbsp;
+        &#x25C6;&nbsp;IRAN: IRGC ballistic missile posture elevated following strikes &nbsp;&nbsp;&nbsp;
+        &#x25C6;&nbsp;RED SEA: Houthi drone intercepted 40nm from Bab el-Mandeb &nbsp;&nbsp;&nbsp;
       </div>
     </div>
   </div>
-
-  <button id="skip" onclick="geoSkip()">SKIP &rsaquo;</button>
-  <div id="prog"></div>
+  <button id="gi-skip" onclick="geoSkip()">SKIP &rsaquo;</button>
+  <div id="gi-prog"></div>
 </div>
 
 <script>
 (function(){
-// ── Resize ────────────────────────────────────────────────────
-var bgC=document.getElementById('c-bg'),
-    gbC=document.getElementById('c-globe'),
-    fxC=document.getElementById('c-fx');
-var bgX=bgC.getContext('2d'),
-    gbX=gbC.getContext('2d'),
-    fxX=fxC.getContext('2d');
+// ── Canvas + resize ───────────────────────────────
+var bgC=document.getElementById('gi-bg'),gbC=document.getElementById('gi-globe'),fxC=document.getElementById('gi-fx');
+var bgX=bgC.getContext('2d'),gbX=gbC.getContext('2d'),fxX=fxC.getContext('2d');
 var W=window.innerWidth,H=window.innerHeight;
-function resize(){
-  W=window.innerWidth;H=window.innerHeight;
-  bgC.width=gbC.width=fxC.width=W;
-  bgC.height=gbC.height=fxC.height=H;
-}
+function resize(){W=window.innerWidth;H=window.innerHeight;bgC.width=gbC.width=fxC.width=W;bgC.height=gbC.height=fxC.height=H;}
 resize();window.addEventListener('resize',resize);
 
-// ── UTC clock ─────────────────────────────────────────────────
-function ck(){
-  var n=new Date(),el=document.getElementById('utc');
-  if(el)el.textContent='UTC '
-    +String(n.getUTCHours()).padStart(2,'0')+':'
-    +String(n.getUTCMinutes()).padStart(2,'0')+':'
-    +String(n.getUTCSeconds()).padStart(2,'0');
-}
+// ── UTC clock ─────────────────────────────────────
+function ck(){var n=new Date(),el=document.getElementById('gi-utc');if(el)el.textContent='UTC '+String(n.getUTCHours()).padStart(2,'0')+':'+String(n.getUTCMinutes()).padStart(2,'0')+':'+String(n.getUTCSeconds()).padStart(2,'0');}
 ck();setInterval(ck,1000);
 
-// ── Threat blocks (7/8 lit = ELEVATED) ───────────────────────
-var tlC=['#00e5a0','#00e5a0','#f0a500','#f0a500','#f0a500','#ff2d55','#ff2d55'];
-var tbEl=document.getElementById('tb');
-for(var i=0;i<8;i++){
-  var b=document.createElement('span');
-  b.className=i<7?'on':'';
-  b.style.background=i<7?tlC[Math.min(i,6)]:'rgba(255,255,255,.06)';
-  if(i<7)b.style.animationDelay=(i*.11)+'s';
-  tbEl.appendChild(b);
-}
+// ── Threat blocks ─────────────────────────────────
+var tlC=['#00e676','#00e676','#ffb400','#ffb400','#ff8c42','#ff8c42','#ff3d5a','#ff3d5a'];
+var tlEl=document.getElementById('gi-tb');
+for(var i=0;i<8;i++){var b=document.createElement('span');b.className=i<6?'on':'';b.style.background=i<6?tlC[i]:'rgba(255,255,255,.07)';if(i<6)b.style.animationDelay=(i*.12)+'s';tlEl.appendChild(b);}
 
-// ── Hotspots: 7 active theatres ───────────────────────────────
-var hss=[
-  {nx:.455,ny:.395,col:'#ff2d55',lb:'UKR'},   // Ukraine
-  {nx:.548,ny:.458,col:'#ff2d55',lb:'GAZ'},   // Gaza
-  {nx:.586,ny:.472,col:'#f0a500',lb:'IRN'},   // Iran
-  {nx:.432,ny:.572,col:'#f0a500',lb:'SUD'},   // Sudan
-  {nx:.726,ny:.516,col:'#f0a500',lb:'MMR'},   // Myanmar
-  {nx:.632,ny:.465,col:'#a855f7',lb:'PAK'},   // Pakistan-Afghanistan
-  {nx:.285,ny:.478,col:'#00d4ff',lb:'HTI'},   // Haiti
+// ── Particles ─────────────────────────────────────
+var pts=[];
+for(var i=0;i<160;i++)pts.push({x:Math.random()*1920,y:Math.random()*1080,vx:(Math.random()-.5)*.4,vy:(Math.random()-.5)*.4,r:Math.random()*1.3+.25,warm:Math.random()>.75,ph:Math.random()*Math.PI*2});
+
+// ── Conflict hotspots: REAL lat/lon ───────────────
+// These use actual geographic coordinates so they rotate WITH the globe
+var HOTSPOTS=[
+  {lat:49.0,  lon:32.0,  col:'#ff3d5a', label:'UKRAINE',  detail:'Active conflict — frontline shifts daily'},
+  {lat:31.5,  lon:34.45, col:'#ff3d5a', label:'GAZA',     detail:'Ground operations + airstrikes ongoing'},
+  {lat:32.0,  lon:53.0,  col:'#ff8c42', label:'IRAN',     detail:'Post-strike nuclear posture elevated'},
+  {lat:15.5,  lon:32.5,  col:'#ff8c42', label:'SUDAN',    detail:'RSF advancing — famine declared'},
+  {lat:17.0,  lon:96.0,  col:'#ffb400', label:'MYANMAR',  detail:'Junta vs resistance — 2M displaced'},
+  {lat:15.5,  lon:47.5,  col:'#ff8c42', label:'YEMEN',    detail:'Houthi attacks on Red Sea shipping'},
+  {lat:33.85, lon:35.85, col:'#ff8c42', label:'LEBANON',  detail:'Cross-border fire continuing'},
+  {lat:4.85,  lon:31.6,  col:'#ffb400', label:'S.SUDAN',  detail:'Renewed fighting — aid access cut'},
 ];
 
-// ── Particles ────────────────────────────────────────────────
-var pts=[];
-for(var i=0;i<180;i++)pts.push({
-  x:Math.random()*1920,y:Math.random()*1080,
-  vx:(Math.random()-.5)*.38,vy:(Math.random()-.5)*.38,
-  r:Math.random()*1.4+.2,warm:Math.random()>.72,
-  ph:Math.random()*Math.PI*2
-});
+// Live events fetched from GDELT — populated by fetchLiveEvents()
+var liveEvents=[];
+var staticEvents=[
+  {tag:'UKRAINE',  col:'#ff3d5a', text:'Russian missile salvo targets Kyiv power infrastructure'},
+  {tag:'GAZA',     col:'#ff3d5a', text:'IDF ground forces advance in northern corridor'},
+  {tag:'RED SEA',  col:'#ff8c42', text:'Houthi anti-ship missile intercepted by USS Gravely'},
+  {tag:'IRAN',     col:'#ff8c42', text:'IRGC elevates ballistic missile readiness posture'},
+  {tag:'SUDAN',    col:'#ffb400', text:'UN declares famine in North Darfur — 750K at risk'},
+  {tag:'MYANMAR',  col:'#ffb400', text:'Resistance forces capture key Sagaing bridge'},
+];
 
-// ── Globe renderer ────────────────────────────────────────────
-var gRot=0,gTilt=18*Math.PI/180;
-function ll(lat,lon,r,cx,cy){
-  var la=lat*Math.PI/180,lo=(lon+gRot*180/Math.PI)*Math.PI/180;
+function renderEvents(events){
+  var el=document.getElementById('gi-events');
+  if(!el)return;
+  el.innerHTML=events.slice(0,5).map(function(e){
+    return '<div class="gi-ev">'
+      +'<div class="gi-ev-dot" style="background:'+e.col+';animation-delay:'+(Math.random()*.8)+'s"></div>'
+      +'<div class="gi-ev-text"><span class="gi-ev-tag" style="color:'+e.col+'">'+e.tag+'</span>'+e.text+'</div>'
+      +'</div>';
+  }).join('');
+}
+
+// Fetch live events from GDELT (public CORS-enabled API)
+function fetchLiveEvents(){
+  var url='https://api.gdeltproject.org/api/v2/doc/doc?query=war+conflict+military&mode=artlist&maxrecords=10&format=json&timespan=2h';
+  fetch(url,{signal:AbortSignal.timeout(4000)})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      if(data&&data.articles&&data.articles.length){
+        liveEvents=data.articles.slice(0,5).map(function(a){
+          var title=(a.title||'').slice(0,80);
+          // Tag by keywords
+          var t='GLOBAL',c='#00c8ff';
+          var tl=title.toLowerCase();
+          if(tl.indexOf('ukraine')>=0||tl.indexOf('russia')>=0||tl.indexOf('kyiv')>=0){t='UKRAINE';c='#ff3d5a';}
+          else if(tl.indexOf('gaza')>=0||tl.indexOf('israel')>=0||tl.indexOf('idf')>=0){t='GAZA';c='#ff3d5a';}
+          else if(tl.indexOf('iran')>=0||tl.indexOf('irgc')>=0){t='IRAN';c='#ff8c42';}
+          else if(tl.indexOf('sudan')>=0||tl.indexOf('darfur')>=0){t='SUDAN';c='#ffb400';}
+          else if(tl.indexOf('houthi')>=0||tl.indexOf('yemen')>=0||tl.indexOf('red sea')>=0){t='RED SEA';c='#ff8c42';}
+          else if(tl.indexOf('myanmar')>=0||tl.indexOf('burma')>=0){t='MYANMAR';c='#ffb400';}
+          return{tag:t,col:c,text:title};
+        });
+        renderEvents(liveEvents);
+        // Update ticker with live headlines
+        var tk=document.getElementById('gi-tkscroll');
+        if(tk){
+          var txt=liveEvents.map(function(e){return '&#x25C6;&nbsp;'+e.tag+': '+e.text+'&nbsp;&nbsp;&nbsp;'}).join('');
+          tk.innerHTML=txt+txt; // double for seamless loop
+        }
+        document.getElementById('gi-feeds').textContent='12 / 12 LIVE';
+      } else {
+        renderEvents(staticEvents);
+      }
+    })
+    .catch(function(){renderEvents(staticEvents);});
+}
+// Start fetching immediately
+fetchLiveEvents();
+// Re-fetch every 30s to stay fresh during the 10s intro
+setInterval(fetchLiveEvents,30000);
+
+// ── Globe: orthographic projection with real lat/lon ──
+var gRot=0, gTilt=18*Math.PI/180;
+
+function ll2xy(lat,lon,r,cx,cy){
+  // lon offset by gRot so hotspots rotate WITH the grid
+  var la=lat*Math.PI/180;
+  var lo=(lon*Math.PI/180)+gRot;
   var x=r*Math.cos(la)*Math.sin(lo);
   var y=r*(Math.sin(la)*Math.cos(gTilt)-Math.cos(la)*Math.cos(lo)*Math.sin(gTilt));
   var z=Math.cos(la)*Math.cos(lo)*Math.cos(gTilt)+Math.sin(la)*Math.sin(gTilt);
   return{x:cx+x,y:cy-y,z:z};
 }
 
+// Build continent outline points (simplified)
+// Key coastline points as lat/lon pairs for major landmasses
+var CONTINENTS=[
+  // Europe western edge
+  [[71,28],[70,31],[69,33],[67,14],[66,14],[65,14],[63,8],[61,5],[59,5],[58,8],[57,11],[55,8],[54,10],[54,18],[52,14],[51,4],[50,2],[48,2],[46,2],[43,2],[42,2],[40,2],[38,9],[36,5],[36,5],[36,2],[36,-5],[35,-6],[36,-5],[38,9],[40,2],[42,2],[43,7],[44,15],[42,19],[41,20],[40,26],[38,27],[37,27],[36,36],[36,36]],
+  // Africa
+  [[37,10],[37,36],[30,32],[22,37],[12,43],[11,42],[4,42],[0,42],[-4,40],[-10,38],[-22,35],[-30,30],[-34,26],[-34,18],[-28,17],[-22,14],[-18,12],[-14,12],[-5,10],[0,9],[4,7],[4,2],[3,9],[5,1],[5,-5],[4,-9],[2,-9],[0,-9],[-2,-9],[-5,-12],[-5,-12],[-10,-14],[-15,-12],[-16,-12],[-18,-13],[-22,-14],[-18,12]],
+  // Asia outline (simplified)
+  [[70,30],[70,60],[70,90],[70,140],[60,140],[55,135],[50,135],[43,141],[40,130],[35,130],[30,122],[25,120],[20,110],[15,108],[10,105],[5,103],[1,104],[-5,105],[-8,115],[-10,120],[0,110],[10,105],[20,93],[20,93],[25,90],[23,91],[22,92],[21,92],[20,93],[15,100],[10,99],[5,101],[5,103],[10,77],[8,77],[8,80],[9,80],[10,78],[8,77],[12,80],[15,80],[20,86],[22,92],[25,87],[27,89],[26,88],[24,92],[22,92],[20,92],[18,92],[16,94],[15,100],[10,99],[5,105],[0,105],[-5,105],[-8,114],[-8,115],[-5,120],[0,109],[5,102],[10,99],[12,98],[16,97],[20,93],[20,92]],
+  // North America
+  [[70,-140],[71,-130],[72,-125],[73,-115],[74,-95],[73,-85],[72,-80],[71,-75],[70,-70],[68,-52],[65,-52],[60,-65],[55,-60],[50,-55],[47,-53],[44,-66],[42,-70],[42,-70],[40,-74],[38,-75],[35,-76],[32,-80],[27,-80],[25,-80],[24,-82],[22,-80],[18,-66],[18,-66],[10,-85],[8,-77],[9,-80],[10,-85],[15,-88],[18,-88],[20,-87],[22,-86],[24,-84],[28,-82],[30,-82],[32,-80],[35,-76],[38,-75],[40,-74],[43,-70],[45,-63],[47,-53],[50,-55],[55,-60],[59,-64],[60,-65],[62,-64],[65,-52],[68,-52],[70,-55],[70,-65],[70,-75],[70,-80],[71,-85],[72,-80],[73,-85],[74,-95],[73,-115],[72,-130],[71,-140],[70,-140]],
+  // South America
+  [[10,-62],[10,-75],[0,-80],[-5,-81],[-10,-77],[-18,-70],[-22,-70],[-25,-70],[-30,-71],[-34,-71],[-38,-72],[-42,-73],[-46,-74],[-50,-75],[- 55,-68],[-55,-65],[-52,-58],[-50,-50],[-45,-42],[-40,-40],[-35,-38],[-30,-38],[-25,-38],[-22,-41],[-20,-40],[-15,-39],[-10,-37],[-8,-35],[-5,-35],[0,-50],[-5,-50],[-2,-44],[0,-42],[2,-52],[5,-53],[8,-60],[10,-62]],
+  // Australia
+  [[-14,135],[-15,130],[-15,124],[-18,122],[-20,119],[-22,114],[-25,114],[-28,114],[-32,115],[-35,117],[-38,140],[-39,147],[-38,147],[-35,150],[-32,152],[-28,153],[-25,153],[-20,148],[-16,145],[-14,144],[-12,136],[-12,136],[-14,135]],
+];
+
+var globeAlpha=1.0, globeFading=false;
+
 function drawGlobe(){
-  gbX.clearRect(0,0,W,H);
-  var cx=W*.5,cy=H*.5,r=Math.min(W,H)*.26;
+  var cx=W*.5,cy=H*.5,r=Math.min(W,H)*.25;
+
   // Atmosphere glow
-  var ag=gbX.createRadialGradient(cx,cy,r*.7,cx,cy,r*1.14);
-  ag.addColorStop(0,'rgba(0,212,255,0)');
-  ag.addColorStop(.7,'rgba(0,212,255,.02)');
-  ag.addColorStop(1,'rgba(0,212,255,.09)');
-  gbX.beginPath();gbX.arc(cx,cy,r*1.14,0,Math.PI*2);gbX.fillStyle=ag;gbX.fill();
-  // Latitude lines
+  var ag=gbX.createRadialGradient(cx,cy,r*.7,cx,cy,r*1.12);
+  ag.addColorStop(0,'rgba(0,200,255,0)');ag.addColorStop(.75,'rgba(0,200,255,.025)');ag.addColorStop(1,'rgba(0,200,255,.1)');
+  gbX.beginPath();gbX.arc(cx,cy,r*1.12,0,Math.PI*2);gbX.fillStyle=ag;gbX.fill();
+
+  // Latitude grid lines
   for(var lat=-75;lat<=75;lat+=15){
-    var pp=[];for(var lo=-180;lo<=180;lo+=3)pp.push(ll(lat,lo,r,cx,cy));
+    var pp=[];for(var lo=-180;lo<=180;lo+=3)pp.push(ll2xy(lat,lo,r,cx,cy));
     gbX.beginPath();var go=false;
     for(var k=0;k<pp.length;k++){
       if(pp[k].z<0){go=false;continue;}
-      if(!go){gbX.moveTo(pp[k].x,pp[k].y);go=true;}
-      else gbX.lineTo(pp[k].x,pp[k].y);
+      if(!go){gbX.moveTo(pp[k].x,pp[k].y);go=true;}else gbX.lineTo(pp[k].x,pp[k].y);
     }
-    gbX.strokeStyle=lat===0?'rgba(0,212,255,.22)':'rgba(0,212,255,.07)';
+    gbX.strokeStyle=lat===0?'rgba(0,200,255,.22)':'rgba(0,200,255,.06)';
     gbX.lineWidth=lat===0?1.2:.5;gbX.stroke();
   }
-  // Longitude lines
+
+  // Longitude grid lines
   for(var lo2=-180;lo2<180;lo2+=20){
-    var pp2=[];for(var la2=-90;la2<=90;la2+=3)pp2.push(ll(la2,lo2,r,cx,cy));
+    var pp2=[];for(var la2=-90;la2<=90;la2+=3)pp2.push(ll2xy(la2,lo2,r,cx,cy));
     gbX.beginPath();var go2=false;
     for(var k=0;k<pp2.length;k++){
       if(pp2[k].z<0){go2=false;continue;}
-      if(!go2){gbX.moveTo(pp2[k].x,pp2[k].y);go2=true;}
-      else gbX.lineTo(pp2[k].x,pp2[k].y);
+      if(!go2){gbX.moveTo(pp2[k].x,pp2[k].y);go2=true;}else gbX.lineTo(pp2[k].x,pp2[k].y);
     }
-    gbX.strokeStyle='rgba(0,212,255,.04)';gbX.lineWidth=.4;gbX.stroke();
+    gbX.strokeStyle='rgba(0,200,255,.04)';gbX.lineWidth=.4;gbX.stroke();
   }
-  // Equator highlight
+
+  // Continent outlines — drawn as connected lat/lon paths
+  CONTINENTS.forEach(function(pts){
+    gbX.beginPath();var started=false;
+    for(var i=0;i<pts.length;i++){
+      var p=ll2xy(pts[i][0],pts[i][1],r,cx,cy);
+      if(p.z<0.1){started=false;continue;}
+      if(!started){gbX.moveTo(p.x,p.y);started=true;}else gbX.lineTo(p.x,p.y);
+    }
+    gbX.strokeStyle='rgba(0,200,255,.18)';gbX.lineWidth=.8;gbX.stroke();
+    // Subtle continent fill
+    gbX.fillStyle='rgba(0,200,255,.015)';gbX.fill();
+  });
+
+  // Globe rim
   gbX.beginPath();gbX.arc(cx,cy,r,0,Math.PI*2);
-  gbX.strokeStyle='rgba(0,212,255,.18)';gbX.lineWidth=1;gbX.stroke();
-  // Hotspot pulses
+  gbX.strokeStyle='rgba(0,200,255,.2)';gbX.lineWidth=1;gbX.stroke();
+
+  // Conflict hotspots — pinned to real lat/lon, rotate with globe
   var now=Date.now();
-  hss.forEach(function(h){
-    var gla=(0.5-h.ny)*135,glo=(h.nx-0.5)*310;
-    var p=ll(gla,glo,r,cx,cy);if(p.z<.05)return;
-    var pulse=(Math.sin(now*.0028+h.nx*8)+1)*.5;
+  HOTSPOTS.forEach(function(h,idx){
+    var p=ll2xy(h.lat,h.lon,r,cx,cy);
+    if(p.z<0.08)return; // behind globe — don't draw
+
+    var pulse=(Math.sin(now*.003+idx*0.9)+1)*.5;
     var hx=h.col.replace('#','');
-    var rc=parseInt(hx.slice(0,2),16),
-        gc=parseInt(hx.slice(2,4),16),
-        bc=parseInt(hx.slice(4,6),16);
-    // Outer ring
+    var R=parseInt(hx.slice(0,2),16),G=parseInt(hx.slice(2,4),16),B=parseInt(hx.slice(4,6),16);
+
+    // Outer pulsing ring
     gbX.beginPath();gbX.arc(p.x,p.y,7+pulse*8,0,Math.PI*2);
-    gbX.strokeStyle='rgba('+rc+','+gc+','+bc+','+(0.28*(1-pulse))+')';
-    gbX.lineWidth=1;gbX.stroke();
-    // Dot
-    gbX.beginPath();gbX.arc(p.x,p.y,2.8,0,Math.PI*2);
+    gbX.strokeStyle='rgba('+R+','+G+','+B+','+(0.35*(1-pulse*.7))+')';
+    gbX.lineWidth=1.2;gbX.stroke();
+
+    // Middle ring
+    gbX.beginPath();gbX.arc(p.x,p.y,4,0,Math.PI*2);
+    gbX.strokeStyle='rgba('+R+','+G+','+B+',.6)';gbX.lineWidth=1;gbX.stroke();
+
+    // Core dot
+    gbX.beginPath();gbX.arc(p.x,p.y,2.5,0,Math.PI*2);
     gbX.fillStyle=h.col;gbX.fill();
-    // Label
-    gbX.font='500 '+Math.round(W*.006+6)+'px "IBM Plex Mono",monospace';
-    gbX.fillStyle='rgba(194,212,238,.65)';
-    gbX.fillText(h.lb,p.x+7,p.y-4);
+
+    // Glow
+    var glo=gbX.createRadialGradient(p.x,p.y,0,p.x,p.y,12);
+    glo.addColorStop(0,'rgba('+R+','+G+','+B+','+(0.2+pulse*.15)+')');
+    glo.addColorStop(1,'rgba('+R+','+G+','+B+',0)');
+    gbX.beginPath();gbX.arc(p.x,p.y,12,0,Math.PI*2);gbX.fillStyle=glo;gbX.fill();
+
+    // Label with connecting tick
+    var lx=p.x+(p.x>cx?12:-12),anchor=p.x>cx?'left':'right';
+    gbX.font='500 '+Math.round(W*.006+5)+'px "IBM Plex Mono",monospace';
+    gbX.textAlign=p.x>cx?'left':'right';gbX.textBaseline='middle';
+    gbX.fillStyle='rgba(226,236,248,.7)';
+    gbX.fillText(h.label,lx+( p.x>cx?2:-2),p.y);
+    // tick line
+    gbX.beginPath();gbX.moveTo(p.x+(p.x>cx?3:-3),p.y);gbX.lineTo(lx,p.y);
+    gbX.strokeStyle='rgba('+R+','+G+','+B+',.35)';gbX.lineWidth=.7;gbX.stroke();
   });
 }
 
-// ── FX (orbit ring + sweep) ───────────────────────────────────
+// ── FX: radar + orbital rings + data arcs ─────────
 function drawFX(){
-  fxX.clearRect(0,0,W,H);
-  var cx=W*.5,cy=H*.5,r=Math.min(W,H)*.26,now=Date.now();
-  // Sweep arc
-  var ang=(now/4400)*Math.PI*2;
-  fxX.save();fxX.beginPath();fxX.moveTo(cx,cy);
-  fxX.arc(cx,cy,r,ang-.6,ang);fxX.closePath();
+  var cx=W*.5,cy=H*.5,r=Math.min(W,H)*.25,now=Date.now();
+  var ang=(now/4200)*Math.PI*2;
+
+  // Radar sweep
+  fxX.save();fxX.beginPath();fxX.moveTo(cx,cy);fxX.arc(cx,cy,r,ang-.65,ang);fxX.closePath();
   var rg=fxX.createRadialGradient(cx,cy,0,cx,cy,r);
-  rg.addColorStop(0,'rgba(0,212,255,0)');
-  rg.addColorStop(.5,'rgba(0,212,255,.03)');
-  rg.addColorStop(1,'rgba(0,212,255,.1)');
+  rg.addColorStop(0,'rgba(0,200,255,0)');rg.addColorStop(.5,'rgba(0,200,255,.04)');rg.addColorStop(1,'rgba(0,200,255,.11)');
   fxX.fillStyle=rg;fxX.fill();fxX.restore();
-  // Sweep line
-  fxX.beginPath();fxX.moveTo(cx,cy);
-  fxX.lineTo(cx+Math.cos(ang)*r,cy+Math.sin(ang)*r);
-  fxX.strokeStyle='rgba(0,212,255,.3)';fxX.lineWidth=1.2;fxX.stroke();
-  // Orbit ellipses — represent AIS and OpenSky orbits
-  fxX.beginPath();
-  fxX.ellipse(cx,cy,r*1.22,r*1.22*.28,now/8800,0,Math.PI*2);
-  fxX.strokeStyle='rgba(240,165,0,.1)';fxX.lineWidth=1;fxX.stroke();
-  fxX.beginPath();
-  fxX.ellipse(cx,cy,r*1.42,r*1.42*.2,-now/13500,0,Math.PI*2);
-  fxX.strokeStyle='rgba(0,212,255,.055)';fxX.lineWidth=.7;fxX.stroke();
-  // AIS vessel dot on orbit (amber)
-  var sa=now/8800,sx=cx+Math.cos(sa)*r*1.22,sy=cy+Math.sin(sa)*r*1.22*.28;
-  fxX.beginPath();fxX.arc(sx,sy,3.5,0,Math.PI*2);fxX.fillStyle='#f0a500';fxX.fill();
-  for(var t=1;t<=5;t++){
-    var ta=sa-t*.045,tx=cx+Math.cos(ta)*r*1.22,ty=cy+Math.sin(ta)*r*1.22*.28;
-    fxX.beginPath();fxX.arc(tx,ty,3.5-t*.5,0,Math.PI*2);
-    fxX.fillStyle='rgba(240,165,0,'+(0.5-t*.09)+')';fxX.fill();
+  fxX.beginPath();fxX.moveTo(cx,cy);fxX.lineTo(cx+Math.cos(ang)*r,cy+Math.sin(ang)*r);
+  fxX.strokeStyle='rgba(0,200,255,.35)';fxX.lineWidth=1.2;fxX.stroke();
+
+  // Orbital ring (amber)
+  fxX.beginPath();fxX.ellipse(cx,cy,r*1.2,r*1.2*.27,now/8500,0,Math.PI*2);
+  fxX.strokeStyle='rgba(255,180,0,.12)';fxX.lineWidth=1;fxX.stroke();
+
+  // Orbital ring 2 (cyan)
+  fxX.beginPath();fxX.ellipse(cx,cy,r*1.38,r*1.38*.21,-now/13000,0,Math.PI*2);
+  fxX.strokeStyle='rgba(0,200,255,.06)';fxX.lineWidth=.7;fxX.stroke();
+
+  // Satellite dot + trail
+  var sa=now/8500,sx=cx+Math.cos(sa)*r*1.2,sy=cy+Math.sin(sa)*r*1.2*.27;
+  for(var t=5;t>=0;t--){
+    var ta=sa-t*.04,tx=cx+Math.cos(ta)*r*1.2,ty=cy+Math.sin(ta)*r*1.2*.27;
+    fxX.beginPath();fxX.arc(tx,ty,t===0?3:3-t*.38,0,Math.PI*2);
+    fxX.fillStyle='rgba(255,180,0,'+(t===0?1:0.5-t*.08)+')';fxX.fill();
   }
-  // OpenSky aircraft dot on outer orbit (cyan)
-  var sA2=now/13500,sx2=cx+Math.cos(-sA2)*r*1.42,sy2=cy+Math.sin(-sA2)*r*1.42*.2;
-  fxX.beginPath();fxX.arc(sx2,sy2,3,0,Math.PI*2);fxX.fillStyle='#00d4ff';fxX.fill();
-  // Conflict arc lines to globe centre
+
+  // Data arcs from hotspots to globe center — using real projected positions
   var sA=now*.00085;
-  hss.forEach(function(h,idx){
+  HOTSPOTS.forEach(function(h,idx){
     var ph=(sA+idx*1.05)%(Math.PI*2);if(ph>Math.PI)return;
-    var pg=ph/Math.PI,hx2=h.nx*W,hy2=h.ny*H;
-    var mx=(hx2+cx)*.5+18*Math.sin(idx*1.3),my=(hy2+cy)*.5-48;
-    fxX.beginPath();fxX.moveTo(hx2,hy2);
-    fxX.quadraticCurveTo(mx,my,hx2+(cx-hx2)*pg,hy2+(cy-hy2)*pg);
-    var hxc=h.col.replace('#','');
-    fxX.strokeStyle='rgba('+parseInt(hxc.slice(0,2),16)+','+parseInt(hxc.slice(2,4),16)+','+parseInt(hxc.slice(4,6),16)+','+(Math.sin(pg*Math.PI)*.24)+')';
+    var pg=ph/Math.PI;
+    // Project hotspot to screen
+    var p=ll2xy(h.lat,h.lon,Math.min(W,H)*.25,cx,cy);
+    if(p.z<0.1)return;
+    var mx=(p.x+cx)*.5+20*Math.sin(idx*1.3),my=(p.y+cy)*.5-50;
+    fxX.beginPath();fxX.moveTo(p.x,p.y);
+    fxX.quadraticCurveTo(mx,my,p.x+(cx-p.x)*pg,p.y+(cy-p.y)*pg);
+    var hx=h.col.replace('#','');
+    fxX.strokeStyle='rgba('+parseInt(hx.slice(0,2),16)+','+parseInt(hx.slice(2,4),16)+','+parseInt(hx.slice(4,6),16)+','+(Math.sin(pg*Math.PI)*.28)+')';
     fxX.lineWidth=.9;fxX.stroke();
   });
 }
 
-// ── Background grid + particles ───────────────────────────────
+// ── BG: dot grid + particles ──────────────────────
 function drawBG(){
   bgX.clearRect(0,0,W,H);var now=Date.now();
-  for(var gx=0;gx<W;gx+=60)for(var gy=0;gy<H;gy+=60){
-    var p=Math.sin(now*.0005+gx*.016+gy*.013)*.5+.5;
-    bgX.globalAlpha=.018+p*.032;bgX.fillStyle='#00d4ff';
-    bgX.fillRect(gx,gy,1,1);
+  for(var gx=0;gx<W;gx+=55)for(var gy=0;gy<H;gy+=55){
+    var p=Math.sin(now*.0005+gx*.018+gy*.014)*.5+.5;
+    bgX.globalAlpha=.02+p*.04;bgX.fillStyle='#00c8ff';bgX.fillRect(gx,gy,1,1);
   }
   bgX.globalAlpha=1;
   var sx=W/1920,sy=H/1080;
   for(var i=0;i<pts.length;i++){
-    var pt=pts[i];
-    pt.x+=pt.vx;pt.y+=pt.vy;
-    if(pt.x<0)pt.x=1920;if(pt.x>1920)pt.x=0;
-    if(pt.y<0)pt.y=1080;if(pt.y>1080)pt.y=0;
-    pt.ph+=.025;var pa=.17+Math.sin(pt.ph)*.11;
-    bgX.beginPath();bgX.arc(pt.x*sx,pt.y*sy,pt.r,0,Math.PI*2);
-    bgX.fillStyle=pt.warm?'rgba(240,165,0,'+pa+')':'rgba(0,212,255,'+pa+')';
-    bgX.fill();
+    var p=pts[i];p.x+=p.vx;p.y+=p.vy;
+    if(p.x<0)p.x=1920;if(p.x>1920)p.x=0;if(p.y<0)p.y=1080;if(p.y>1080)p.y=0;
+    p.ph+=.025;var pa=.18+Math.sin(p.ph)*.12;
+    bgX.beginPath();bgX.arc(p.x*sx,p.y*sy,p.r,0,Math.PI*2);
+    bgX.fillStyle=p.warm?'rgba(255,180,0,'+pa+')':'rgba(0,200,255,'+pa+')';bgX.fill();
     for(var j=i+1;j<pts.length;j++){
-      var dx=(pt.x-pts[j].x)*sx,dy=(pt.y-pts[j].y)*sy,d=Math.sqrt(dx*dx+dy*dy);
-      if(d<78){
-        bgX.beginPath();bgX.moveTo(pt.x*sx,pt.y*sy);bgX.lineTo(pts[j].x*sx,pts[j].y*sy);
-        bgX.strokeStyle='rgba(0,212,255,'+(0.045*(1-d/78))+')';bgX.lineWidth=.4;bgX.stroke();
-      }
+      var dx=(p.x-pts[j].x)*sx,dy=(p.y-pts[j].y)*sy,d=Math.sqrt(dx*dx+dy*dy);
+      if(d<75){bgX.beginPath();bgX.moveTo(p.x*sx,p.y*sy);bgX.lineTo(pts[j].x*sx,pts[j].y*sy);bgX.strokeStyle='rgba(0,200,255,'+(0.05*(1-d/75))+')';bgX.lineWidth=.4;bgX.stroke();}
     }
   }
 }
 
-// ── Main loop ─────────────────────────────────────────────────
-function render(){gRot+=.0016;drawBG();drawGlobe();drawFX();requestAnimationFrame(render);}
+// ── Globe fade at 5s ──────────────────────────────
+var globeAlpha=1.0,globeFading=false;
+
+setTimeout(function(){
+  globeFading=true;
+  var lw=document.getElementById('gi-lw');
+  var dv=document.getElementById('gi-div');
+  var ev=document.getElementById('gi-events');
+  if(lw){lw.style.transition='opacity 0.9s ease';lw.style.opacity='0';}
+  if(dv){dv.style.transition='opacity 0.9s ease';dv.style.opacity='0';}
+  if(ev){ev.style.transition='opacity 0.9s ease';ev.style.opacity='0';}
+},5000);
+
+// ── Main render loop ──────────────────────────────
+function render(){
+  gRot+=.0018; // globe rotation speed
+  drawBG();
+  if(globeAlpha>0){
+    if(globeFading) globeAlpha=Math.max(0,globeAlpha-0.012);
+    gbX.clearRect(0,0,W,H);fxX.clearRect(0,0,W,H);
+    if(globeAlpha>0){
+      gbX.globalAlpha=globeAlpha;fxX.globalAlpha=globeAlpha;
+      drawGlobe();drawFX();
+      gbX.globalAlpha=1;fxX.globalAlpha=1;
+    }
+  } else {
+    gbX.clearRect(0,0,W,H);fxX.clearRect(0,0,W,H);
+  }
+  requestAnimationFrame(render);
+}
 render();
 
-// ── Skip ──────────────────────────────────────────────────────
+// ── Skip ──────────────────────────────────────────
 window.geoSkip=function(){
-  var ov=document.getElementById('gi');
-  if(ov){ov.style.transition='opacity .6s ease';ov.style.opacity='0';
-    setTimeout(function(){ov.style.display='none';},650);}
+  var ov=document.getElementById('geo-intro');
+  if(ov){ov.style.transition='opacity .6s ease';ov.style.opacity='0';setTimeout(function(){ov.style.display='none';},650);}
 };
 })();
 </script>
 </body></html>""", height=700, scrolling=False)
 
-    _it.sleep(3)
+    _it.sleep(10)
     st.session_state["intro_shown"] = True
     st.rerun()
 
