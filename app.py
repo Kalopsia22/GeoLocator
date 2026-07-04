@@ -136,8 +136,8 @@ import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
-import json, requests, re, html as html_lib, time
-from datetime import datetime, timezone, timedelta
+import json, requests, re, time
+from datetime import datetime, timezone
 
 
 # ══════════════════════════════════════════════════════════════
@@ -1459,7 +1459,7 @@ def fetch_usgs():
             })
         _persist("seismic_events", rows)
         return pd.DataFrame(rows)
-    except:
+    except Exception:
         # ── Last resort: rebuild DataFrame from persisted rows ──
         _stored_q = load_persisted("seismic_events", limit=50)
         if _stored_q:
@@ -1483,7 +1483,7 @@ def fetch_eonet():
                     rows.append({"title":e["title"],"cat":cat,"date":geo["date"][:10],
                                  "lon":geo["coordinates"][0],"lat":geo["coordinates"][1],"type":"eonet"})
         return pd.DataFrame(rows) if rows else _se()
-    except:
+    except Exception:
         return _se()
 
 @st.cache_data(ttl=30, show_spinner=False)
@@ -1600,7 +1600,7 @@ def fetch_rss_conflict(theatre: str) -> list:
                             dt = dt.replace(tzinfo=timezone.utc)
                         age_s, dt_str, is_recent, is_new = _parse_age(dt)
                         break
-                    except:
+                    except Exception:
                         continue
                 articles.append({
                     "title":     title[:140],
@@ -1660,7 +1660,7 @@ def fetch_gdelt_conflict(theatre: str, max_records: int = 30) -> list:
                     try:
                         dt = datetime.strptime(raw_dt[:14], "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
                         age_s, dt_str, is_recent, is_new = _parse_age(dt)
-                    except:
+                    except Exception:
                         pass
                     all_articles.append({
                         "title":     a.get("title", "")[:140],
@@ -1679,7 +1679,7 @@ def fetch_gdelt_conflict(theatre: str, max_records: int = 30) -> list:
     def sort_key(x):
         try:
             return datetime.strptime(x["dt_str"], "%Y-%m-%d %H:%Mz") if x["dt_str"] else datetime.min.replace(tzinfo=timezone.utc)
-        except:
+        except Exception:
             return datetime.min.replace(tzinfo=timezone.utc)
 
     all_articles.sort(key=sort_key, reverse=True)
@@ -1842,7 +1842,7 @@ def fetch_live_global_events(max_records: int = 20) -> list:
                     dt  = datetime.strptime(raw_dt[:14], "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
                     age = datetime.now(tz=timezone.utc) - dt
                     age_s = f"{int(age.total_seconds()//60)}m ago" if age.total_seconds() < 3600 else f"{int(age.total_seconds()//3600)}h ago"
-                except:
+                except Exception:
                     age_s = "recent"
                 all_arts.append({
                     "title":  a.get("title","")[:100],
@@ -1850,7 +1850,7 @@ def fetch_live_global_events(max_records: int = 20) -> list:
                     "url":    url,
                     "time":   age_s,
                 })
-        except:
+        except Exception:
             pass
     if all_arts:
         _persist("gdelt_events", all_arts[:max_records])
@@ -1878,7 +1878,7 @@ def fetch_solar():
         d2 = r2.json()
         flux = float(d2.get("Flux", 100))
         return {"speed": speed, "flux": flux}
-    except:
+    except Exception:
         return {"speed": 420.0, "flux": 112.0}
 
 # ── FIRMS active fire count from NASA EONET ───────────────────
@@ -1892,7 +1892,7 @@ def fetch_firms_count():
         r.raise_for_status()
         events = r.json().get("events", [])
         return len(events)
-    except:
+    except Exception:
         return 0
 
 # ── NetBlocks / IODA internet outage feed ─────────────────────
@@ -1915,12 +1915,12 @@ def fetch_outage_feed():
                 dt    = datetime.strptime(raw_dt[:14], "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
                 age   = datetime.now(tz=timezone.utc) - dt
                 age_s = f"{int(age.total_seconds()//60)}m ago" if age.total_seconds() < 3600 else f"{int(age.total_seconds()//3600)}h ago"
-            except:
+            except Exception:
                 age_s = ""
             out.append({"title": a.get("title","")[:90], "source": a.get("domain",""),
                         "url": a.get("url",""), "time": age_s})
         return out
-    except:
+    except Exception:
         return []
 
 # ── Earthquake depth profile for Earth Signals ────────────────
@@ -2084,7 +2084,6 @@ def fetch_live_gps_jamming() -> list:
 
     # Scan GDELT for new jamming events not in baseline
     try:
-        import urllib.parse as _up
         r2 = requests.get(
             "https://api.gdeltproject.org/api/v2/geo/geo",
             params={"query": "GPS jamming GNSS spoofing navigation interference",
@@ -2437,9 +2436,7 @@ def fetch_live_shipping_rates() -> list:
     Falls back to SHIPPING_RATES baseline on failure.
     """
     import urllib.parse
-    from datetime import datetime, timezone
 
-    now_utc = datetime.now(tz=timezone.utc)
     results = []
 
     # Pull Yahoo tickers for BDI proxy + container shipping proxies
@@ -2524,9 +2521,6 @@ def fetch_live_critical_minerals() -> list:
     Falls back to CRIT_MIN_DATA baseline on failure.
     """
     import urllib.parse
-    from datetime import datetime, timezone
-
-    now_utc = datetime.now(tz=timezone.utc)
 
     MINERAL_TICKERS = {
         "Lithium":  ("ALB",    0.15),   # Albemarle — directional proxy
@@ -2600,7 +2594,7 @@ def fetch_live_comint() -> list:
     and add a `live_hits` count.  Falls back to baseline on any error.
     """
     import urllib.parse
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timezone
 
     results = []
     now_utc = datetime.now(tz=timezone.utc)
@@ -2957,7 +2951,6 @@ def fetch_acled_events(limit: int = 50) -> list:
     API key can be set in st.secrets['ACLED_KEY'] — falls back to scraping GDELT
     if no key is configured.
     """
-    import xml.etree.ElementTree as ET
     from datetime import datetime, timezone, timedelta
 
     # ── Attempt ACLED REST API (requires free account key) ────
@@ -3307,7 +3300,7 @@ def fetch_news_rss(category: str) -> list:
         for fmt in ["%a, %d %b %Y %H:%M:%S %z", "%a, %d %b %Y %H:%M:%S %Z",
                     "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ"]:
             try: return datetime.strptime(s.strip(), fmt).replace(tzinfo=timezone.utc)
-            except: pass
+            except Exception: pass
         return datetime.now(timezone.utc)
 
 
@@ -3381,7 +3374,7 @@ def fetch_usgs_significant():
                        p.get("place","?") + "\nDepth: " + str(round(c[2],1)) + " km",
             })
         return pd.DataFrame(rows) if rows else pd.DataFrame()
-    except:
+    except Exception:
         return pd.DataFrame()
 
 
@@ -4816,9 +4809,6 @@ def _render_intelligence_panel(tip: str, name: str, country: str, obj: dict):
     wmd_lbl  = wmd["status"] if wmd else "No data"
 
     # Historical events for 7-day-style timeline (last 7 days of our data)
-    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
-    _now = _dt.now(tz=_tz.utc)
-    _7d_ago = _now - _td(days=365*4)  # Use all events since 2022 as our timeline
     tl_events = hist_evts[:6]
 
     # Nuke status
@@ -5861,7 +5851,7 @@ def _live_map_fragment():
 _map_selection = None
 try:
     _live_map_fragment()
-except Exception as _frag_err:
+except Exception:
     # Fragment not supported (Streamlit < 1.33) — fall back to static map
     st.markdown('<div style="border:1px solid rgba(0,200,255,.12);border-top:none;border-radius:0 0 14px 14px;overflow:hidden;margin-bottom:8px">', unsafe_allow_html=True)
     _map_selection = st.pydeck_chart(
@@ -6277,8 +6267,12 @@ with tab_conflict:
 
     # ── LIVE CONFLICT TRACKER ──────────────────────────────────
     # Computes conflict duration and fetches GDELT news scoped to conflict start date
-    from datetime import date as _date
-    _start_dt   = datetime.strptime(C["start"], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    try:
+        _start_dt = datetime.strptime(C["start"], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except (KeyError, ValueError, TypeError):
+        # Malformed/missing start date in CONFLICTS — fall back to "today" so the
+        # tracker degrades to a 0-day counter instead of crashing the whole tab.
+        _start_dt = datetime.now(tz=timezone.utc)
     _now_utc    = datetime.now(tz=timezone.utc)
     _delta      = _now_utc - _start_dt
     _days       = _delta.days
@@ -8274,7 +8268,6 @@ MARKET_RADAR = {"label":"CASH","posture":"2/7 bullish","flow":"PASSIVE GAP","liq
 # ══════════════════════════════════════════════════════════════
 
 with tab_intel:
-    import json as _ij
     import streamlit.components.v1 as _ic
     from html import escape as _he
     from concurrent.futures import ThreadPoolExecutor as _TPE_i
