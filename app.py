@@ -921,7 +921,7 @@ def ax(color="#4a6b85", grid="#0f2035", sz=10):
 # ─────────────────────────────────────────────
 # CONFLICT DATA
 # ─────────────────────────────────────────────
-@st.cache_data(ttl=25, show_spinner=False)
+@st.cache_data(ttl=60, show_spinner=False)
 def fetch_usgs():
     try:
         r = requests.get(
@@ -951,7 +951,7 @@ def fetch_usgs():
                 pass
         return _sq()
 
-@st.cache_data(ttl=25, show_spinner=False)
+@st.cache_data(ttl=60, show_spinner=False)
 def fetch_eonet():
     try:
         r = requests.get("https://eonet.gsfc.nasa.gov/api/v3/events?status=open&limit=20", timeout=8)
@@ -969,7 +969,7 @@ def fetch_eonet():
         _log.warning("fetch_eonet failed, falling back to baseline data: %s", _e)
         return _se()
 
-@st.cache_data(ttl=30, show_spinner=False)
+@st.cache_data(ttl=90, show_spinner=False)
 def fetch_kp():
     try:
         r = requests.get("https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json", timeout=6)
@@ -4750,6 +4750,13 @@ _live_bucket = int(_math.floor(datetime.now(tz=timezone.utc).timestamp() / 30))
 # Force cache clear on these key fetchers so map data is always fresh
 @st.fragment(run_every="30s")
 def _live_map_fragment():
+    # v8 fix: _live_bucket must be computed INSIDE the fragment. The fragment's
+    # own periodic run_every tick does NOT re-execute code outside itself, so
+    # a bucket value computed at module scope stayed frozen across every
+    # auto-refresh cycle — the pydeck chart kept the same `key` every 30s and
+    # the map never visually repainted even though fresh data was fetched.
+    _live_bucket = int(_math.floor(datetime.now(tz=timezone.utc).timestamp() / 30))
+
     # Re-fetch all live data inside the fragment — bypasses page-level cache
     _eq   = fetch_usgs()
     _eon  = fetch_eonet()
