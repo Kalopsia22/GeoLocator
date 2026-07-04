@@ -15,6 +15,14 @@ Run:
     streamlit run app.py
 """
 
+import logging
+logging.basicConfig(level=logging.WARNING, format="%(asctime)s [%(levelname)s] %(message)s")
+_log = logging.getLogger("geo_locator")
+# v8: fetch functions previously failed silently (bare `except Exception: pass`),
+# which made it impossible to tell a genuine outage from cached/stale data.
+# `_log.warning(...)` calls are added to the most-frequently-hit live fetchers
+# below so failures surface in the server console without affecting the UI.
+
 # ── Pre-defined data constants (defined early to prevent NameError on any line) ──
 SHIPPING_RATES = [
     {"route":"Shanghai → Rotterdam","type":"Container","rate":4820,"unit":"$/FEU","change":12.4,"status":"Elevated","note":"Red Sea rerouting via Cape"},
@@ -1459,7 +1467,8 @@ def fetch_usgs():
             })
         _persist("seismic_events", rows)
         return pd.DataFrame(rows)
-    except Exception:
+    except Exception as _e:
+        _log.warning("fetch_usgs failed, falling back to persisted/baseline data: %s", _e)
         # ── Last resort: rebuild DataFrame from persisted rows ──
         _stored_q = load_persisted("seismic_events", limit=50)
         if _stored_q:
@@ -1483,7 +1492,8 @@ def fetch_eonet():
                     rows.append({"title":e["title"],"cat":cat,"date":geo["date"][:10],
                                  "lon":geo["coordinates"][0],"lat":geo["coordinates"][1],"type":"eonet"})
         return pd.DataFrame(rows) if rows else _se()
-    except Exception:
+    except Exception as _e:
+        _log.warning("fetch_eonet failed, falling back to baseline data: %s", _e)
         return _se()
 
 @st.cache_data(ttl=30, show_spinner=False)
@@ -1505,7 +1515,8 @@ def fetch_kp():
                 pass
         latest = series[-1] if series else 3.7
         return {"kp": round(latest, 1), "series": series}
-    except Exception:
+    except Exception as _e:
+        _log.warning("fetch_kp failed, using baseline series: %s", _e)
         return {"kp": 3.7, "series": [1,2,1.5,2.3,3.1,3.7,2.8,2.1,1.8,2.5,3,3.7]*2}
 
 # ── GDELT conflict-scoped fetcher ────────────────────────────
@@ -1787,6 +1798,12 @@ HISTORICAL_EVENTS = [
     {"date":"2025-01-20","lat":38.9,"lon":-77.0,"type":"political","severity":"HIGH","title":"Trump inaugurated — signals Ukraine peace push","tip":"2025-01-20 | INAUGURATION\nTrump inaugurated\nSignals Ukraine ceasefire push — NATO tension"},
     {"date":"2025-02-18","lat":48.85,"lon":2.35,"type":"diplomatic","severity":"HIGH","title":"Paris Ukraine summit — Europe commits to defence","tip":"2025-02-18 | SUMMIT\nEurope Ukraine defence summit — Paris\nEU commits €100B+ defence spending increase"},
     {"date":"2026-01-15","lat":55.75,"lon":37.61,"type":"political","severity":"HIGH","title":"Russia declares wartime economy — conscription expanded","tip":"2026-01-15 | RUSSIA\nRussia expands conscription\nFull wartime economy declared — 500k more troops"},
+    # ── Economic & Tech Milestones 2025-2026 ─────────────────────
+    {"date":"2025-04-02","lat":38.9,"lon":-77.0,"type":"economic","severity":"HIGH","title":"US announces sweeping reciprocal tariff regime","tip":"2025-04-02 | TARIFFS\nUS announces broad reciprocal tariffs\nGlobal markets sell off — trade-war fears"},
+    {"date":"2025-09-14","lat":31.23,"lon":121.47,"type":"economic","severity":"MED","title":"China-US trade truce extended amid chip export talks","tip":"2025-09-14 | TRADE\nChina-US trade truce extended\nSemiconductor export controls remain central issue"},
+    {"date":"2025-07-22","lat":37.77,"lon":-122.42,"type":"tech","severity":"MED","title":"Frontier AI model release triggers new export-control debate","tip":"2025-07-22 | AI POLICY\nNew frontier AI model released\nRenewed debate over export controls & compute governance"},
+    {"date":"2026-04-18","lat":23.7,"lon":90.4,"type":"natural","severity":"HIGH","title":"Bangladesh cyclone displaces 800,000+","tip":"2026-04-18 | CYCLONE\nBangladesh coastal cyclone\n800,000+ displaced — Bay of Bengal"},
+    {"date":"2026-05-30","lat":1.35,"lon":103.82,"type":"economic","severity":"MED","title":"Major shipping lane disruption spikes container rates","tip":"2026-05-30 | SHIPPING\nStrait of Malacca congestion\nContainer freight rates spike 40%"},
 ]
 
 # Pre-sorted once at startup — avoids repeated sort() inside render loops
@@ -1806,7 +1823,7 @@ HIST_TYPE_ICONS = {
     "milestone":"⭐","setback":"📉","diplomatic":"🤝","ceasefire":"🕊","escalation":"⬆",
     "sabotage":"💣","disaster":"🌊","incursion":"🚨","offensive":"⚔","assassination":"🎯",
     "siege":"🔒","coup":"🏛","natural":"🌍","provocation":"⚠","political":"🗳",
-    "atrocity":"⛔","maritime":"⚓",
+    "atrocity":"⛔","maritime":"⚓","economic":"💹","tech":"🤖",
 }
 
 # ── Live Events GDELT fetcher ──────────────────────────────────────────────
@@ -1892,7 +1909,8 @@ def fetch_firms_count():
         r.raise_for_status()
         events = r.json().get("events", [])
         return len(events)
-    except Exception:
+    except Exception as _e:
+        _log.warning("fetch_firms_count failed: %s", _e)
         return 0
 
 # ── NetBlocks / IODA internet outage feed ─────────────────────
@@ -4323,7 +4341,13 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
     if show_cyber:
-        cydf = pd.DataFrame(CYBER_THREATS_GEO)
+        try:
+            _cyber_src = fetch_live_cyber_threats()  # v8: live-enriched, was static CYBER_THREATS_GEO
+            if not _cyber_src:
+                _cyber_src = CYBER_THREATS_GEO
+        except Exception:
+            _cyber_src = CYBER_THREATS_GEO
+        cydf = pd.DataFrame(_cyber_src)
         cydf["_color"] = cydf["actor"].apply(lambda a:
             [255,30,60,200] if "Russia" in a
             else [255,200,0,200] if "China" in a
@@ -4331,7 +4355,7 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
             else [255,140,66,200])
         cydf["_radius"] = 120000
         if "tip" not in cydf.columns:
-            cydf["tip"] = cydf.apply(lambda r: f"🛡 CYBER THREAT\n{r['name']}\nActor: {r.get('actor','')}\nTargets: {r.get('targets','')}", axis=1)
+            cydf["tip"] = cydf.apply(lambda r: f"🛡 CYBER THREAT\n{r['name']}\nActor: {r.get('actor','')}\nTargets: {r.get('targets','')}" + (f"\nLive hits (6h): {r['live_hits']}" if r.get("live_hits") else ""), axis=1)
         layers.append(pdk.Layer("ScatterplotLayer", data=cydf, get_position=["lon","lat"],
                                  get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
@@ -4374,18 +4398,20 @@ def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf
                                      width_min_pixels=2, width_max_pixels=10,
                                      pickable=True, auto_highlight=True, id="waterways"))
     if show_fires_layer:
-        fire_pts = [{"lat":r["lat"],"lon":r["lon"],"fires":r["fires"]} for r in [
-            {"lat":49.0,"lon":32.0,"fires":2162},{"lat":32.0,"lon":51.0,"fires":485},
-            {"lat":15.5,"lon":32.5,"fires":1240},{"lat":-5.0,"lon":-52.0,"fires":3820},
-            {"lat":0.5,"lon":115.0,"fires":910},{"lat":-30.0,"lon":135.0,"fires":340},
-            {"lat":37.5,"lon":-119.0,"fires":180},
-        ]]
-        fdf = pd.DataFrame(fire_pts)
-        fdf["_color"] = [[255,80,20,200]]*len(fdf)
-        fdf["_radius"] = fdf["fires"].apply(lambda f: min(int(f*80), 300000))
-        fdf["tip"] = fdf.apply(lambda r: f"🔥 ACTIVE FIRES\nFires: {r['fires']:,}", axis=1)
-        layers.append(pdk.Layer("ScatterplotLayer", data=fdf, get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
+        # v8: was 7 hardcoded static coordinates; now sources live wildfire
+        # points straight from the EONET feed already being fetched for the
+        # map (eonet_df is refreshed every 30s inside the live map fragment).
+        if not eonet_df.empty and "cat" in eonet_df.columns:
+            _fire_src = eonet_df[eonet_df["cat"].str.contains("wildfire", case=False, na=False)]
+        else:
+            _fire_src = pd.DataFrame()
+        if not _fire_src.empty:
+            fdf = _fire_src[["lat", "lon", "title"]].copy()
+            fdf["_color"] = [[255,80,20,200]]*len(fdf)
+            fdf["_radius"] = 90000
+            fdf["tip"] = fdf.apply(lambda r: f"🔥 ACTIVE WILDFIRE\n{r['title']}", axis=1)
+            layers.append(pdk.Layer("ScatterplotLayer", data=fdf, get_position=["lon","lat"],
+                                     get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
 
     if show_protests:
         prot_df = pd.DataFrame(MOVEMENTS)
@@ -4624,10 +4650,9 @@ def _startup_fetch():
         "kp":     fetch_kp,
         "solar":  fetch_solar,
         "firms":  fetch_firms_count,
-        "sig_eq": fetch_usgs_significant,
     }
     _results = {}
-    with _TPE(max_workers=6) as _ex:
+    with _TPE(max_workers=5) as _ex:
         _futs = {_ex.submit(fn): key for key, fn in _tasks.items()}
         for _fut in _asc(_futs):
             _results[_futs[_fut]] = _fut.result()
@@ -4639,7 +4664,11 @@ eonet_df   = _sd["eonet"]
 kp_data    = _sd["kp"]
 solar_data = _sd["solar"]
 firms_cnt  = _sd["firms"]
-sig_eq_df  = _sd["sig_eq"]
+# sig_eq_df is NOT fetched here (v8): it's only used inside the Earth Signals
+# tab, so fetching it unconditionally on every rerun (even when that tab
+# isn't open) wasted a network round-trip. It's fetched lazily below, right
+# where the Earth Signals tab body executes — st.cache_data still makes
+# repeat visits to that tab instant.
 utc_now    = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d  %H:%M UTC")
 
 # ─────────────────────────────────────────────
@@ -5784,6 +5813,8 @@ st.markdown(f"""
     <div class="map-title-text">🌐 GLOBAL COMMAND MAP</div>
     <div style="font-family:var(--fm);font-size:10px;color:var(--muted)">
       Click any marker for details · {len(HISTORICAL_EVENTS)} historical events since 2022 · Toggle layers in sidebar
+      · <span style="color:#00ffc8">●</span> LIVE layers refresh every 30s (seismic, EONET/fires, cyber, GDELT, AIS, flights, ACLED)
+      · <span style="color:var(--muted)">●</span> REFERENCE layers are curated baselines (bases, nuclear sites, cables, pipelines)
     </div>
   </div>
   <div class="map-legend">
@@ -5931,7 +5962,9 @@ else:
 # a lightweight placeholder while the GDELT call completes on next rerun
 _live_events = fetch_live_global_events(max_records=15) if st.session_state.get("_map_loaded", False) else []
 st.session_state["_map_loaded"] = True
-_recent_hist  = _HIST_SORTED[:6]
+_recent_hist  = [e for e in _HIST_SORTED if e["date"] >= "2025-01-01"][:8]
+if not _recent_hist:  # safety net if the 2025+ dataset is ever empty
+    _recent_hist = _HIST_SORTED[:8]
 
 _tracker_cols = st.columns([2, 1], gap="medium")
 with _tracker_cols[0]:
@@ -5967,7 +6000,7 @@ with _tracker_cols[0]:
         st.markdown('<div style="background:var(--card);border:1px solid var(--bord2);border-radius:10px;padding:10px 14px;font-family:var(--fm);font-size:11px;color:var(--muted)">GDELT live feed connecting… recent events will appear here shortly.</div>', unsafe_allow_html=True)
 
 with _tracker_cols[1]:
-    st.markdown('<div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">📅 RECENT HISTORY (2022+)</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">📅 RECENT HISTORY (2025+)</div>', unsafe_allow_html=True)
     for _he in _recent_hist:
         _icon = HIST_TYPE_ICONS.get(_he["type"], "●")
         _sc   = {"CRITICAL":"#ff3d5a","HIGH":"#ff8c42","MED":"#ffb400"}.get(_he["severity"],"#4a6b85")
@@ -6039,9 +6072,16 @@ st.markdown(f'<div class="ticker-wrap"><div class="ticker-inner">{ts}<span class
 st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
-# TABS  (removed Training Arena + AI Analyst)
+# TABS  (lazy-loaded — v8 perf fix)
 # ─────────────────────────────────────────────
-tab_conflict, tab_earth, tab_civil, tab_news, tab_intel, tab_sigint, tab_econ, tab_facility = st.tabs([
+# NOTE (v8): st.tabs() renders ALL tab bodies on every single script rerun,
+# regardless of which tab is visually active — Streamlit doesn't defer
+# execution of inactive tab content. With 8 tabs each firing multiple live
+# API calls, that meant every click anywhere in the app re-ran ~70 fetch
+# functions across every tab. Switching to a session-state-backed selector
+# means only the ACTIVE tab's code (and its API calls) executes per rerun —
+# this is the main fix behind the v8 load-time improvement.
+_TAB_LABELS = [
     "⚔  Conflict Dashboard",
     "🌍  Earth Signals",
     "✊  Civil Movements",
@@ -6050,7 +6090,29 @@ tab_conflict, tab_earth, tab_civil, tab_news, tab_intel, tab_sigint, tab_econ, t
     "📻  SIGINT",
     "📊  Economic & Markets",
     "🏭  Facility Map",
-])
+]
+if "active_tab" not in st.session_state:
+    st.session_state["active_tab"] = _TAB_LABELS[0]
+
+st.markdown("""
+<style>
+div[data-testid="stRadio"] > label { display:none; }
+div[data-testid="stRadio"] > div { flex-wrap:wrap; gap:2px; border-bottom:1px solid var(--border); padding-bottom:0; }
+div[data-testid="stRadio"] > div > label {
+    background:transparent; border:none; border-bottom:2px solid transparent;
+    padding:8px 14px; margin:0; border-radius:0; font-family:var(--fs);
+    font-size:13px; color:var(--muted); cursor:pointer;
+}
+div[data-testid="stRadio"] input:checked + div {
+    color:var(--cyan) !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+_active_tab = st.radio(
+    "Dashboard section", _TAB_LABELS,
+    key="active_tab", horizontal=True, label_visibility="collapsed",
+)
 
 @st.cache_data(ttl=300, show_spinner=False)
 def fetch_live_layoffs() -> list:
@@ -6238,7 +6300,7 @@ def fetch_live_layoffs() -> list:
 # ══════════════════════════════════════════════════════════════
 # TAB 1 — CONFLICT DASHBOARD
 # ══════════════════════════════════════════════════════════════
-with tab_conflict:
+if _active_tab == "⚔  Conflict Dashboard":
     st.markdown("""
     <div class="helper">
       <b>Select a conflict theatre</b> below to explore its incident map, faction tracker,
@@ -7340,7 +7402,8 @@ tl.innerHTML = html;
 # ══════════════════════════════════════════════════════════════
 # TAB 2 — EARTH SIGNALS
 # ══════════════════════════════════════════════════════════════
-with tab_earth:
+if _active_tab == "🌍  Earth Signals":
+    sig_eq_df = fetch_usgs_significant()  # lazy (v8): only fetched when this tab is open
     st.markdown("""
     <div class="helper">
       <b>Earth Signals</b> shows live USGS seismic data, NASA EONET volcanic/wildfire events,
@@ -7457,7 +7520,7 @@ with tab_earth:
 # ══════════════════════════════════════════════════════════════
 # TAB 3 — CIVIL MOVEMENTS
 # ══════════════════════════════════════════════════════════════
-with tab_civil:
+if _active_tab == "✊  Civil Movements":
     st.markdown("""
     <div class="helper">
       <b>Civil Movements</b> tracks protests, strikes, and civil unrest. Sentiment is rated
@@ -7510,7 +7573,7 @@ with tab_civil:
 # ══════════════════════════════════════════════════════════════
 # TAB 4 — LIVE NEWS
 # ══════════════════════════════════════════════════════════════
-with tab_news:
+if _active_tab == "📡  Live News":
     sub_tv, sub_articles, sub_directory = st.tabs([
         "📺  Live TV Streams",
         "📰  Article Feeds",
@@ -8267,7 +8330,7 @@ MARKET_RADAR = {"label":"CASH","posture":"2/7 bullish","flow":"PASSIVE GAP","liq
 # TAB 5 — INTEL DASHBOARD
 # ══════════════════════════════════════════════════════════════
 
-with tab_intel:
+if _active_tab == "🛰  Intel Dashboard":
     import streamlit.components.v1 as _ic
     from html import escape as _he
     from concurrent.futures import ThreadPoolExecutor as _TPE_i
@@ -8714,7 +8777,7 @@ body{{
 # ══════════════════════════════════════════════════════════════
 # TAB 7 — SIGINT DASHBOARD
 # ══════════════════════════════════════════════════════════════
-with tab_sigint:
+if _active_tab == "📻  SIGINT":
     import json as _sj
     import streamlit.components.v1 as _sc
     from datetime import datetime as _sdt, timezone as _stz
@@ -9352,7 +9415,7 @@ setTimeout(pollAll,4000);setInterval(pollAll,180000);
     _sc.html(_sigint_html, height=5600, scrolling=True)
 
 
-with tab_econ:
+if _active_tab == "📊  Economic & Markets":
     import json as _ej
     import streamlit.components.v1 as _ec
 
@@ -10368,7 +10431,7 @@ document.getElementById('root').innerHTML =
     _ec.html(_econ_html, height=5200, scrolling=True)
 
 
-with tab_facility:
+if _active_tab == "🏭  Facility Map":
     st.markdown('''<style>
     @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;500;600&display=swap');
     .sh{font-family:"Bebas Neue",sans-serif;font-size:1.05rem;letter-spacing:.12em;color:#d4963a;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #1e2d46;margin:1.4rem 0 1rem;line-height:1;}
