@@ -2853,554 +2853,11 @@ def get_all_signals_for_country(country: str) -> dict:
     return signals
 
 
-def build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf, show_supply, show_heat,
-                      show_hist=False, show_live=False,
-                      show_intel=False, show_czones=False, show_mbases=False, show_nuclear=False,
-                      show_gamma=False, show_space=False, show_cables=False, show_pipes=False,
-                      show_aidc=False, show_milact=False, show_ships=False, show_trade=False,
-                      show_gps=False, show_orbital=False, show_cii=False, show_displaced=False,
-                      show_climate=False, show_weather=False, show_outages=False, show_cyber=False,
-                      show_econ=False, show_minerals=False, show_waterways=False, show_fires_layer=False,
-                      show_protests=False, show_aviation=False,
-                      show_ais=False, show_opensky=False, show_acled=False):
-    layers = []
-
-    _layer_id_counter = [0]
-
-    def _scatter(data_list, col, radius, id_field="name", layer_id=None):
-        if not data_list: return
-        df = pd.DataFrame(data_list)
-        if "lat" not in df.columns or "lon" not in df.columns: return
-        df["_color"]  = [col]*len(df)
-        df["_radius"] = radius
-        if "tip" not in df.columns:
-            df["tip"] = df.get(id_field, pd.Series([""] * len(df))).astype(str)
-        _layer_id_counter[0] += 1
-        lid = layer_id or f"scatter_{_layer_id_counter[0]}"
-        layers.append(pdk.Layer("ScatterplotLayer", data=df, id=lid,
-                                 get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color",
-                                 get_line_color=[255,255,255,20], line_width_min_pixels=1,
-                                 pickable=True, auto_highlight=True))
-
-    def _icon_scatter(data_list, col, radius, layer_id=None):
-        if not data_list: return
-        df = pd.DataFrame(data_list)
-        if "lat" not in df.columns or "lon" not in df.columns: return
-        df["_color"]  = [col]*len(df)
-        df["_radius"] = radius
-        if "tip" not in df.columns:
-            df["tip"] = df.get("name", pd.Series([""] * len(df))).astype(str)
-        _layer_id_counter[0] += 1
-        lid = layer_id or f"icon_{_layer_id_counter[0]}"
-        layers.append(pdk.Layer("ScatterplotLayer", data=df, id=lid,
-                                 get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color",
-                                 pickable=True, auto_highlight=True))
-
-    def _arc(data_list, color, width=2, layer_id=None):
-        if not data_list: return
-        df = pd.DataFrame(data_list)
-        df["_color"] = [color]*len(df)
-        if "tip" not in df.columns:
-            df["tip"] = df.get("name", pd.Series([""] * len(df))).astype(str)
-        _layer_id_counter[0] += 1
-        lid = layer_id or f"arc_{_layer_id_counter[0]}"
-        layers.append(pdk.Layer("ArcLayer", data=df, id=lid,
-                                 get_source_position=["from_lon","from_lat"],
-                                 get_target_position=["to_lon","to_lat"],
-                                 get_source_color="_color", get_target_color="_color",
-                                 get_width=width, pickable=True, auto_highlight=True))
-
-    # ── Original layers ──────────────────────────────────────────
-    if show_seis and not eq_df.empty:
-        ep = eq_df.copy()
-        ep["_color"]  = ep["mag"].apply(lambda m: [255,55,85,220] if m>=5.5 else [255,180,0,200] if m>=4.5 else [0,230,118,175] if m>=3.5 else [0,200,255,150])
-        ep["_radius"] = (ep["mag"]**2.3 * 15000).clip(10000, 240000)
-        ep["tip"]     = ep.apply(lambda r: f"\U0001f30d SEISMIC  M" + str(r['mag']) + "\n" + str(r['place']) + "\nDepth: " + str(r['depth_km']) + " km  |  " + str(r['time']), axis=1)
-        layers.append(pdk.Layer("ScatterplotLayer", data=ep, id="seismic",
-                                 get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color",
-                                 get_line_color=[255,255,255,30], line_width_min_pixels=1,
-                                 pickable=True, auto_highlight=True))
-
-    if show_volc and not eonet_df.empty:
-        eo = eonet_df.copy(); eo["_color"] = [[255,110,40,200]]*len(eo); eo["_radius"] = 70000
-        eo["tip"] = eo.apply(lambda r: f"🌋 EONET EVENT\n{r['title']}\nCategory: {r.get('cat','')}", axis=1)
-        layers.append(pdk.Layer("ScatterplotLayer", data=eo, id="eonet",
-                                 get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
-
-    if show_conf:
-        rows = []
-        for cname, c in CONFLICTS.items():
-            for inc in c["incidents"]: rows.append({**inc, "conflict": cname})
-        if rows:
-            cdf = pd.DataFrame(rows); sc = _sev_colors()
-            cdf["_color"]  = cdf["severity"].map(sc)
-            cdf["_radius"] = cdf["severity"].map({"CRITICAL":100000,"HIGH":75000,"MED":55000,"LOW":40000,"INFO":30000})
-            cdf["tip"]     = cdf.apply(lambda r: f"{r['conflict']}\n{INCIDENT_ICONS.get(r['type'],'●')} {r['title']}\n{r['loc']} · {r['date']}\nSeverity: {r['severity']} · Casualties: {r['casualties']}", axis=1)
-            layers.append(pdk.Layer("ScatterplotLayer", data=cdf, id="conflicts",
-                                     get_position=["lon","lat"],
-                                     get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
-
-    if show_mvmt:
-        mdf = pd.DataFrame(MOVEMENTS)
-        mdf["_color"]  = mdf["sentiment"].map({"CRIT":[200,60,255,200],"HIGH":[157,110,255,185],"MED":[120,80,220,165]})
-        mdf["_radius"] = mdf["scale"] * 1800
-        mdf["tip"]     = mdf.apply(lambda r: f"📢 CIVIL MOVEMENT\n{r['title']}\n{r['location']}\nSize: {r['size']} · Sentiment: {r['sentiment']}", axis=1)
-        layers.append(pdk.Layer("ScatterplotLayer", data=mdf, id="movements",
-                                 get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
-
-    if show_supply:
-        arc_rows = []
-        for c in CONFLICTS.values(): arc_rows.extend(c["supply_lines"])
-        if arc_rows:
-            adf = pd.DataFrame(arc_rows)
-            cmap = {"Military Aid":[255,61,90,160],"Arms/Funding":[255,61,90,160],
-                    "RSF Support":[255,140,66,140],"SAF Support":[0,200,255,140],
-                    "Junta Support":[255,61,90,140],"Arms Supply":[255,180,0,140],"Humanitarian":[0,230,118,150]}
-            adf["_color"] = adf["type"].apply(lambda t: cmap.get(t,[74,107,133,120]))
-            adf["tip"]   = adf.apply(lambda r: f"⟶ SUPPLY LINE\n{r['type']}\nProvider: {r['provider']}", axis=1)
-            layers.append(pdk.Layer("ArcLayer", data=adf,
-                                     get_source_position=["from_lon","from_lat"],
-                                     get_target_position=["to_lon","to_lat"],
-                                     get_source_color="_color", get_target_color="_color",
-                                     get_width=2, pickable=True, auto_highlight=True))
-
-    if show_heat and not eq_df.empty:
-        # HeatmapLayer: pickable=False so hover never returns an object without tip
-        layers.append(pdk.Layer("HeatmapLayer",
-                                 data=eq_df[["lat","lon","mag"]].rename(columns={"mag":"weight"}),
-                                 get_position=["lon","lat"], get_weight="weight",
-                                 radiusPixels=50, opacity=0.45, pickable=False))
-
-    # ── Historical Events layer (2022–present) ──────────────────
-    if show_hist and HISTORICAL_EVENTS:
-        hdf = pd.DataFrame(HISTORICAL_EVENTS)
-        hdf["_color"] = hdf["severity"].apply(lambda s: HIST_SEV_COLORS.get(s, [157,110,255,170]))
-        hdf["_radius"] = hdf["severity"].apply(lambda s: 90000 if s=="CRITICAL" else 70000 if s=="HIGH" else 55000 if s=="MED" else 40000)
-        layers.append(pdk.Layer("ScatterplotLayer", data=hdf, id="historical",
-                                 get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color",
-                                 get_line_color=[255,255,255,30], line_width_min_pixels=1,
-                                 pickable=True, auto_highlight=True))
-
-    # ── Live Events layer (GDELT last 1h — lat/lon approximated from source) ─
-    if show_live:
-        live_arts = fetch_live_global_events(max_records=20)
-        if live_arts:
-            # Map to approximate coordinates using known news source locations
-            # When GDELT doesn't provide coords, we distribute around conflict hotspots
-            import random
-            rng2 = random.Random(42)
-            live_pts = []
-            hotspot_coords = [
-                (32.08,34.78),(50.45,30.52),(31.4,34.47),(35.69,51.39),
-                (15.55,32.53),(16.87,96.19),(14.5,43.5),(39.9,116.4),(38.9,-77.0),
-            ]
-            for i, art in enumerate(live_arts):
-                base_lat, base_lon = hotspot_coords[i % len(hotspot_coords)]
-                live_pts.append({
-                    "lat":   base_lat + rng2.uniform(-2, 2),
-                    "lon":   base_lon + rng2.uniform(-2, 2),
-                    "tip":   f"⚡ LIVE EVENT\n{art['source'].upper()}\n{art['title']}\n{art['time']}",
-                    "_color": [0, 255, 200, 200],
-                    "_radius": 60000,
-                })
-            live_df = pd.DataFrame(live_pts)
-            layers.append(pdk.Layer("ScatterplotLayer", data=live_df, id="live_events",
-                                     get_position=["lon","lat"],
-                                     get_radius="_radius", get_fill_color="_color",
-                                     get_line_color=[0,255,200,80], line_width_min_pixels=1,
-                                     pickable=True, auto_highlight=True))
-
-    # ── New layers ───────────────────────────────────────────────
-    if show_intel:
-        _scatter(INTEL_HOTSPOTS, [255,200,0,210], 90000)
-
-    if show_czones:
-        _scatter(CONFLICT_ZONES, [255,30,60,200], 110000)
-
-    if show_mbases:
-        base_df = pd.DataFrame(MILITARY_BASES)
-        base_df["_color"] = base_df["country"].apply(lambda c:
-            [0,200,255,200] if "USA" in c or "US" in c
-            else [255,61,90,200] if "Russia" in c
-            else [255,200,0,200] if "China" in c
-            else [0,230,118,200] if any(x in c for x in ["UK","NATO","Israel","India","Japan","Singapore","S.Korea"])
-            else [157,110,255,180])
-        base_df["_radius"] = 55000
-        if "tip" not in base_df.columns:
-            base_df["tip"] = base_df.apply(lambda r: f"🏛 MILITARY BASE\n{r['name']}\n{r.get('country','')} · {r.get('type','')}", axis=1)
-        layers.append(pdk.Layer("ScatterplotLayer", data=base_df, get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
-
-    if show_nuclear:
-        ndf = pd.DataFrame(NUCLEAR_SITES)
-        ndf["_color"] = ndf["status"].apply(lambda s:
-            [255,30,60,230] if s in ("Struck","Destroyed","Occupied")
-            else [255,180,0,200] if s in ("Active","Operational")
-            else [157,110,255,180])
-        ndf["_radius"] = 70000
-        if "tip" not in ndf.columns:
-            ndf["tip"] = ndf.apply(lambda r: f"☢ NUCLEAR SITE\n{r['name']}\n{r.get('country','')} · {r.get('type','')}\nStatus: {r.get('status','')}", axis=1)
-        layers.append(pdk.Layer("ScatterplotLayer", data=ndf, get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
-
-    if show_gamma:
-        _scatter(GAMMA_IRRADIATORS, [255,165,0,180], 40000)
-
-    if show_space:
-        sdf = pd.DataFrame(SPACEPORTS)
-        sdf["_color"] = sdf["type"].apply(lambda t: [0,200,255,210] if t=="Launch" else [255,61,90,200])
-        sdf["_radius"] = 60000
-        if "tip" not in sdf.columns:
-            sdf["tip"] = sdf.apply(lambda r: f"🚀 SPACEPORT\n{r['name']}\n{r.get('country','')} · {r.get('type','')}", axis=1)
-        layers.append(pdk.Layer("ScatterplotLayer", data=sdf, get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
-
-    if show_cables:
-        cab_data = []
-        status_colors = {"Cut":[255,30,60,200],"Degraded":[255,140,66,180],"Active":[0,200,255,140]}
-        for c in UNDERSEA_CABLES:
-            col = status_colors.get(c["status"],[74,107,133,120])
-            cab_data.append({**c,"_color":col,"from_lat":c["from_lat"],"from_lon":c["from_lon"],"to_lat":c["to_lat"],"to_lon":c["to_lon"]})
-        if cab_data:
-            cdf2 = pd.DataFrame(cab_data)
-            if "tip" not in cdf2.columns:
-                cdf2["tip"] = cdf2.apply(lambda r: f"🔌 UNDERSEA CABLE\n{r.get('name','')}\nStatus: {r.get('status','')} · Risk: {r.get('risk','')}/100", axis=1)
-            layers.append(pdk.Layer("ArcLayer", data=cdf2,
-                                     get_source_position=["from_lon","from_lat"],
-                                     get_target_position=["to_lon","to_lat"],
-                                     get_source_color="_color", get_target_color="_color",
-                                     get_width=2, pickable=True, auto_highlight=True))
-
-    if show_pipes:
-        pip_colors = {"Sabotaged":[255,30,60,200],"Disrupted":[255,61,90,180],"Suspended":[255,140,66,170],"Reduced":[255,180,0,160],"Active":[0,200,255,120],"Under Construction":[157,110,255,150]}
-        pip_data = []
-        for p in PIPELINES:
-            col = pip_colors.get(p["status"],[74,107,133,100])
-            pip_data.append({**p,"_color":col})
-        if pip_data:
-            pdf2 = pd.DataFrame(pip_data)
-            if "tip" not in pdf2.columns:
-                pdf2["tip"] = pdf2.apply(lambda r: f"🛢 PIPELINE\n{r.get('name','')}\nStatus: {r.get('status','')} · Risk: {r.get('risk','')}/100", axis=1)
-            layers.append(pdk.Layer("ArcLayer", data=pdf2,
-                                     get_source_position=["from_lon","from_lat"],
-                                     get_target_position=["to_lon","to_lat"],
-                                     get_source_color="_color", get_target_color="_color",
-                                     get_width=3, pickable=True, auto_highlight=True))
-
-    if show_aidc:
-        aidf = pd.DataFrame(AI_DATA_CENTERS)
-        aidf["_color"] = aidf["operator"].apply(lambda o:
-            [0,200,255,210] if any(x in o for x in ["Microsoft","Azure"])
-            else [255,180,0,200] if any(x in o for x in ["Google","Meta","Anthropic","xAI"])
-            else [157,110,255,200] if any(x in o for x in ["Amazon","AWS"])
-            else [255,140,66,180])
-        aidf["_radius"] = 45000
-        if "tip" not in aidf.columns:
-            aidf["tip"] = aidf.apply(lambda r: f"🖥 AI DATA CENTER\n{r['name']}\nOperator: {r.get('operator','')}", axis=1)
-        layers.append(pdk.Layer("ScatterplotLayer", data=aidf, get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
-
-    if show_milact:
-        madf = pd.DataFrame(MILITARY_ACTIVITY)
-        madf["_color"] = madf["country"].apply(lambda c:
-            [0,200,255,210] if "USA" in c
-            else [255,30,60,210] if any(x in c for x in ["Russia","Iran","Houthi","DPRK","China"])
-            else [0,230,118,190] if any(x in c for x in ["Israel","NATO","Japan"])
-            else [255,180,0,190])
-        madf["_radius"] = 80000
-        if "tip" not in madf.columns:
-            madf["tip"] = madf.apply(lambda r: f"✈ MILITARY ACTIVITY\n{r.get('activity','')} — {r.get('country','')}\nType: {r.get('type','')}\nSignals: {r.get('signals','')}", axis=1)
-        layers.append(pdk.Layer("ScatterplotLayer", data=madf, get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
-
-    if show_ships:
-        _ship_path_data = []
-        for _z in SHIP_TRAFFIC_ZONES:
-            if "path" not in _z:
-                continue
-            _t = _z["traffic"]
-            _col = ([255,30,60,210] if "Blocked" in _t or "Disrupted" in _t
-                    else [255,140,66,190] if "Reduced" in _t or "Critical" in _t
-                    else [0,200,255,170] if "Extreme" in _t or "Heavy" in _t
-                    else [0,230,118,150])
-            _w = 4 if "Extreme" in _t or "Heavy" in _t else 3 if "Blocked" in _t or "Disrupted" in _t else 2
-            _ship_path_data.append({
-                "path": _z["path"], "_color": _col, "_width": _w,
-                "tip": _z.get("tip", f"🚢 {_z['name']} | {_z['vessels_day']} vessels/day"),
-            })
-        if _ship_path_data:
-            _spdf = pd.DataFrame(_ship_path_data)
-            layers.append(pdk.Layer("PathLayer", data=_spdf,
-                                     get_path="path", get_color="_color", get_width="_width",
-                                     width_min_pixels=2, width_max_pixels=8,
-                                     pickable=True, auto_highlight=True, id="ship_traffic"))
-
-    if show_trade:
-        _t_colors = {"Container":[0,200,255,150],"Oil Tanker":[255,140,66,170],"Bulk":[157,110,255,150]}
-        _trade_path_data = []
-        for _r in TRADE_ROUTE_ARCS:
-            _col = _t_colors.get(_r.get("type",[]), [74,107,133,120])
-            if _r.get("status") in ("Rerouted","Disrupted"): _col = [255,61,90,180]
-            _w = 3 if _r.get("status") in ("Rerouted","Disrupted") else 2
-            if "path" in _r:
-                _trade_path_data.append({
-                    "path": _r["path"], "_color": _col, "_width": _w,
-                    "tip": _r.get("tip", f"⚓ TRADE | {_r.get('name','')} | {_r.get('type','')} | {_r.get('status','')}"),
-                })
-        if _trade_path_data:
-            _tpdf = pd.DataFrame(_trade_path_data)
-            layers.append(pdk.Layer("PathLayer", data=_tpdf,
-                                     get_path="path", get_color="_color", get_width="_width",
-                                     width_min_pixels=1, width_max_pixels=6,
-                                     pickable=True, auto_highlight=True, id="trade_routes"))
-
-    if show_gps:
-        gdf = pd.DataFrame(GPS_JAMMING_ZONES)
-        gdf["_color"] = gdf["severity"].apply(lambda s: [255,61,90,80] if s=="High" else [255,180,0,60])
-        gdf["_radius"] = gdf["radius_km"] * 1000
-        if "tip" not in gdf.columns:
-            gdf["tip"] = gdf.apply(lambda r: f"📡 GPS JAMMING\n{r['name']}\nSource: {r.get('source','')}\nSeverity: {r.get('severity','')}\nRadius: {r.get('radius_km','')} km", axis=1)
-        layers.append(pdk.Layer("ScatterplotLayer", data=gdf, get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True,
-                                 stroked=True, get_line_color=[255,61,90,120], line_width_min_pixels=1))
-
-    if show_orbital:
-        # Orbital surveillance shown as equatorial ring markers
-        odf = pd.DataFrame(ORBITAL_SURVEILLANCE)
-        odf["_color"] = odf["operator"].apply(lambda o:
-            [0,200,255,160] if "USA" in o or "Commercial" in o
-            else [255,61,90,160] if "Russia" in o
-            else [255,200,0,160] if "China" in o
-            else [0,230,118,160])
-        odf["_radius"] = 150000
-        if "tip" not in odf.columns:
-            odf["tip"] = odf.apply(lambda r: f"🛰 ORBITAL SURVEILLANCE\n{r['name']}\nOperator: {r.get('operator','')}\nType: {r.get('type','')}", axis=1)
-        layers.append(pdk.Layer("ScatterplotLayer", data=odf, get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
-
-    if show_cii:
-        cii_df = pd.DataFrame(CII_INSTABILITY)
-        cii_df["_color"] = cii_df["risk"].apply(lambda r: [255,30,60,200] if r>=85 else [255,140,66,180] if r>=65 else [255,180,0,160])
-        cii_df["_radius"] = cii_df["risk"] * 1200
-        if "tip" not in cii_df.columns:
-            cii_df["tip"] = cii_df.apply(lambda r: f"🌎 CII INSTABILITY\n{r['name']}\nCountry: {r.get('country','')}\nSector: {r.get('sector','')}\nRisk: {r.get('risk','')}/100", axis=1)
-        layers.append(pdk.Layer("ScatterplotLayer", data=cii_df, get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
-
-    if show_displaced:
-        disp_data = []
-        for d in DISPLACEMENT_FLOWS:
-            disp_data.append({**d,"_color":[200,60,255,150]})
-        if disp_data:
-            ddf2 = pd.DataFrame(disp_data)
-            if "tip" not in ddf2.columns:
-                ddf2["tip"] = ddf2.apply(lambda r: f"👥 DISPLACEMENT\n{r.get('cause','')}\n{r.get('pop',0):,} displaced", axis=1)
-            layers.append(pdk.Layer("ArcLayer", data=ddf2,
-                                     get_source_position=["from_lon","from_lat"],
-                                     get_target_position=["to_lon","to_lat"],
-                                     get_source_color=[200,60,255,150], get_target_color=[200,60,255,80],
-                                     get_width=2, pickable=True, auto_highlight=True))
-
-    if show_climate:
-        cldf = pd.DataFrame(CLIMATE_ANOMALIES)
-        cldf["_color"] = cldf["type"].apply(lambda t:
-            [0,200,80,160] if t in ("Temperature","Permafrost","Ecosystem","SST")
-            else [255,180,0,160] if t=="Drought"
-            else [0,180,255,160] if t=="Ocean"
-            else [255,100,30,160])
-        cldf["_radius"] = 450000
-        if "tip" not in cldf.columns:
-            cldf["tip"] = cldf.apply(lambda r: f"🌫 CLIMATE ANOMALY\n{r['name']}\nAnomaly: {r.get('anomaly','')}\nType: {r.get('type','')}", axis=1)
-        layers.append(pdk.Layer("ScatterplotLayer", data=cldf, get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
-
-    if show_weather:
-        wdf = pd.DataFrame(WEATHER_ALERTS)
-        wdf["_color"] = wdf["type"].apply(lambda t:
-            [0,100,255,180] if t in ("Flood","Storm")
-            else [255,140,66,180] if t=="Drought"
-            else [255,200,50,180] if t=="Dust Storm"
-            else [157,110,255,200])
-        wdf["_radius"] = 300000
-        if "tip" not in wdf.columns:
-            wdf["tip"] = wdf.apply(lambda r: f"⛈ WEATHER ALERT\n{r['name']}\nType: {r.get('type','')} · Severity: {r.get('severity','')}", axis=1)
-        layers.append(pdk.Layer("ScatterplotLayer", data=wdf, get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
-
-    if show_outages:
-        odf2 = pd.DataFrame(INTERNET_OUTAGES)
-        odf2["_color"] = odf2["severity"].apply(lambda s:
-            [255,30,60,220] if s=="Total"
-            else [255,140,66,190] if s in ("Partial","Disrupted")
-            else [255,180,0,170])
-        odf2["_radius"] = 80000
-        if "tip" not in odf2.columns:
-            odf2["tip"] = odf2.apply(lambda r: f"📡 INTERNET OUTAGE\n{r['name']}\nSeverity: {r.get('severity','')}\nCause: {r.get('cause','')}", axis=1)
-        layers.append(pdk.Layer("ScatterplotLayer", data=odf2, get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
-
-    if show_cyber:
-        try:
-            _cyber_src = fetch_live_cyber_threats()  # v8: live-enriched, was static CYBER_THREATS_GEO
-            if not _cyber_src:
-                _cyber_src = CYBER_THREATS_GEO
-        except Exception:
-            _cyber_src = CYBER_THREATS_GEO
-        cydf = pd.DataFrame(_cyber_src)
-        cydf["_color"] = cydf["actor"].apply(lambda a:
-            [255,30,60,200] if "Russia" in a
-            else [255,200,0,200] if "China" in a
-            else [157,110,255,200] if "DPRK" in a
-            else [255,140,66,200])
-        cydf["_radius"] = 120000
-        if "tip" not in cydf.columns:
-            cydf["tip"] = cydf.apply(lambda r: f"🛡 CYBER THREAT\n{r['name']}\nActor: {r.get('actor','')}\nTargets: {r.get('targets','')}" + (f"\nLive hits (6h): {r['live_hits']}" if r.get("live_hits") else ""), axis=1)
-        layers.append(pdk.Layer("ScatterplotLayer", data=cydf, get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
-
-    if show_econ:
-        edf = pd.DataFrame(ECONOMIC_CENTERS)
-        edf["_color"] = edf["role"].apply(lambda r: [255,180,0,200] if "Finance" in r else [0,200,255,180])
-        edf["_radius"] = edf["gdp_t"].apply(lambda g: max(int(g * 180000), 60000))
-        if "tip" not in edf.columns:
-            edf["tip"] = edf.apply(lambda r: f"💰 ECONOMIC CENTER\n{r['name']}\nRole: {r.get('role','')}\nGDP: ${r.get('gdp_t','')}T", axis=1)
-        layers.append(pdk.Layer("ScatterplotLayer", data=edf, get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
-
-    if show_minerals:
-        mdf2 = pd.DataFrame(CRITICAL_MINERALS)
-        min_colors = {"Cobalt":[0,200,255,200],"Lithium":[0,230,118,200],"Rare Earth Elements":[255,200,0,200],
-                      "Platinum Group":[200,200,200,200],"Nickel":[157,110,255,200],"Uranium":[255,60,60,200],
-                      "Bauxite":[255,140,66,200],"Manganese":[255,180,0,200]}
-        mdf2["_color"] = mdf2["mineral"].apply(lambda m: min_colors.get(m,[74,107,133,180]))
-        mdf2["_radius"] = mdf2["share_pct"].apply(lambda s: int(s * 8000))
-        if "tip" not in mdf2.columns:
-            mdf2["tip"] = mdf2.apply(lambda r: f"💎 CRITICAL MINERAL\n{r['name']}\nMineral: {r.get('mineral','')}\nGlobal share: {r.get('share_pct','')}%", axis=1)
-        layers.append(pdk.Layer("ScatterplotLayer", data=mdf2, get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
-
-    if show_waterways:
-        _wway_path_data = []
-        _ww_status_col = {"red":[255,30,60,220],"amber":[255,180,0,200],"green":[0,200,255,180]}
-        for _w in STRATEGIC_WATERWAYS:
-            if "path" not in _w:
-                continue
-            _wc = _ww_status_col.get(_w.get("status","green"), [0,200,255,180])
-            _wway_path_data.append({
-                "path": _w["path"], "_color": _wc, "_width": 4,
-                "tip": _w.get("tip", f"⚓ WATERWAY | {_w['name']}"),
-            })
-        if _wway_path_data:
-            _wwdf = pd.DataFrame(_wway_path_data)
-            layers.append(pdk.Layer("PathLayer", data=_wwdf,
-                                     get_path="path", get_color="_color", get_width="_width",
-                                     width_min_pixels=2, width_max_pixels=10,
-                                     pickable=True, auto_highlight=True, id="waterways"))
-    if show_fires_layer:
-        # v8: was 7 hardcoded static coordinates; now sources live wildfire
-        # points straight from the EONET feed already being fetched for the
-        # map (eonet_df is refreshed every 30s inside the live map fragment).
-        if not eonet_df.empty and "cat" in eonet_df.columns:
-            _fire_src = eonet_df[eonet_df["cat"].str.contains("wildfire", case=False, na=False)]
-        else:
-            _fire_src = pd.DataFrame()
-        if not _fire_src.empty:
-            fdf = _fire_src[["lat", "lon", "title"]].copy()
-            fdf["_color"] = [[255,80,20,200]]*len(fdf)
-            fdf["_radius"] = 90000
-            fdf["tip"] = fdf.apply(lambda r: f"🔥 ACTIVE WILDFIRE\n{r['title']}", axis=1)
-            layers.append(pdk.Layer("ScatterplotLayer", data=fdf, get_position=["lon","lat"],
-                                     get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
-
-    if show_protests:
-        prot_df = pd.DataFrame(MOVEMENTS)
-        prot_df["_color"] = [[200,60,255,180]]*len(prot_df)
-        prot_df["_radius"] = prot_df["scale"] * 2000
-        prot_df["tip"] = prot_df.apply(lambda r: f"📢 PROTEST\n{r['title']}\n{r['location']}\nSize: {r['size']}", axis=1)
-        layers.append(pdk.Layer("ScatterplotLayer", data=prot_df, get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
-
-    if show_aviation:
-        av_pts = [
-            {"lat":51.5,"lon":-0.1,"name":"Heathrow — congestion"},{"lat":40.63,"lon":-73.78,"name":"JFK — normal"},
-            {"lat":35.68,"lon":139.78,"name":"Narita — normal"},{"lat":1.35,"lon":103.99,"name":"Changi — normal"},
-            {"lat":25.25,"lon":55.36,"name":"Dubai Int — normal"},{"lat":48.36,"lon":11.79,"name":"Munich — normal"},
-            {"lat":33.94,"lon":-118.41,"name":"LAX — normal"},{"lat":22.31,"lon":113.92,"name":"HKG — reduced"},
-            {"lat":32.08,"lon":34.88,"name":"Ben Gurion — CLOSED"},{"lat":35.69,"lon":51.32,"name":"IKA Tehran — CLOSED"},
-            {"lat":33.52,"lon":36.52,"name":"Damascus — CLOSED"},{"lat":15.59,"lon":32.55,"name":"Khartoum — CLOSED"},
-            {"lat":31.51,"lon":34.41,"name":"Gaza — DESTROYED"},
-        ]
-        avdf = pd.DataFrame(av_pts)
-        avdf["_color"] = avdf["name"].apply(lambda n:
-            [255,30,60,230] if "CLOSED" in n or "DESTROYED" in n
-            else [255,180,0,190] if "congestion" in n or "reduced" in n
-            else [0,200,255,160])
-        avdf["_radius"] = avdf["name"].apply(lambda n: 70000 if "CLOSED" in n or "DESTROYED" in n else 45000)
-        avdf["tip"] = avdf["name"].apply(lambda n: f"✈ AVIATION STATUS\n{n}")
-        layers.append(pdk.Layer("ScatterplotLayer", data=avdf, get_position=["lon","lat"],
-                                 get_radius="_radius", get_fill_color="_color", pickable=True, auto_highlight=True))
-
-    # ── Live AIS vessel positions ──────────────────────────────
-    if show_ais:
-        _ais_vessels = fetch_ais_vessels()
-        if _ais_vessels:
-            _ais_df = pd.DataFrame(_ais_vessels)
-            _ais_df["_color"] = _ais_df["type"].apply(lambda t:
-                [255, 60, 30, 220] if "Tanker" in str(t)
-                else [255, 180, 0, 200] if "Military" in str(t)
-                else [0, 200, 255, 150])
-            _ais_df["_radius"] = 22000
-            _ais_df["tip"] = _ais_df.apply(
-                lambda r: f"🚢 AIS | {r.get('name','Unknown')} | "
-                          f"Type: {r.get('type','')} | Speed: {r.get('speed',0)} kn",
-                axis=1)
-            layers.append(pdk.Layer("ScatterplotLayer", data=_ais_df, id="ais_vessels",
-                get_position=["lon","lat"], get_radius="_radius",
-                get_fill_color="_color", get_line_color=[255,255,255,20],
-                line_width_min_pixels=1, pickable=True, auto_highlight=True))
-
-    # ── Live OpenSky airspace ───────────────────────────────────
-    if show_opensky:
-        _sky_flights = fetch_opensky_flights()
-        if _sky_flights:
-            _sky_df = pd.DataFrame(_sky_flights)
-            # Already has _color and _radius per row
-            layers.append(pdk.Layer("ScatterplotLayer", data=_sky_df, id="opensky",
-                get_position=["lon","lat"], get_radius="_radius",
-                get_fill_color="_color",
-                get_line_color=[255,255,255,30], line_width_min_pixels=1,
-                pickable=True, auto_highlight=True))
-
-    # ── ACLED conflict events ───────────────────────────────────
-    if show_acled:
-        _acled_events = fetch_acled_events(limit=80)
-        if _acled_events:
-            _ae_df = pd.DataFrame(_acled_events)
-            _ae_df["_color"] = _ae_df["event_type"].apply(lambda t:
-                [255, 30, 60, 220]  if "Explosion" in str(t) or "Violence" in str(t)
-                else [255, 120, 0, 200] if "Battle" in str(t) or "Conflict" in str(t)
-                else [255, 200, 0, 180])
-            _ae_df["_radius"] = _ae_df.get("fatalities", pd.Series([0]*len(_ae_df))).apply(
-                lambda f: min(20000 + int(f or 0) * 1000, 120000))
-            layers.append(pdk.Layer("ScatterplotLayer", data=_ae_df, id="acled",
-                get_position=["lon","lat"], get_radius="_radius",
-                get_fill_color="_color",
-                get_line_color=[255, 60, 60, 60], line_width_min_pixels=1,
-                pickable=True, auto_highlight=True))
-
-    return pdk.Deck(
-        layers=layers,
-        initial_view_state=pdk.ViewState(latitude=22, longitude=18, zoom=1.4, pitch=0),
-        map_style=CARTO_DARK,
-        tooltip={"text": "{tip}", "style": {"backgroundColor": "#080f1c", "color": "#e2ecf8", "border": "1px solid rgba(0,200,255,.3)", "fontFamily": "IBM Plex Mono, monospace", "fontSize": "12px", "padding": "10px 14px", "borderRadius": "8px", "boxShadow": "0 4px 24px rgba(0,0,0,.6)", "lineHeight": "1.7", "whiteSpace": "pre-line", "maxWidth": "320px"}},
-        height=480,
-    )
+# build_global_map() was removed in v8.1 — the Global Command Map now uses
+# a Cobe WebGL rotating globe (see _render_cobe_globe below) instead of the
+# pydeck deck.gl multi-layer map. build_theatre_map (below) is unrelated —
+# it powers the small per-conflict map in the Conflict Dashboard tab and is
+# untouched.
 
 def build_theatre_map(conflict_key, show_supply):
     C = CONFLICTS[conflict_key]
@@ -3591,58 +3048,18 @@ with st.sidebar:
     st.markdown("#### 🗺 Global Map Layers")
     st.caption("Groups: toggle categories on/off.")
 
-    with st.expander("🌍 Core Layers", expanded=True):
-        show_seis  = st.toggle("🟦 Seismic Events",       value=True,  key="lyr_seis")
-        show_volc  = st.toggle("🟠 Volcanic / EONET",     value=False, key="lyr_volc")
-        show_conf  = st.toggle("🔴 Conflict Incidents",    value=True,  key="lyr_conf")
-        show_mvmt  = st.toggle("🟣 Civil Movements",      value=False, key="lyr_mvmt")
-        show_supp  = st.toggle("⟶ Supply Arc Lines",      value=False, key="lyr_supp")
-        show_heat  = st.toggle("🌡 Heatmap (Seismic)",    value=False, key="lyr_heat")
-        show_hist  = st.toggle("📅 Historical Events 2022+", value=False, key="lyr_hist")
-        show_live  = st.toggle("⚡ Live Events (GDELT)",  value=False, key="lyr_live")
+    st.markdown("#### 🌐 Globe Marker Categories")
+    st.caption("Controls which categories feed the rotating globe below.")
 
-    with st.expander("🎯 Intelligence", expanded=False):
-        show_intel   = st.toggle("🎯 Intel Hotspots",       value=False, key="lyr_intel")
-        show_czones  = st.toggle("⚔ Conflict Zones",       value=False, key="lyr_czones")
+    with st.expander("🌍 Globe Markers", expanded=True):
+        show_conf    = st.toggle("🔴 Conflict Zones",       value=True,  key="lyr_conf")
+        show_hist    = st.toggle("📅 Historical Events",    value=True,  key="lyr_hist")
         show_mbases  = st.toggle("🏛 Military Bases",       value=False, key="lyr_mbases")
         show_nuclear = st.toggle("☢ Nuclear Sites",         value=False, key="lyr_nuc")
-        show_gamma   = st.toggle("⚠ Gamma Irradiators",    value=False, key="lyr_gamma")
-        show_cyber   = st.toggle("🛡 Cyber Threat Actors",  value=False, key="lyr_cyber")
-        show_orbital = st.toggle("🛰 Orbital Surveillance", value=False, key="lyr_orbit")
-        show_gps     = st.toggle("📡 GPS Jamming Zones",    value=False, key="lyr_gps")
-        show_cii     = st.toggle("🌎 CII Instability",      value=False, key="lyr_cii")
+        show_seis    = st.toggle("🟦 Recent Earthquakes",   value=True,  key="lyr_seis")
 
-    with st.expander("🚀 Infrastructure", expanded=False):
-        show_space   = st.toggle("🚀 Spaceports",           value=False, key="lyr_space")
-        show_cables  = st.toggle("🔌 Undersea Cables",      value=False, key="lyr_cables")
-        show_pipes   = st.toggle("🛢 Pipelines",            value=False, key="lyr_pipes")
-        show_aidc    = st.toggle("🖥 AI Data Centers",      value=False, key="lyr_aidc")
-        show_outages = st.toggle("📡 Internet Outages",     value=False, key="lyr_outage")
-        show_econ    = st.toggle("💰 Economic Centers",     value=False, key="lyr_econ")
-
-    with st.expander("✈ Military & Traffic", expanded=False):
-        show_milact  = st.toggle("✈ Military Activity",    value=False, key="lyr_milact")
-        show_ships   = st.toggle("🚢 Ship Traffic Zones",  value=False, key="lyr_ships")
-        show_trade   = st.toggle("⚓ Trade Route Arcs",    value=False, key="lyr_trade")
-        show_aviation= st.toggle("✈ Aviation Status",      value=False, key="lyr_avia")
-        show_waterways=st.toggle("⚓ Strategic Waterways", value=False, key="lyr_water")
-
-    with st.expander("🛰 Live Intelligence", expanded=False):
-        show_ais     = st.toggle("🚢 AIS Vessel Tracking (Live)",   value=False, key="lyr_ais")
-        show_opensky = st.toggle("✈ OpenSky Airspace (Live)",       value=False, key="lyr_osky")
-        show_acled   = st.toggle("⚔ ACLED Conflict Events (Live)",  value=False, key="lyr_acled")
-        if show_ais or show_opensky or show_acled:
-            st.caption("🔴 Live data — refreshes on rerun")
-
-    with st.expander("📢 Human & Social", expanded=False):
-        show_protests  = st.toggle("📢 Protests (all)",     value=False, key="lyr_prot")
-        show_displaced = st.toggle("👥 Displacement Flows", value=False, key="lyr_disp")
-        show_minerals  = st.toggle("💎 Critical Minerals",  value=False, key="lyr_min")
-
-    with st.expander("🌋 Natural & Climate", expanded=False):
-        show_fires_layer = st.toggle("🔥 Active Fire Zones", value=False, key="lyr_fire")
-        show_climate     = st.toggle("🌫 Climate Anomalies", value=False, key="lyr_clim")
-        show_weather     = st.toggle("⛈ Weather Alerts",    value=False, key="lyr_weath")
+    with st.expander("⚔ Theatre Map Options", expanded=False):
+        show_supp = st.toggle("⟶ Supply Arc Lines (Conflict tab)", value=False, key="lyr_supp")
 
     st.markdown('<div class="sb-div"></div>', unsafe_allow_html=True)
     st.markdown("#### 📡 Live Data Status")
@@ -4709,30 +4126,51 @@ if kp >= 5:
 st.markdown("---")
 
 # ─────────────────────────────────────────────
-# GLOBAL MAP
+# GLOBAL MAP  — v8.2: replaced the pydeck deck.gl multi-layer map with a
+# Cobe WebGL rotating globe. Cobe has no built-in tooltip/click-picking or
+# per-layer system, so this trades the old 37-layer interactive map for a
+# simpler always-live visual: markers are assembled fresh from whichever
+# categories are toggled on, and re-rendered every time the page reruns.
 # ─────────────────────────────────────────────
 total_inc     = sum(len(c["incidents"]) for c in CONFLICTS.values())
 crit_inc_cnt  = sum(1 for c in CONFLICTS.values() for i in c["incidents"] if i["severity"]=="CRITICAL")
 hist_crit     = sum(1 for e in HISTORICAL_EVENTS if e["severity"]=="CRITICAL")
 
+def _build_globe_markers():
+    """Assemble Cobe marker points from whichever categories are toggled on."""
+    markers = []
+    if show_conf:
+        for z in CONFLICT_ZONES:
+            sz = 0.09 if z.get("intensity") == "Critical" else 0.06
+            markers.append({"location": [z["lat"], z["lon"]], "size": sz})
+    if show_hist:
+        for e in _HIST_SORTED[:40]:
+            sz = 0.07 if e.get("severity") == "CRITICAL" else 0.04
+            markers.append({"location": [e["lat"], e["lon"]], "size": sz})
+    if show_mbases:
+        for b in MILITARY_BASES:
+            markers.append({"location": [b["lat"], b["lon"]], "size": 0.035})
+    if show_nuclear:
+        for n in NUCLEAR_SITES:
+            markers.append({"location": [n["lat"], n["lon"]], "size": 0.05})
+    if show_seis and not eq_df.empty:
+        for _, r in eq_df.iterrows():
+            sz = min(0.03 + float(r.get("mag", 0)) * 0.015, 0.12)
+            markers.append({"location": [float(r["lat"]), float(r["lon"])], "size": sz})
+    return markers
+
+_globe_markers = _build_globe_markers()
+
 _dot = lambda c: f'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:{c};margin-right:4px"></span>'
 st.markdown(f"""
 <div class="map-top-bar">
   <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-    <div class="map-title-text">🌐 GLOBAL COMMAND MAP</div>
+    <div class="map-title-text">🌐 GLOBAL COMMAND GLOBE</div>
     <div style="font-family:var(--fm);font-size:10px;color:var(--muted)">
-      Click any marker for details · {len(HISTORICAL_EVENTS)} historical events since 2022 · Toggle layers in sidebar
-      · <span style="color:#00ffc8">●</span> LIVE layers refresh every 30s (seismic, EONET/fires, cyber, GDELT, AIS, flights, ACLED)
-      · <span style="color:var(--muted)">●</span> REFERENCE layers are curated baselines (bases, nuclear sites, cables, pipelines)
+      Drag to rotate · {len(_globe_markers)} markers from {len(HISTORICAL_EVENTS)} historical events since 2022 · Toggle categories in sidebar
     </div>
   </div>
   <div class="map-legend">
-    <span>{_dot("#00c8ff")}Seismic</span>
-    <span>{_dot("#ff6a28")}EONET</span>
-    <span>{_dot("#ff3d5a")}Conflict</span>
-    <span>{_dot("#9d6eff")}Civil</span>
-    <span>{_dot("#ff3d5a88")}History</span>
-    <span>{_dot("#00ffc8")}Live</span>
     <span style="margin-left:6px;padding-left:6px;border-left:1px solid rgba(0,200,255,.15)">
       <span class="pulse p-red"></span>{crit_inc_cnt} CRITICAL
     </span>
@@ -4743,83 +4181,99 @@ st.markdown(f"""
   </div>
 </div>""", unsafe_allow_html=True)
 
-# ── Live map container — re-fetches data and remounts every 30s ──────────────
-import math as _math
-_live_bucket = int(_math.floor(datetime.now(tz=timezone.utc).timestamp() / 30))
+_globe_markers_json = json.dumps(_globe_markers)
+_globe_html = f"""
+<div style="border:1px solid rgba(0,200,255,.12);border-top:none;border-radius:0 0 14px 14px;
+            overflow:hidden;margin-bottom:8px;background:#050a12;display:flex;justify-content:center;">
+  <canvas id="cobeGlobe" style="width:100%;max-width:560px;height:480px;aspect-ratio:1;cursor:grab"></canvas>
+</div>
+<script type="module">
+  import createGlobe from "https://esm.sh/cobe@0.6.3";
 
-# Force cache clear on these key fetchers so map data is always fresh
-@st.fragment(run_every="30s")
-def _live_map_fragment():
-    # v8 fix: _live_bucket must be computed INSIDE the fragment. The fragment's
-    # own periodic run_every tick does NOT re-execute code outside itself, so
-    # a bucket value computed at module scope stayed frozen across every
-    # auto-refresh cycle — the pydeck chart kept the same `key` every 30s and
-    # the map never visually repainted even though fresh data was fetched.
-    _live_bucket = int(_math.floor(datetime.now(tz=timezone.utc).timestamp() / 30))
+  const canvas = document.getElementById("cobeGlobe");
+  let phi = 0;
+  let width = 0;
+  let pointerInteracting = null;
+  let pointerInteractionMovement = 0;
 
-    # Re-fetch all live data inside the fragment — bypasses page-level cache
-    _eq   = fetch_usgs()
-    _eon  = fetch_eonet()
-    if _eq.empty:
-        _eq = eq_df   # fall back to page-level data
+  const markers = {_globe_markers_json};
 
-    st.markdown('<div style="border:1px solid rgba(0,200,255,.12);border-top:none;border-radius:0 0 14px 14px;overflow:hidden;margin-bottom:8px">', unsafe_allow_html=True)
-    st.pydeck_chart(
-        build_global_map(_eq, _eon, show_seis, show_volc, show_mvmt, show_conf, show_supp, show_heat,
-            show_hist=show_hist, show_live=show_live,
-            show_intel=show_intel, show_czones=show_czones, show_mbases=show_mbases,
-            show_nuclear=show_nuclear, show_gamma=show_gamma, show_space=show_space,
-            show_cables=show_cables, show_pipes=show_pipes, show_aidc=show_aidc,
-            show_milact=show_milact, show_ships=show_ships, show_trade=show_trade,
-            show_gps=show_gps, show_orbital=show_orbital, show_cii=show_cii,
-            show_displaced=show_displaced, show_climate=show_climate, show_weather=show_weather,
-            show_outages=show_outages, show_cyber=show_cyber, show_econ=show_econ,
-            show_minerals=show_minerals, show_waterways=show_waterways,
-            show_fires_layer=show_fires_layer, show_protests=show_protests, show_aviation=show_aviation,
-            show_ais=show_ais, show_opensky=show_opensky, show_acled=show_acled),
-        use_container_width=True,
-        key=f"live_map_{_live_bucket}",
-    )
-    st.markdown('</div>', unsafe_allow_html=True)
+  function onResize() {{
+    if (canvas) width = canvas.offsetWidth;
+  }}
+  window.addEventListener("resize", onResize);
+  onResize();
 
-    # Live status line inside fragment
-    _ts = datetime.now(tz=timezone.utc).strftime("%H:%M:%S")
-    st.markdown(
-        f'<div style="font-family:var(--fm);font-size:10px;color:var(--muted);text-align:right;margin-top:-6px;margin-bottom:6px">' +
-        f'<span class="pulse p-green" style="margin-right:4px"></span>' +
-        f'LIVE · last updated <span style="color:var(--cyan)">{_ts} UTC</span> · ' +
-        f'seismic: <span style="color:#00c8ff">{len(_eq)}</span> · ' +
-        f'M5+: <span style="color:#ff3d5a">{len(_eq[_eq["mag"]>=5.0]) if not _eq.empty and "mag" in _eq.columns else 0}</span> · ' +
-        f'EONET: <span style="color:#ff6a28">{len(_eon)}</span>' +
-        f'</div>',
-        unsafe_allow_html=True
-    )
+  const globe = createGlobe(canvas, {{
+    devicePixelRatio: 2,
+    width: width * 2,
+    height: width * 2,
+    phi: 0,
+    theta: 0.24,
+    dark: 1.1,
+    diffuse: 3,
+    mapSamples: 16000,
+    mapBrightness: 1.8,
+    mapBaseBrightness: 0.05,
+    baseColor: [1, 1, 1],
+    markerColor: [251 / 255, 100 / 255, 21 / 255],
+    glowColor: [1, 1, 1],
+    markers: markers,
+    opacity: 0.85,
+    onRender: (state) => {{
+      if (!pointerInteracting) {{
+        phi += 0.0032;   // auto-rotate
+      }}
+      state.phi = phi + pointerInteractionMovement;
+      state.width = width * 2;
+      state.height = width * 2;
+    }},
+  }});
 
+  canvas.addEventListener("pointerdown", (e) => {{
+    pointerInteracting = e.clientX - pointerInteractionMovement;
+    canvas.style.cursor = "grabbing";
+  }});
+  window.addEventListener("pointerup", () => {{
+    pointerInteracting = null;
+    canvas.style.cursor = "grab";
+  }});
+  window.addEventListener("pointerout", () => {{
+    pointerInteracting = null;
+    canvas.style.cursor = "grab";
+  }});
+  window.addEventListener("pointermove", (e) => {{
+    if (pointerInteracting !== null) {{
+      const delta = e.clientX - pointerInteracting;
+      pointerInteractionMovement = delta * 0.005;
+    }}
+  }});
+  canvas.addEventListener("touchmove", (e) => {{
+    if (pointerInteracting !== null && e.touches[0]) {{
+      const delta = e.touches[0].clientX - pointerInteracting;
+      pointerInteractionMovement = delta * 0.005;
+    }}
+  }});
+</script>
+"""
+components.html(_globe_html, height=500, scrolling=False)
+
+_ts = datetime.now(tz=timezone.utc).strftime("%H:%M:%S")
+st.markdown(
+    f'<div style="font-family:var(--fm);font-size:10px;color:var(--muted);text-align:right;margin-top:-6px;margin-bottom:6px">' +
+    f'<span class="pulse p-green" style="margin-right:4px"></span>' +
+    f'LIVE · rendered {_ts} UTC · ' +
+    f'seismic: <span style="color:#00c8ff">{len(eq_df)}</span> · ' +
+    f'markers: <span style="color:#fb6415">{len(_globe_markers)}</span>' +
+    f'</div>',
+    unsafe_allow_html=True
+)
+
+# Cobe has no click/hover picking API, so the map-click intelligence panel
+# below always shows its default "no selection" state now — kept as-is
+# (rather than removed) since it degrades gracefully and still works from
+# other entry points (e.g. clicking a country in other tabs).
 _map_selection = None
-try:
-    _live_map_fragment()
-except Exception:
-    # Fragment not supported (Streamlit < 1.33) — fall back to static map
-    st.markdown('<div style="border:1px solid rgba(0,200,255,.12);border-top:none;border-radius:0 0 14px 14px;overflow:hidden;margin-bottom:8px">', unsafe_allow_html=True)
-    _map_selection = st.pydeck_chart(
-        build_global_map(eq_df, eonet_df, show_seis, show_volc, show_mvmt, show_conf, show_supp, show_heat,
-            show_hist=show_hist, show_live=show_live,
-            show_intel=show_intel, show_czones=show_czones, show_mbases=show_mbases,
-            show_nuclear=show_nuclear, show_gamma=show_gamma, show_space=show_space,
-            show_cables=show_cables, show_pipes=show_pipes, show_aidc=show_aidc,
-            show_milact=show_milact, show_ships=show_ships, show_trade=show_trade,
-            show_gps=show_gps, show_orbital=show_orbital, show_cii=show_cii,
-            show_displaced=show_displaced, show_climate=show_climate, show_weather=show_weather,
-            show_outages=show_outages, show_cyber=show_cyber, show_econ=show_econ,
-            show_minerals=show_minerals, show_waterways=show_waterways,
-            show_fires_layer=show_fires_layer, show_protests=show_protests, show_aviation=show_aviation,
-            show_ais=show_ais, show_opensky=show_opensky, show_acled=show_acled),
-        use_container_width=True,
-        on_select="rerun",
-        selection_mode="single-object",
-        key=f"global_map_{_live_bucket}",
-    )
-    st.markdown('</div>', unsafe_allow_html=True)
 
 # ── Click-to-Analyse Panel ────────────────────────────────────────────────────
 # Parse the selected object from the map click
@@ -6334,6 +5788,10 @@ if _active_tab == "🌍  Earth Signals":
 
     mc, rc = st.columns([3,1], gap="medium")
     with mc:
+        st.markdown('<div class="sec-label">🗺 Earth Signals Map</div>', unsafe_allow_html=True)
+        _esc1, _esc2 = st.columns(2)
+        show_volc = _esc1.toggle("🌋 EONET events", value=True,  key="es_volc")
+        show_heat = _esc2.toggle("🌡 Seismic heatmap", value=False, key="es_heat")
         layers_e = []
         if show_seis and not eq_df.empty:
             ep = eq_df.copy()
@@ -6348,7 +5806,6 @@ if _active_tab == "🌍  Earth Signals":
         if show_heat and not eq_df.empty:
             layers_e.append(pdk.Layer("HeatmapLayer",data=eq_df[["lat","lon","mag"]].rename(columns={"mag":"weight"}),get_position=["lon","lat"],get_weight="weight",radiusPixels=50,opacity=.45,pickable=False))
 
-        st.markdown('<div class="sec-label">🗺 Earth Signals Map</div>', unsafe_allow_html=True)
         st.pydeck_chart(pdk.Deck(layers=layers_e,
             initial_view_state=pdk.ViewState(latitude=20,longitude=10,zoom=1.3),
             map_style=CARTO_DARK,
