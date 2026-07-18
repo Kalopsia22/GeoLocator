@@ -3048,18 +3048,61 @@ with st.sidebar:
     st.markdown("#### 🗺 Global Map Layers")
     st.caption("Groups: toggle categories on/off.")
 
-    st.markdown("#### 🌐 Globe Marker Categories")
-    st.caption("Controls which categories feed the rotating globe below.")
+    st.markdown("#### 🌐 Globe Layers (37)")
+    st.caption("Controls which categories render on the rotating globe below.")
 
-    with st.expander("🌍 Globe Markers", expanded=True):
-        show_conf    = st.toggle("🔴 Conflict Zones",       value=True,  key="lyr_conf")
-        show_hist    = st.toggle("📅 Historical Events",    value=True,  key="lyr_hist")
+    with st.expander("🌍 Core Layers", expanded=True):
+        show_seis  = st.toggle("🟦 Seismic Events",       value=True,  key="lyr_seis")
+        show_volc  = st.toggle("🟠 Volcanic / EONET",     value=False, key="lyr_volc")
+        show_conf  = st.toggle("🔴 Conflict Incidents",    value=True,  key="lyr_conf")
+        show_mvmt  = st.toggle("🟣 Civil Movements",      value=False, key="lyr_mvmt")
+        show_supp  = st.toggle("⟶ Supply Arc Lines",      value=False, key="lyr_supp")
+        show_heat  = st.toggle("🌡 Heatmap (Seismic)",    value=False, key="lyr_heat")
+        show_hist  = st.toggle("📅 Historical Events 2022+", value=False, key="lyr_hist")
+        show_live  = st.toggle("⚡ Live Events (GDELT)",  value=False, key="lyr_live")
+
+    with st.expander("🎯 Intelligence", expanded=False):
+        show_intel   = st.toggle("🎯 Intel Hotspots",       value=False, key="lyr_intel")
+        show_czones  = st.toggle("⚔ Conflict Zones",       value=False, key="lyr_czones")
         show_mbases  = st.toggle("🏛 Military Bases",       value=False, key="lyr_mbases")
         show_nuclear = st.toggle("☢ Nuclear Sites",         value=False, key="lyr_nuc")
-        show_seis    = st.toggle("🟦 Recent Earthquakes",   value=True,  key="lyr_seis")
+        show_gamma   = st.toggle("⚠ Gamma Irradiators",    value=False, key="lyr_gamma")
+        show_cyber   = st.toggle("🛡 Cyber Threat Actors",  value=False, key="lyr_cyber")
+        show_orbital = st.toggle("🛰 Orbital Surveillance", value=False, key="lyr_orbit")
+        show_gps     = st.toggle("📡 GPS Jamming Zones",    value=False, key="lyr_gps")
+        show_cii     = st.toggle("🌎 CII Instability",      value=False, key="lyr_cii")
 
-    with st.expander("⚔ Theatre Map Options", expanded=False):
-        show_supp = st.toggle("⟶ Supply Arc Lines (Conflict tab)", value=False, key="lyr_supp")
+    with st.expander("🚀 Infrastructure", expanded=False):
+        show_space   = st.toggle("🚀 Spaceports",           value=False, key="lyr_space")
+        show_cables  = st.toggle("🔌 Undersea Cables",      value=False, key="lyr_cables")
+        show_pipes   = st.toggle("🛢 Pipelines",            value=False, key="lyr_pipes")
+        show_aidc    = st.toggle("🖥 AI Data Centers",      value=False, key="lyr_aidc")
+        show_outages = st.toggle("📡 Internet Outages",     value=False, key="lyr_outage")
+        show_econ    = st.toggle("💰 Economic Centers",     value=False, key="lyr_econ")
+
+    with st.expander("✈ Military & Traffic", expanded=False):
+        show_milact  = st.toggle("✈ Military Activity",    value=False, key="lyr_milact")
+        show_ships   = st.toggle("🚢 Ship Traffic Zones",  value=False, key="lyr_ships")
+        show_trade   = st.toggle("⚓ Trade Route Arcs",    value=False, key="lyr_trade")
+        show_aviation= st.toggle("✈ Aviation Status",      value=False, key="lyr_avia")
+        show_waterways=st.toggle("⚓ Strategic Waterways", value=False, key="lyr_water")
+
+    with st.expander("🛰 Live Intelligence", expanded=False):
+        show_ais     = st.toggle("🚢 AIS Vessel Tracking (Live)",   value=False, key="lyr_ais")
+        show_opensky = st.toggle("✈ OpenSky Airspace (Live)",       value=False, key="lyr_osky")
+        show_acled   = st.toggle("⚔ ACLED Conflict Events (Live)",  value=False, key="lyr_acled")
+        if show_ais or show_opensky or show_acled:
+            st.caption("🔴 Live data — refreshes on rerun")
+
+    with st.expander("📢 Human & Social", expanded=False):
+        show_protests  = st.toggle("📢 Protests (all)",     value=False, key="lyr_prot")
+        show_displaced = st.toggle("👥 Displacement Flows", value=False, key="lyr_disp")
+        show_minerals  = st.toggle("💎 Critical Minerals",  value=False, key="lyr_min")
+
+    with st.expander("🌋 Natural & Climate", expanded=False):
+        show_fires_layer = st.toggle("🔥 Active Fire Zones", value=False, key="lyr_fire")
+        show_climate     = st.toggle("🌫 Climate Anomalies", value=False, key="lyr_clim")
+        show_weather     = st.toggle("⛈ Weather Alerts",    value=False, key="lyr_weath")
 
     st.markdown('<div class="sb-div"></div>', unsafe_allow_html=True)
     st.markdown("#### 📡 Live Data Status")
@@ -4137,27 +4180,187 @@ crit_inc_cnt  = sum(1 for c in CONFLICTS.values() for i in c["incidents"] if i["
 hist_crit     = sum(1 for e in HISTORICAL_EVENTS if e["severity"]=="CRITICAL")
 
 def _build_globe_markers():
-    """Assemble Cobe marker points from whichever categories are toggled on."""
-    markers = []
-    if show_conf:
-        for z in CONFLICT_ZONES:
-            sz = 0.09 if z.get("intensity") == "Critical" else 0.06
-            markers.append({"location": [z["lat"], z["lon"]], "size": sz})
-    if show_hist:
-        for e in _HIST_SORTED[:40]:
-            sz = 0.07 if e.get("severity") == "CRITICAL" else 0.04
-            markers.append({"location": [e["lat"], e["lon"]], "size": sz})
-    if show_mbases:
-        for b in MILITARY_BASES:
-            markers.append({"location": [b["lat"], b["lon"]], "size": 0.035})
-    if show_nuclear:
-        for n in NUCLEAR_SITES:
-            markers.append({"location": [n["lat"], n["lon"]], "size": 0.05})
+    """
+    Assemble every toggled-on layer into one flat list of colored points for
+    the globe. Cobe's native marker system only supports a single global
+    markerColor, so per-layer color here is carried as an extra "color" field
+    and drawn via a custom 2D projection overlay (see the JS below) rather
+    than Cobe's built-in marker renderer.
+
+    Line/path-shaped datasets (cables, pipelines, trade routes, displacement
+    flows, strategic waterways, ship lanes, supply arcs) don't have a native
+    "line" primitive on the globe either — they're represented as their
+    endpoint(s) rather than a true connecting arc. That's a real fidelity
+    trade-off versus the old pydeck PathLayer/ArcLayer rendering.
+    """
+    M = []
+    def pt(lat, lon, color, size, tip=""):
+        M.append({"lat": float(lat), "lon": float(lon), "size": size, "color": color, "tip": tip})
+
+    # ── Core Layers ──────────────────────────────────────────
     if show_seis and not eq_df.empty:
         for _, r in eq_df.iterrows():
-            sz = min(0.03 + float(r.get("mag", 0)) * 0.015, 0.12)
-            markers.append({"location": [float(r["lat"]), float(r["lon"])], "size": sz})
-    return markers
+            sz = min(0.022 + float(r.get("mag", 0)) * 0.013, 0.11)
+            pt(r["lat"], r["lon"], [0,200,255], sz, f"M{r.get('mag','?')} {r.get('place','')}")
+    if show_volc and not eonet_df.empty:
+        for _, r in eonet_df.iterrows():
+            pt(r["lat"], r["lon"], [255,140,60], 0.032, r.get("title","EONET event"))
+    if show_conf:
+        for c in CONFLICTS.values():
+            for i in c.get("incidents", []):
+                sz = 0.055 if i.get("severity") == "CRITICAL" else 0.035
+                pt(i["lat"], i["lon"], [255,60,80], sz, i.get("title",""))
+    if show_mvmt:
+        for m in MOVEMENTS:
+            if m.get("type") == "protest":
+                pt(m["lat"], m["lon"], [180,80,255], 0.03 + m.get("scale",50)/100*0.03, m.get("title",""))
+    if show_supp:
+        # Proxy for the old ArcLayer: plot supplier-nation origin points for
+        # each critical conflict zone rather than a true connecting arc.
+        _suppliers = [("USA",38.9,-77.0),("UK",51.5,-0.1),("Russia",55.75,37.61),("Iran",35.7,51.4)]
+        for z in CONFLICT_ZONES:
+            if z.get("intensity") == "Critical":
+                for name, slat, slon in _suppliers[:2]:
+                    pt(slat, slon, [255,215,0], 0.025, f"Supply origin: {name} → {z.get('name','')}")
+    if show_heat and not eq_df.empty:
+        for _, r in eq_df.iterrows():
+            pt(r["lat"], r["lon"], [255,90,0], 0.02, "Seismic density")
+    if show_hist:
+        for e in _HIST_SORTED[:40]:
+            sz = 0.06 if e.get("severity") == "CRITICAL" else 0.032
+            pt(e["lat"], e["lon"], [255,190,60], sz, e.get("title",""))
+    if show_live:
+        try:
+            import random as _rnd
+            _rng = _rnd.Random(42)
+            _hotspots = [(32.08,34.78),(50.45,30.52),(31.4,34.47),(35.69,51.39),(15.55,32.53),
+                         (16.87,96.19),(14.5,43.5),(39.9,116.4),(38.9,-77.0)]
+            for i, art in enumerate(fetch_live_global_events(max_records=20)):
+                blat, blon = _hotspots[i % len(_hotspots)]
+                pt(blat + _rng.uniform(-2,2), blon + _rng.uniform(-2,2), [0,255,200], 0.028,
+                   f"{art.get('source','?')}: {art.get('title','')}")
+        except Exception as _e:
+            _log.warning("show_live globe layer failed: %s", _e)
+
+    # ── Intelligence ─────────────────────────────────────────
+    if show_intel:
+        for h in INTEL_HOTSPOTS:
+            pt(h["lat"], h["lon"], [255,225,120], 0.03, h.get("tip", h.get("name",""))[:60])
+    if show_czones:
+        for z in CONFLICT_ZONES:
+            pt(z["lat"], z["lon"], [255,80,80], 0.045, z.get("name",""))
+    if show_mbases:
+        for b in MILITARY_BASES:
+            pt(b["lat"], b["lon"], [120,170,255], 0.028, b.get("name",""))
+    if show_nuclear:
+        for n in NUCLEAR_SITES:
+            pt(n["lat"], n["lon"], [255,235,59], 0.04, n.get("name",""))
+    if show_gamma:
+        for g in GAMMA_IRRADIATORS:
+            pt(g["lat"], g["lon"], [255,140,0], 0.025, g.get("name",""))
+    if show_cyber:
+        try:
+            _cyber_src = fetch_live_cyber_threats() or CYBER_THREATS_GEO
+        except Exception:
+            _cyber_src = CYBER_THREATS_GEO
+        for c in _cyber_src:
+            pt(c["lat"], c["lon"], [255,60,180], 0.035, c.get("name",""))
+    if show_orbital:
+        for o in ORBITAL_SURVEILLANCE:
+            pt(o["lat"], o["lon"], [140,140,255], 0.025, o.get("name",""))
+    if show_gps:
+        for g in GPS_JAMMING_ZONES:
+            pt(g["lat"], g["lon"], [255,200,0], 0.04, g.get("name",""))
+    if show_cii:
+        for c in CII_INSTABILITY:
+            pt(c["lat"], c["lon"], [255,100,100], 0.03, c.get("name",""))
+
+    # ── Infrastructure ───────────────────────────────────────
+    if show_space:
+        for s in SPACEPORTS:
+            pt(s["lat"], s["lon"], [0,229,255], 0.03, s.get("name",""))
+    if show_cables:
+        for c in UNDERSEA_CABLES:
+            pt(c["from_lat"], c["from_lon"], [0,150,255], 0.022, c.get("name",""))
+            pt(c["to_lat"],   c["to_lon"],   [0,150,255], 0.022, c.get("name",""))
+    if show_pipes:
+        for p in PIPELINES:
+            pt(p["from_lat"], p["from_lon"], [255,110,0], 0.022, p.get("name",""))
+            pt(p["to_lat"],   p["to_lon"],   [255,110,0], 0.022, p.get("name",""))
+    if show_aidc:
+        for a in AI_DATA_CENTERS:
+            pt(a["lat"], a["lon"], [0,255,150], 0.028, a.get("name",""))
+    if show_outages:
+        for o in INTERNET_OUTAGES:
+            pt(o["lat"], o["lon"], [160,160,160], 0.035, o.get("name",""))
+    if show_econ:
+        for e in ECONOMIC_CENTERS:
+            pt(e["lat"], e["lon"], [0,230,120], 0.03, e.get("name",""))
+
+    # ── Military & Traffic ───────────────────────────────────
+    if show_milact:
+        for m in MILITARY_ACTIVITY:
+            pt(m["lat"], m["lon"], [255,90,0], 0.035, m.get("name",""))
+    if show_ships:
+        for s in SHIP_TRAFFIC_ZONES:
+            pt(s["lat"], s["lon"], [0,180,255], 0.035, s.get("name",""))
+    if show_trade:
+        for t in TRADE_ROUTE_ARCS:
+            pt(t["from_lat"], t["from_lon"], [255,190,0], 0.022, t.get("name",""))
+            pt(t["to_lat"],   t["to_lon"],   [255,190,0], 0.022, t.get("name",""))
+    if show_aviation:
+        for name, alat, alon in [("Tel Aviv Ben Gurion",32.01,34.89),("Kyiv Boryspil (closed)",50.34,30.90),
+                                   ("Tehran Imam Khomeini",35.42,51.15),("Beirut–Rafic Hariri",33.82,35.49),
+                                   ("Khartoum Intl (closed)",15.59,32.55)]:
+            pt(alat, alon, [180,220,255], 0.03, name)
+    if show_waterways:
+        for w in STRATEGIC_WATERWAYS:
+            pt(w["lat"], w["lon"], [0,210,220], 0.04, w.get("name",""))
+
+    # ── Live Intelligence ─────────────────────────────────────
+    if show_ais:
+        try:
+            for v in fetch_ais_vessels():
+                pt(v["lat"], v["lon"], [0,220,255], 0.02, v.get("name",""))
+        except Exception as _e:
+            _log.warning("show_ais globe layer failed: %s", _e)
+    if show_opensky:
+        try:
+            for f in fetch_opensky_flights():
+                pt(f["lat"], f["lon"], [200,255,0], 0.018, f.get("callsign", f.get("name","")))
+        except Exception as _e:
+            _log.warning("show_opensky globe layer failed: %s", _e)
+    if show_acled:
+        try:
+            for a in fetch_acled_events(limit=80):
+                pt(a["lat"], a["lon"], [255,60,60], 0.03, a.get("event_type",""))
+        except Exception as _e:
+            _log.warning("show_acled globe layer failed: %s", _e)
+
+    # ── Human & Social ────────────────────────────────────────
+    if show_protests:
+        for m in MOVEMENTS:
+            pt(m["lat"], m["lon"], [200,90,255], 0.03 + m.get("scale",50)/100*0.03, m.get("title",""))
+    if show_displaced:
+        for d in DISPLACEMENT_FLOWS:
+            pt(d["from_lat"], d["from_lon"], [255,150,180], 0.022, d.get("cause",""))
+            pt(d["to_lat"],   d["to_lon"],   [255,150,180], 0.022, d.get("cause",""))
+    if show_minerals:
+        for c in CRITICAL_MINERALS:
+            pt(c["lat"], c["lon"], [0,255,190], 0.032, c.get("name",""))
+
+    # ── Natural & Climate ─────────────────────────────────────
+    if show_fires_layer and not eonet_df.empty and "cat" in eonet_df.columns:
+        for _, r in eonet_df[eonet_df["cat"].str.contains("wildfire", case=False, na=False)].iterrows():
+            pt(r["lat"], r["lon"], [255,60,20], 0.03, r.get("title",""))
+    if show_climate:
+        for c in CLIMATE_ANOMALIES:
+            pt(c["lat"], c["lon"], [120,200,255], 0.032, c.get("name",""))
+    if show_weather:
+        for w in WEATHER_ALERTS:
+            pt(w["lat"], w["lon"], [255,220,50], 0.032, w.get("name",""))
+
+    return M
 
 _globe_markers = _build_globe_markers()
 
@@ -4183,33 +4386,75 @@ st.markdown(f"""
 
 _globe_markers_json = json.dumps(_globe_markers)
 _globe_html = f"""
-<div style="border:1px solid rgba(0,200,255,.12);border-top:none;border-radius:0 0 14px 14px;
+<div style="position:relative;border:1px solid rgba(0,200,255,.12);border-top:none;border-radius:0 0 14px 14px;
             overflow:hidden;margin-bottom:8px;background:#050a12;display:flex;justify-content:center;">
-  <canvas id="cobeGlobe" style="width:100%;max-width:560px;height:480px;aspect-ratio:1;cursor:grab"></canvas>
+  <div style="position:relative;width:100%;max-width:560px;aspect-ratio:1;">
+    <canvas id="cobeGlobe"   style="position:absolute;inset:0;width:100%;height:100%;cursor:grab"></canvas>
+    <canvas id="cobeOverlay" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
+  </div>
 </div>
 <script type="module">
   import createGlobe from "https://esm.sh/cobe@0.6.3";
 
-  const canvas = document.getElementById("cobeGlobe");
+  const canvas   = document.getElementById("cobeGlobe");
+  const overlay  = document.getElementById("cobeOverlay");
+  const octx     = overlay.getContext("2d");
   let phi = 0;
+  const theta = 0.24;
   let width = 0;
   let pointerInteracting = null;
   let pointerInteractionMovement = 0;
 
-  const markers = {_globe_markers_json};
+  // Per-layer-colored points — Cobe's native marker renderer only supports
+  // ONE global markerColor, so with 37 distinguishable layers we draw every
+  // point ourselves on a transparent 2D canvas stacked on top, re-projected
+  // through the globe's live rotation on every frame.
+  const points = {_globe_markers_json};
 
   function onResize() {{
-    if (canvas) width = canvas.offsetWidth;
+    if (!canvas) return;
+    width = canvas.offsetWidth;
+    const dpr = window.devicePixelRatio || 1;
+    overlay.width  = width * dpr;
+    overlay.height = width * dpr;
+    octx.scale(dpr, dpr);
   }}
   window.addEventListener("resize", onResize);
   onResize();
+
+  function project(lat, lon, phiNow, thetaNow, radius, cx, cy) {{
+    const latRad = (lat * Math.PI) / 180;
+    const lonRad = (lon * Math.PI) / 180 + phiNow;
+    const x  = Math.cos(latRad) * Math.sin(lonRad);
+    const y0 = Math.sin(latRad);
+    const z0 = Math.cos(latRad) * Math.cos(lonRad);
+    const y  = y0 * Math.cos(thetaNow) - z0 * Math.sin(thetaNow);
+    const z  = y0 * Math.sin(thetaNow) + z0 * Math.cos(thetaNow);
+    if (z < 0.02) return null;  // back-facing — hidden behind the globe
+    return {{ x: cx + x * radius, y: cy - y * radius, depth: z }};
+  }}
+
+  function drawOverlay(phiNow) {{
+    const w = width;
+    octx.clearRect(0, 0, w, w);
+    const cx = w / 2, cy = w / 2, radius = w * 0.485;
+    for (const m of points) {{
+      const p = project(m.lat, m.lon, phiNow, theta, radius, cx, cy);
+      if (!p) continue;
+      const r = Math.max(1.4, m.size * radius * 0.9) * (0.6 + p.depth * 0.4);
+      octx.beginPath();
+      octx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      octx.fillStyle = `rgba(${{m.color[0]}},${{m.color[1]}},${{m.color[2]}},${{0.55 + p.depth * 0.4}})`;
+      octx.fill();
+    }}
+  }}
 
   const globe = createGlobe(canvas, {{
     devicePixelRatio: 2,
     width: width * 2,
     height: width * 2,
     phi: 0,
-    theta: 0.24,
+    theta: theta,
     dark: 1.1,
     diffuse: 3,
     mapSamples: 16000,
@@ -4218,15 +4463,17 @@ _globe_html = f"""
     baseColor: [1, 1, 1],
     markerColor: [251 / 255, 100 / 255, 21 / 255],
     glowColor: [1, 1, 1],
-    markers: markers,
+    markers: [],   // native markers unused — all points render via the overlay canvas
     opacity: 0.85,
     onRender: (state) => {{
       if (!pointerInteracting) {{
         phi += 0.0032;   // auto-rotate
       }}
-      state.phi = phi + pointerInteractionMovement;
+      const phiNow = phi + pointerInteractionMovement;
+      state.phi = phiNow;
       state.width = width * 2;
       state.height = width * 2;
+      drawOverlay(phiNow);
     }},
   }});
 
