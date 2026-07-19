@@ -7564,483 +7564,687 @@ if _active_tab == "📻  SIGINT":
     _cii_crit = sum(1 for c in _live_cii if c.get("risk", 0) >= 90)
     _live_count = len(_sigint_news or []) + len(_sigint_conf or [])
 
-    _sigint_html = f"""<!DOCTYPE html>
+    _sigint_template = r"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-*{{margin:0;padding:0;box-sizing:border-box;}}
-:root{{
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
   --bg:#03060d;--bg1:#060d18;--bg2:#0a1525;--bg3:#0f1e35;
   --edge:rgba(0,180,255,.07);--edge2:rgba(0,180,255,.14);
   --amber:#f0a500;--cyan:#00d4ff;--red:#ff2d55;--green:#00e5a0;--violet:#a855f7;
   --text:#c2d8ee;--text2:#7aa0be;--text3:#2e4d66;
-}}
-html,body{{height:100%;}}
-body{{background:var(--bg);font-family:'Barlow',system-ui,sans-serif;color:var(--text);overflow-x:hidden;
+}
+html,body{height:100%;}
+body{background:var(--bg);font-family:'Barlow',system-ui,sans-serif;color:var(--text);overflow-x:hidden;
   background-image:radial-gradient(ellipse 70% 30% at 50% 0%,rgba(0,180,255,.055) 0%,transparent 65%),
     radial-gradient(ellipse 40% 60% at 98% 50%,rgba(240,165,0,.03) 0%,transparent 55%),
-    radial-gradient(ellipse 30% 50% at 2% 80%,rgba(168,85,247,.025) 0%,transparent 55%);}}
-body::after{{content:'';pointer-events:none;position:fixed;inset:0;z-index:9999;
-  background:repeating-linear-gradient(0deg,transparent 0,transparent 3px,rgba(0,0,0,.02) 3px,rgba(0,0,0,.02) 4px);}}
-/* Topbar */
-.topbar{{position:sticky;top:0;z-index:200;display:grid;grid-template-columns:auto 1fr auto;align-items:stretch;
+    radial-gradient(ellipse 30% 50% at 2% 80%,rgba(168,85,247,.025) 0%,transparent 55%);}
+body::after{content:'';pointer-events:none;position:fixed;inset:0;z-index:9999;
+  background:repeating-linear-gradient(0deg,transparent 0,transparent 3px,rgba(0,0,0,.02) 3px,rgba(0,0,0,.02) 4px);}
+.topbar{position:sticky;top:0;z-index:200;display:grid;grid-template-columns:auto 1fr auto;align-items:stretch;
   background:rgba(3,6,13,.94);border-bottom:1px solid var(--edge2);
-  backdrop-filter:blur(16px);box-shadow:0 1px 28px rgba(0,0,0,.5);}}
-.tb-logo{{display:flex;flex-direction:column;justify-content:center;padding:10px 20px;border-right:1px solid var(--edge2);}}
-.tb-name{{font-family:'Orbitron',monospace;font-weight:900;font-size:14px;letter-spacing:.18em;color:var(--cyan);}}
-.tb-sub{{font-family:'JetBrains Mono',monospace;font-size:7px;letter-spacing:.25em;color:var(--text3);margin-top:3px;}}
-.tb-metrics{{display:flex;align-items:stretch;overflow-x:auto;}}
-.tb-m{{display:flex;flex-direction:column;justify-content:center;padding:8px 18px;border-right:1px solid var(--edge);min-width:0;flex-shrink:0;}}
-.tb-ml{{font-family:'JetBrains Mono',monospace;font-size:7px;letter-spacing:.2em;text-transform:uppercase;color:var(--text3);margin-bottom:3px;}}
-.tb-mv{{font-family:'Orbitron',monospace;font-weight:700;font-size:14px;}}
-.tb-right{{display:flex;align-items:center;gap:10px;padding:0 16px;border-left:1px solid var(--edge2);}}
-.tb-ts{{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);}}
-.tb-pill{{display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:2px;
+  backdrop-filter:blur(16px);box-shadow:0 1px 28px rgba(0,0,0,.5);}
+.tb-logo{display:flex;flex-direction:column;justify-content:center;padding:10px 20px;border-right:1px solid var(--edge2);}
+.tb-name{font-family:'Orbitron',monospace;font-weight:900;font-size:14px;letter-spacing:.18em;color:var(--cyan);}
+.tb-sub{font-family:'JetBrains Mono',monospace;font-size:7px;letter-spacing:.25em;color:var(--text3);margin-top:3px;}
+.tb-metrics{display:flex;align-items:stretch;overflow-x:auto;}
+.tb-m{display:flex;flex-direction:column;justify-content:center;padding:8px 18px;border-right:1px solid var(--edge);min-width:0;flex-shrink:0;}
+.tb-ml{font-family:'JetBrains Mono',monospace;font-size:7px;letter-spacing:.2em;text-transform:uppercase;color:var(--text3);margin-bottom:3px;}
+.tb-mv{font-family:'Orbitron',monospace;font-weight:700;font-size:14px;}
+.tb-right{display:flex;align-items:center;gap:10px;padding:0 16px;border-left:1px solid var(--edge2);}
+.tb-ts{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);}
+.tb-pill{display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:2px;
   border:1px solid rgba(0,229,160,.28);background:rgba(0,229,160,.06);
-  font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.1em;color:var(--green);}}
-.tb-cd{{font-family:'JetBrains Mono',monospace;font-size:7.5px;color:var(--text3);}}
-/* Ticker */
-.ticker{{overflow:hidden;white-space:nowrap;background:rgba(240,165,0,.03);border-bottom:1px solid rgba(240,165,0,.1);padding:6px 0;}}
-.t-inner{{display:inline-block;animation:scr 100s linear infinite;}}
-@keyframes scr{{from{{transform:translateX(0)}}to{{transform:translateX(-50%)}}}}
-.ti{{display:inline-flex;align-items:center;gap:8px;margin-right:56px;font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(194,216,238,.38);}}
-.ti-s{{color:var(--amber);font-weight:500;}}
-/* KPIs */
-.kpis{{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--edge2);border-bottom:1px solid var(--edge2);}}
-.kpi{{background:var(--bg1);padding:18px 20px;position:relative;overflow:hidden;}}
-.kpi::before{{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--kc,var(--cyan)) 40%,transparent);}}
-.kpi-l{{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}}
-.kpi-v{{font-family:'Orbitron',monospace;font-weight:900;font-size:44px;color:var(--kc,var(--cyan));line-height:.9;margin-bottom:6px;}}
-.kpi-s{{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);}}
-/* Layout */
-.body{{padding:14px 16px 40px;}}
-.r2{{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}}
-.r3{{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;}}
-@media(max-width:1100px){{.r3{{grid-template-columns:1fr 1fr;}}}}
-@media(max-width:680px){{.r2,.r3{{grid-template-columns:1fr;}}}}
-/* Cards */
-.card{{background:var(--bg1);border:1px solid var(--edge2);border-radius:3px;position:relative;overflow:hidden;display:flex;flex-direction:column;animation:rise .3s ease both;}}
-@keyframes rise{{from{{opacity:0;transform:translateY(6px)}}to{{opacity:1;transform:translateY(0)}}}}
-.card:nth-child(2){{animation-delay:.06s;}}.card:nth-child(3){{animation-delay:.12s;}}
-.card::before{{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,180,255,.22),transparent);pointer-events:none;}}
-.ch{{display:flex;align-items:center;gap:9px;padding:10px 14px;border-bottom:1px solid var(--edge);background:rgba(0,0,0,.28);flex-shrink:0;}}
-.ch-ico{{width:22px;height:22px;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;}}
-.ch-title{{font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--text2);flex:1;}}
-.ch-ct{{font-family:'JetBrains Mono',monospace;font-size:8px;padding:2px 7px;border-radius:2px;background:rgba(0,0,0,.5);border:1px solid var(--edge2);color:var(--text3);}}
-.live-chip{{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:2px;background:rgba(0,229,160,.06);border:1px solid rgba(0,229,160,.22);font-family:'JetBrains Mono',monospace;font-size:7.5px;letter-spacing:.1em;color:var(--green);}}
-.classif{{position:absolute;bottom:8px;right:10px;pointer-events:none;font-family:'JetBrains Mono',monospace;font-size:7px;letter-spacing:.15em;color:var(--text3);opacity:.35;text-transform:uppercase;}}
-/* Scroll */
-.scroll{{overflow-y:auto;flex:1;padding:10px 12px;max-height:330px;scrollbar-width:thin;scrollbar-color:var(--bg3) transparent;display:flex;flex-direction:column;gap:5px;}}
-.scroll::-webkit-scrollbar{{width:2px;}}.scroll::-webkit-scrollbar-thumb{{background:var(--bg3);}}
-/* Items */
-.item{{background:var(--bg2);border-radius:2px;border-left:2px solid;border-top:1px solid var(--edge);border-right:1px solid var(--edge);border-bottom:1px solid var(--edge);padding:9px 11px;transition:background .12s;}}
-.item:hover{{background:var(--bg3);}}
-.i-top{{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:5px;}}
-.i-name{{font-family:'Barlow',sans-serif;font-size:13px;font-weight:600;color:#e0eefa;line-height:1.2;}}
-.i-meta{{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);margin-top:2px;}}
-.i-detail{{font-size:12px;color:var(--text2);line-height:1.55;margin-top:4px;}}
-/* Actor items */
-.actor{{background:var(--bg2);border-left:3px solid;border-radius:2px;border-top:1px solid var(--edge);border-right:1px solid var(--edge);border-bottom:1px solid var(--edge);padding:12px 13px;transition:background .12s;display:flex;gap:13px;align-items:flex-start;}}
-.actor:hover{{background:var(--bg3);}}
-.a-score{{font-family:'Orbitron',monospace;font-weight:900;font-size:34px;min-width:50px;text-align:center;flex-shrink:0;line-height:1;}}
-.a-slbl{{font-family:'JetBrains Mono',monospace;font-size:7px;letter-spacing:.12em;color:var(--text3);text-align:center;margin-top:3px;}}
-.a-body{{flex:1;min-width:0;}}
-.a-name{{font-family:'Barlow',sans-serif;font-size:14px;font-weight:600;color:#e0eefa;margin-bottom:1px;}}
-.a-unit{{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);margin-bottom:6px;}}
-.a-ops{{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;}}
-.a-op{{font-family:'JetBrains Mono',monospace;font-size:7.5px;padding:2px 7px;border-radius:2px;background:rgba(0,180,255,.06);border:1px solid rgba(0,180,255,.12);color:var(--text2);}}
-/* Priority items */
-.prio{{background:var(--bg2);border-left:3px solid;border-radius:2px;padding:10px 12px;border-top:1px solid var(--edge);border-right:1px solid var(--edge);border-bottom:1px solid var(--edge);transition:background .12s;}}
-.prio:hover{{background:var(--bg3);}}
-.p-row{{display:flex;align-items:flex-start;gap:11px;}}
-.p-num{{font-family:'Orbitron',monospace;font-weight:900;font-size:28px;min-width:30px;text-align:center;flex-shrink:0;line-height:1;padding-top:2px;}}
-.p-target{{font-size:13px;font-weight:600;color:#e0eefa;margin-bottom:2px;}}
-.p-type{{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);margin-bottom:4px;}}
-.p-gap{{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--amber);opacity:.85;margin-top:5px;}}
-.p-gap::before{{content:'⚠ GAP: ';}}
-.p-plats{{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;}}
-.p-plat{{font-family:'JetBrains Mono',monospace;font-size:7.5px;padding:2px 7px;border-radius:2px;background:rgba(0,180,255,.06);border:1px solid rgba(0,180,255,.12);color:var(--text2);}}
-/* Feed items */
-.fi{{background:var(--bg2);border-left:2px solid var(--cyan);border-radius:2px;padding:9px 11px;border-top:1px solid var(--edge);border-right:1px solid var(--edge);border-bottom:1px solid var(--edge);transition:background .12s;}}
-.fi:hover{{background:var(--bg3);}}
-.fi-src{{font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:500;color:var(--cyan);}}
-.fi-title{{font-size:12px;color:var(--text);line-height:1.5;margin:3px 0;}}
-.fi-time{{font-family:'JetBrains Mono',monospace;font-size:7.5px;color:var(--text3);}}
-.fi-link{{font-family:'JetBrains Mono',monospace;font-size:7.5px;color:rgba(0,212,255,.55);text-decoration:none;}}
-.fi-link:hover{{color:var(--cyan);}}
-/* Bars */
-.mbar{{height:2px;background:var(--edge);border-radius:1px;overflow:hidden;margin:5px 0;}}
-.mbar-f{{height:100%;border-radius:1px;}}
-/* Badges */
-.badge{{display:inline-flex;align-items:center;padding:2px 7px;border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:7.5px;letter-spacing:.06em;text-transform:uppercase;border:1px solid;white-space:nowrap;}}
-.bc{{color:var(--red);border-color:rgba(255,45,85,.3);background:rgba(255,45,85,.07);}}
-.bh{{color:var(--amber);border-color:rgba(240,165,0,.3);background:rgba(240,165,0,.07);}}
-.bl{{color:var(--green);border-color:rgba(0,229,160,.25);background:rgba(0,229,160,.05);}}
-.ba{{color:var(--cyan);border-color:rgba(0,212,255,.25);background:rgba(0,212,255,.05);}}
-.bv{{color:var(--violet);border-color:rgba(168,85,247,.25);background:rgba(168,85,247,.06);}}
-.dom{{font-family:'JetBrains Mono',monospace;font-size:7px;padding:2px 6px;border-radius:2px;background:rgba(0,212,255,.07);border:1px solid rgba(0,212,255,.15);color:var(--cyan);letter-spacing:.06em;}}
-/* KP chart */
-.kp-bars{{display:flex;align-items:flex-end;gap:2px;height:40px;padding:0 2px;}}
-.kp-seg{{flex:1;border-radius:1px 1px 0 0;min-width:0;}}
-/* CII */
-.cii-item{{background:var(--bg2);border-left:2px solid;border-radius:2px;padding:9px 11px;border-top:1px solid var(--edge);border-right:1px solid var(--edge);border-bottom:1px solid var(--edge);}}
-/* Section label */
-.slbl{{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.22em;text-transform:uppercase;color:var(--text3);padding:14px 16px 8px;display:flex;align-items:center;gap:10px;}}
-.slbl::after{{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--edge2),transparent);}}
-/* Animations */
-@keyframes pulse{{0%,100%{{opacity:1;transform:scale(1)}}50%{{opacity:.15;transform:scale(.5)}}}}
-.dot{{width:6px;height:6px;border-radius:50%;display:inline-block;animation:pulse 1.4s ease-in-out infinite;flex-shrink:0;}}
+  font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.1em;color:var(--green);}
+.tb-cd{font-family:'JetBrains Mono',monospace;font-size:7.5px;color:var(--text3);}
+.ticker{overflow:hidden;white-space:nowrap;background:rgba(240,165,0,.03);border-bottom:1px solid rgba(240,165,0,.1);padding:6px 0;}
+.t-inner{display:inline-block;animation:scr 100s linear infinite;}
+@keyframes scr{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.ti{display:inline-flex;align-items:center;gap:8px;margin-right:56px;font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(194,216,238,.38);}
+.ti-s{color:var(--amber);font-weight:500;}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--edge2);border-bottom:1px solid var(--edge2);}
+.kpi{background:var(--bg1);padding:18px 20px;position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--kc,var(--cyan)) 40%,transparent);}
+.kpi-l{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
+.kpi-v{font-family:'Orbitron',monospace;font-weight:900;font-size:44px;color:var(--kc,var(--cyan));line-height:.9;margin-bottom:6px;}
+.kpi-s{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);}
+.body{padding:14px 16px 40px;}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;}
+@media(max-width:1100px){.r3{grid-template-columns:1fr 1fr;}}
+@media(max-width:680px){.r2,.r3{grid-template-columns:1fr;}}
+.card{background:var(--bg1);border:1px solid var(--edge2);border-radius:3px;position:relative;overflow:hidden;display:flex;flex-direction:column;animation:rise .3s ease both;}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,180,255,.22),transparent);pointer-events:none;}
+.ch{display:flex;align-items:center;gap:9px;padding:10px 14px;border-bottom:1px solid var(--edge);background:rgba(0,0,0,.28);flex-shrink:0;}
+.ch-ico{width:22px;height:22px;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;}
+.ch-title{font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--text2);flex:1;}
+.ch-ct{font-family:'JetBrains Mono',monospace;font-size:8px;padding:2px 7px;border-radius:2px;background:rgba(0,0,0,.5);border:1px solid var(--edge2);color:var(--text3);}
+.live-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:2px;background:rgba(0,229,160,.06);border:1px solid rgba(0,229,160,.22);font-family:'JetBrains Mono',monospace;font-size:7.5px;letter-spacing:.1em;color:var(--green);}
+.classif{position:absolute;bottom:8px;right:10px;pointer-events:none;font-family:'JetBrains Mono',monospace;font-size:7px;letter-spacing:.15em;color:var(--text3);opacity:.35;text-transform:uppercase;}
+.scroll{overflow-y:auto;flex:1;padding:10px 12px;max-height:330px;scrollbar-width:thin;scrollbar-color:var(--bg3) transparent;display:flex;flex-direction:column;gap:5px;}
+.scroll::-webkit-scrollbar{width:2px;}.scroll::-webkit-scrollbar-thumb{background:var(--bg3);}
+.item{background:var(--bg2);border-radius:2px;border-left:2px solid;border-top:1px solid var(--edge);border-right:1px solid var(--edge);border-bottom:1px solid var(--edge);padding:9px 11px;transition:background .12s;}
+.item:hover{background:var(--bg3);}
+.i-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:5px;}
+.i-name{font-family:'Barlow',sans-serif;font-size:13px;font-weight:600;color:#e0eefa;line-height:1.2;}
+.i-meta{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);margin-top:2px;}
+.i-detail{font-size:12px;color:var(--text2);line-height:1.55;margin-top:4px;}
+.actor{background:var(--bg2);border-left:3px solid;border-radius:2px;border-top:1px solid var(--edge);border-right:1px solid var(--edge);border-bottom:1px solid var(--edge);padding:12px 13px;transition:background .12s;display:flex;gap:13px;align-items:flex-start;}
+.actor:hover{background:var(--bg3);}
+.a-score{font-family:'Orbitron',monospace;font-weight:900;font-size:34px;min-width:50px;text-align:center;flex-shrink:0;line-height:1;}
+.a-slbl{font-family:'JetBrains Mono',monospace;font-size:7px;letter-spacing:.12em;color:var(--text3);text-align:center;margin-top:3px;}
+.a-body{flex:1;min-width:0;}
+.a-name{font-family:'Barlow',sans-serif;font-size:14px;font-weight:600;color:#e0eefa;margin-bottom:1px;}
+.a-unit{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);margin-bottom:6px;}
+.a-ops{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;}
+.a-op{font-family:'JetBrains Mono',monospace;font-size:7.5px;padding:2px 7px;border-radius:2px;background:rgba(0,180,255,.06);border:1px solid rgba(0,180,255,.12);color:var(--text2);}
+.prio{background:var(--bg2);border-left:3px solid;border-radius:2px;padding:10px 12px;border-top:1px solid var(--edge);border-right:1px solid var(--edge);border-bottom:1px solid var(--edge);transition:background .12s;}
+.prio:hover{background:var(--bg3);}
+.p-row{display:flex;align-items:flex-start;gap:11px;}
+.p-num{font-family:'Orbitron',monospace;font-weight:900;font-size:28px;min-width:30px;text-align:center;flex-shrink:0;line-height:1;padding-top:2px;}
+.p-target{font-size:13px;font-weight:600;color:#e0eefa;margin-bottom:2px;}
+.p-type{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);margin-bottom:4px;}
+.p-gap{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--amber);opacity:.85;margin-top:5px;}
+.p-gap::before{content:'⚠ GAP: ';}
+.p-plats{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;}
+.p-plat{font-family:'JetBrains Mono',monospace;font-size:7.5px;padding:2px 7px;border-radius:2px;background:rgba(0,180,255,.06);border:1px solid rgba(0,180,255,.12);color:var(--text2);}
+.fi{background:var(--bg2);border-left:2px solid var(--cyan);border-radius:2px;padding:9px 11px;border-top:1px solid var(--edge);border-right:1px solid var(--edge);border-bottom:1px solid var(--edge);transition:background .12s;}
+.fi:hover{background:var(--bg3);}
+.fi-src{font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:500;color:var(--cyan);}
+.fi-title{font-size:12px;color:var(--text);line-height:1.5;margin:3px 0;}
+.fi-time{font-family:'JetBrains Mono',monospace;font-size:7.5px;color:var(--text3);}
+.fi-link{font-family:'JetBrains Mono',monospace;font-size:7.5px;color:rgba(0,212,255,.55);text-decoration:none;}
+.fi-link:hover{color:var(--cyan);}
+.mbar{height:2px;background:var(--edge);border-radius:1px;overflow:hidden;margin:5px 0;}
+.mbar-f{height:100%;border-radius:1px;}
+.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:7.5px;letter-spacing:.06em;text-transform:uppercase;border:1px solid;white-space:nowrap;}
+.bc{color:var(--red);border-color:rgba(255,45,85,.3);background:rgba(255,45,85,.07);}
+.bh{color:var(--amber);border-color:rgba(240,165,0,.3);background:rgba(240,165,0,.07);}
+.bl{color:var(--green);border-color:rgba(0,229,160,.25);background:rgba(0,229,160,.05);}
+.ba{color:var(--cyan);border-color:rgba(0,212,255,.25);background:rgba(0,212,255,.05);}
+.bv{color:var(--violet);border-color:rgba(168,85,247,.25);background:rgba(168,85,247,.06);}
+.dom{font-family:'JetBrains Mono',monospace;font-size:7px;padding:2px 6px;border-radius:2px;background:rgba(0,212,255,.07);border:1px solid rgba(0,212,255,.15);color:var(--cyan);letter-spacing:.06em;}
+.kp-bars{display:flex;align-items:flex-end;gap:2px;height:40px;padding:0 2px;}
+.kp-seg{flex:1;border-radius:1px 1px 0 0;min-width:0;}
+.cii-item{background:var(--bg2);border-left:2px solid;border-radius:2px;padding:9px 11px;border-top:1px solid var(--edge);border-right:1px solid var(--edge);border-bottom:1px solid var(--edge);}
+.slbl{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.22em;text-transform:uppercase;color:var(--text3);padding:14px 16px 8px;display:flex;align-items:center;gap:10px;}
+.slbl::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--edge2),transparent);}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.15;transform:scale(.5)}}
+.dot{width:6px;height:6px;border-radius:50%;display:inline-block;animation:pulse 1.4s ease-in-out infinite;flex-shrink:0;}
 </style></head>
 <body>
-<div class="topbar">
-  <div class="tb-logo">
-    <div class="tb-name">SIGINT</div>
-    <div class="tb-sub">Signals Intelligence Dashboard</div>
-  </div>
-  <div class="tb-metrics">
-    <div class="tb-m"><div class="tb-ml">Global Risk</div><div class="tb-mv" id="hbar-risk" style="color:var(--amber)">{_sig_risk_score} {_sig_risk_label}</div></div>
-    <div class="tb-m"><div class="tb-ml">KP Index</div><div class="tb-mv" style="color:var(--cyan)">{_kp_current}</div></div>
-    <div class="tb-m"><div class="tb-ml">GPS Jamming</div><div class="tb-mv" style="color:var(--red)">{_jam_count}</div></div>
-    <div class="tb-m"><div class="tb-ml">Threat Actors</div><div class="tb-mv" style="color:var(--amber)">{_crit_actors}</div></div>
-    <div class="tb-m"><div class="tb-ml">CII Critical</div><div class="tb-mv" style="color:var(--red)">{_cii_crit}</div></div>
-    <div class="tb-m"><div class="tb-ml">Live Signals</div><div class="tb-mv" style="color:var(--green)">{_live_count}</div></div>
-  </div>
-  <div class="tb-right">
-    <span class="tb-ts" id="live-ts">{_sig_ts}</span>
-    <span class="tb-pill"><span class="dot" style="background:var(--green)"></span><span id="poll-status">LIVE</span></span>
-    <span class="tb-cd">↻&thinsp;<span id="cd">60</span>s</span>
-  </div>
-</div>
-<div class="ticker"><div class="t-inner" id="ticker-inner">Loading intelligence feed…</div></div>
-<div class="kpis" id="kpi-strip"></div>
-<div class="body" id="R"></div>
-<script>
-const D={_sigint_payload};
-const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-const tlvl=v=>v>=85?'var(--red)':v>=70?'var(--amber)':v>=50?'#f0d050':'var(--green)';
-const mbar=(p,c)=>'<div class="mbar"><div class="mbar-f" style="width:'+Math.min(p,100)+'%;background:'+c+'"></div></div>';
+<div id="root"></div>
 
-function buildKPIs(){{
-  var jam=(D.gps_jamming||[]).filter(z=>z.severity==='High').length;
-  var act=(D.actors||[]).filter(a=>a.threat_level>=85).length;
-  var elnt=(D.elint||[]).filter(e=>e.status==='Active').length;
-  var cii=(D.cii||[]).filter(c=>c.risk>=90).length;
-  var data=[
-    {{v:jam,l:'Active GPS Jamming',s:'High-severity zones',c:'var(--red)'}},
-    {{v:act,l:'Critical Threat Actors',s:'Threat level ≥85',c:'var(--amber)'}},
-    {{v:elnt,l:'Active ELINT Systems',s:'Emissions tracked',c:'var(--cyan)'}},
-    {{v:cii,l:'CII Critical Risk',s:'Infrastructure risk ≥90',c:'var(--red)'}},
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel" data-presets="react">
+const {useState, useEffect, useRef} = React;
+const D = __PAYLOAD__;
+
+// ── Helpers ──────────────────────────────────────────────────
+function tlvl(v){ return v>=85?'var(--red)':v>=70?'var(--amber)':v>=50?'#f0d050':'var(--green)'; }
+function relTime(iso){
+  try{ const d=new Date(iso), s=(Date.now()-d)/1000;
+    if(s<60) return Math.round(s)+'s ago';
+    if(s<3600) return Math.round(s/60)+'m ago';
+    return Math.round(s/3600)+'h ago';
+  }catch(e){ return iso||''; }
+}
+async function fetchGDELT(q){
+  try{
+    const r = await fetch('https://api.gdeltproject.org/api/v2/doc/doc?query='+encodeURIComponent(q+' sourcelang:english')+'&mode=artlist&maxrecords=12&format=json&sort=DateDesc',{signal:AbortSignal.timeout(10000)});
+    if(!r.ok) return [];
+    const j = await r.json();
+    return (j.articles||[]).map(a=>({title:a.title||'',source:(a.domain||'').split('.')[0].toUpperCase(),url:a.url||'',time:relTime(a.seendate),cat:''}));
+  }catch(e){ return []; }
+}
+async function fetchUSGS(){
+  try{
+    let r = await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_hour.geojson',{signal:AbortSignal.timeout(8000)});
+    if(!r.ok){ r = await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson',{signal:AbortSignal.timeout(8000)}); if(!r.ok) return []; }
+    const j = await r.json();
+    return (j.features||[]).slice(0,10).map(f=>({place:f.properties.place||'',mag:f.properties.mag||0,depth_km:(f.geometry.coordinates[2]||0).toFixed(1),time:relTime(new Date(f.properties.time).toISOString())}));
+  }catch(e){ return []; }
+}
+async function fetchKP(){
+  try{
+    const r = await fetch('https://services.swpc.noaa.gov/json/planetary_k_index_1m.json',{signal:AbortSignal.timeout(8000)});
+    if(!r.ok) return null;
+    const arr = await r.json();
+    const series = arr.slice(-24).map(x=>({kp:parseFloat(x.Kp||x.kp_index||0)}));
+    const recent = series.slice(-6).map(x=>x.kp);
+    const mx = Math.max(...recent,0);
+    const st = mx>=8?'EXTREME STORM':mx>=7?'SEVERE STORM':mx>=6?'STRONG STORM':mx>=5?'MODERATE STORM':mx>=4?'MINOR STORM':mx>=3?'Unsettled':'Quiet';
+    return {current:Math.round(mx*10)/10, status:st, series};
+  }catch(e){ return null; }
+}
+
+// ── Small building blocks ───────────────────────────────────
+function MBar({pct,color}){
+  return <div className="mbar"><div className="mbar-f" style={{width:Math.min(pct,100)+'%',background:color}}></div></div>;
+}
+function Badge({cls,children}){ return <span className={"badge "+cls}>{children}</span>; }
+function CardShell({icoBg,icoColor,icon,title,count,liveChip,classif,children}){
+  return (
+    <div className="card">
+      <div className="ch">
+        <div className="ch-ico" style={{background:icoBg,color:icoColor}}>{icon}</div>
+        <div className="ch-title">{title}</div>
+        {liveChip ? <div className="live-chip"><span className="dot" style={{background:'var(--green)'}}></span>{liveChip}</div>
+                  : (count!=null && <div className="ch-ct">{count}</div>)}
+      </div>
+      <div className="scroll">{children}</div>
+      {classif && <div className="classif">{classif}</div>}
+    </div>
+  );
+}
+
+// ── Panels (each = one card) ─────────────────────────────────
+function ActorsPanel({actors}){
+  const sorted = [...(actors||[])].sort((a,b)=>b.threat_level-a.threat_level);
+  return (
+    <CardShell icoBg="rgba(255,45,85,.1)" icoColor="var(--red)" icon="⚠" title="Threat Actor Matrix" count={sorted.length+' actors'} classif="SIGINT // EYES ONLY">
+      {sorted.map((a,i)=>{
+        const col = tlvl(a.threat_level);
+        return (
+          <div className="actor" key={i} style={{borderColor:col}}>
+            <div><div className="a-score" style={{color:col}}>{a.threat_level}</div><div className="a-slbl">THREAT</div></div>
+            <div className="a-body">
+              <div className="a-name">{a.actor}</div>
+              <div className="a-unit">{a.unit||''}</div>
+              <MBar pct={a.threat_level} color={col} />
+              <div style={{display:'flex',gap:5,alignItems:'center',flexWrap:'wrap',marginBottom:4}}>
+                {(a.domain||[]).map((d,j)=><span className="dom" key={j}>{d}</span>)}
+                <span style={{marginLeft:'auto',fontFamily:'JetBrains Mono,monospace',fontSize:7.5,color:'var(--text3)'}}>ATTR {a.attribution||0}%</span>
+              </div>
+              <div className="a-ops">{(a.operations||[]).map((o,j)=><span className="a-op" key={j}>{o}</span>)}</div>
+            </div>
+          </div>
+        );
+      })}
+    </CardShell>
+  );
+}
+
+function CollectionPanel({collection}){
+  const priCol = p => p<=2?'var(--red)':p<=4?'var(--amber)':p<=6?'#f0d050':'var(--green)';
+  const items = collection||[];
+  return (
+    <CardShell icoBg="rgba(240,165,0,.1)" icoColor="var(--amber)" icon="🎯" title="Collection Requirements" count={'P1–'+items.length}>
+      {items.map((p,i)=>{
+        const col = priCol(p.priority);
+        return (
+          <div className="prio" key={i} style={{borderColor:col}}>
+            <div className="p-row">
+              <div><div className="p-num" style={{color:col}}>P{p.priority}</div></div>
+              <div className="a-body">
+                <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:3}}>
+                  <span className="p-target">{p.target}</span>
+                  {p.status==='Active' ? <Badge cls="bc">Active</Badge> : <Badge cls="bl">Routine</Badge>}
+                </div>
+                <div className="p-type">{p.type||''} · {p.last_update||''}</div>
+                <div className="p-plats">{(p.collection||[]).map((c,j)=><span className="p-plat" key={j}>{c}</span>)}</div>
+                <div className="p-gap">{p.intel_gap||''}</div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </CardShell>
+  );
+}
+
+function COMINTPanel({comint}){
+  const items = comint||[];
+  return (
+    <CardShell icoBg="rgba(240,165,0,.1)" icoColor="var(--amber)" icon="📡" title="COMINT — Communications Intel" count={items.length+' signals'} classif="TOP SECRET // COMINT">
+      {items.map((s,i)=>{
+        const col = s.intercept==='Active' ? 'var(--amber)' : 'var(--violet)';
+        const bc  = s.intercept==='Active' ? 'bh' : 'bv';
+        return (
+          <div className="item" key={i} style={{borderColor:col}}>
+            <div className="i-top">
+              <div>
+                <div className="i-name">{s.actor}</div>
+                <div className="i-meta">{s.id||''} · {s.signal_type||''} · {s.freq||''}</div>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4,flexShrink:0}}>
+                <Badge cls={bc}>{s.intercept||''}</Badge>
+                <span style={{fontFamily:'JetBrains Mono,monospace',fontSize:7.5,color:'var(--text3)'}}>CONF {s.confidence||0}%</span>
+              </div>
+            </div>
+            <MBar pct={s.confidence||0} color={col} />
+            <div className="i-detail">{s.detail||''}</div>
+            <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:8,color:'var(--text3)',marginTop:5}}>⊳ TARGET: {s.target||''}</div>
+          </div>
+        );
+      })}
+    </CardShell>
+  );
+}
+
+function ELINTPanel({elint}){
+  const ac = a => a.includes('Russia')?'var(--red)':a.includes('China')?'var(--amber)':a.includes('USA')?'var(--cyan)':'var(--green)';
+  const items = elint||[];
+  return (
+    <CardShell icoBg="rgba(0,212,255,.08)" icoColor="var(--cyan)" icon="⚡" title="ELINT — Electronic Intelligence" count={items.length+' tracked'} classif="TOP SECRET // ELINT">
+      {items.map((e,i)=>{
+        const col = ac(e.actor||'');
+        return (
+          <div className="item" key={i} style={{borderColor:col}}>
+            <div className="i-top">
+              <div>
+                <div className="i-name">{e.system||''}</div>
+                <div className="i-meta">{e.type||''} · {e.freq||''} · Range: {e.range_km||'?'}km</div>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:3,flexShrink:0}}>
+                <span className="badge" style={{color:col,borderColor:col+'40',background:col+'12'}}>{e.actor||''}</span>
+                <span style={{fontFamily:'JetBrains Mono,monospace',fontSize:7.5,color:'var(--text3)',textAlign:'right'}}>{e.capability||''}</span>
+              </div>
+            </div>
+            <div className="i-detail">{e.detail||''}</div>
+          </div>
+        );
+      })}
+    </CardShell>
+  );
+}
+
+function MASINTPanel({masint}){
+  const tc = {Seismic:'#f0d050','Nuclear Radiation':'var(--red)',Acoustic:'var(--cyan)',Chemical:'var(--amber)',Thermal:'var(--amber)'};
+  const items = masint||[];
+  return (
+    <CardShell icoBg="rgba(240,208,80,.08)" icoColor="#f0d050" icon="🔭" title="MASINT — Measurement & Signature" count={items.length+' events'} classif="TOP SECRET // MASINT">
+      {items.map((m,i)=>{
+        const col = tc[m.type] || 'var(--green)';
+        return (
+          <div className="item" key={i} style={{borderColor:col}}>
+            <div className="i-top">
+              <div>
+                <div className="i-name">{m.event||''}</div>
+                <div className="i-meta">{m.id||''} · {m.location||''} · {m.date||''}</div>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:3,flexShrink:0}}>
+                <span className="badge" style={{color:col,borderColor:col+'40',background:col+'12'}}>{m.type||''}</span>
+                <span style={{fontFamily:'JetBrains Mono,monospace',fontSize:7.5,color:'var(--text3)'}}>CONF {m.confidence||0}%</span>
+              </div>
+            </div>
+            <MBar pct={m.confidence||0} color={col} />
+            <div className="i-detail">{m.detail||''}</div>
+          </div>
+        );
+      })}
+    </CardShell>
+  );
+}
+
+function JammingPanel({zones}){
+  const items = zones||[];
+  return (
+    <CardShell icoBg="rgba(255,45,85,.08)" icoColor="var(--red)" icon="📵" title="GPS/GNSS Jamming Zones" count={items.length+' zones'}>
+      {items.map((z,i)=>{
+        const col = z.severity==='High' ? 'var(--red)' : '#f0d050';
+        const bc  = z.severity==='High' ? 'bc' : 'bh';
+        return (
+          <div className="item" key={i} style={{borderColor:col}}>
+            <div className="i-top">
+              <div>
+                <div className="i-name">{z.name||''}</div>
+                <div className="i-meta">Source: {z.source||''} · Radius: {z.radius_km||'?'}km</div>
+              </div>
+              <Badge cls={bc}>{z.severity||''}</Badge>
+            </div>
+            <MBar pct={z.severity==='High'?90:55} color={col} />
+          </div>
+        );
+      })}
+    </CardShell>
+  );
+}
+
+function OrbitalPanel({orbital}){
+  const oc = o => o.includes('USA')?'var(--cyan)':o.includes('Russia')?'var(--red)':o.includes('China')?'var(--amber)':o.includes('Israel')?'#f0d050':'var(--green)';
+  const items = orbital||[];
+  return (
+    <CardShell icoBg="rgba(0,212,255,.08)" icoColor="var(--cyan)" icon="🛰" title="Orbital ISR — Surveillance Sat" count={items.length+' systems'}>
+      {items.map((o,i)=>{
+        const col = oc(o.operator||'');
+        return (
+          <div className="item" key={i} style={{borderColor:col}}>
+            <div className="i-top">
+              <div><div className="i-name">{o.name||''}</div><div className="i-meta">{o.type||''}</div></div>
+              <span className="badge" style={{color:col,borderColor:col+'40',background:col+'12'}}>{o.operator||''}</span>
+            </div>
+          </div>
+        );
+      })}
+    </CardShell>
+  );
+}
+
+function CyberPanel({cyberThreats,liveCyber}){
+  const ac = a => a.includes('Russia')?'var(--red)':a.includes('China')?'var(--amber)':a.includes('Iran')?'#f0d050':a.includes('DPRK')?'var(--violet)':'var(--green)';
+  const base = cyberThreats||[];
+  const live = (liveCyber||[]).slice(0,5);
+  return (
+    <div className="card">
+      <div className="ch">
+        <div className="ch-ico" style={{background:'rgba(168,85,247,.1)',color:'var(--violet)'}}>💀</div>
+        <div className="ch-title">CYBINT — Cyber Threats</div>
+        <div className="live-chip"><span className="dot" style={{background:'var(--green)'}}></span>GDELT</div>
+      </div>
+      <div className="scroll">
+        {base.map((c,i)=>{
+          const col = ac(c.actor||'');
+          return (
+            <div className="item" key={'b'+i} style={{borderColor:col}}>
+              <div className="i-top">
+                <div><div className="i-name">{c.name||''}</div><div className="i-meta">Targets: {c.targets||''}</div></div>
+                <span className="badge" style={{color:col,borderColor:col+'40',background:col+'12'}}>{c.actor||''}</span>
+              </div>
+            </div>
+          );
+        })}
+        {live.length>0 && <div style={{height:1,background:'var(--edge2)',margin:'4px 0'}}></div>}
+        {live.map((a,i)=>(
+          <div className="fi" key={'l'+i} style={{borderLeftColor:'var(--violet)'}}>
+            <div className="fi-src">{(a.source||'').toUpperCase()}</div>
+            <div className="fi-title">{(a.title||'').slice(0,100)}</div>
+            <div className="fi-time">{a.time||''}</div>
+          </div>
+        ))}
+      </div>
+      <div className="classif">TOP SECRET // CYBER</div>
+    </div>
+  );
+}
+
+function SeismicPanel({quakes}){
+  const q = quakes||[];
+  return (
+    <div className="card">
+      <div className="ch">
+        <div className="ch-ico" style={{background:'rgba(240,208,80,.08)',color:'#f0d050'}}>🌍</div>
+        <div className="ch-title">MASINT — Live Seismic</div>
+        <div className="live-chip"><span className="dot" style={{background:'var(--green)'}}></span>USGS</div>
+      </div>
+      <div className="scroll">
+        {q.length ? q.map((qq,i)=>{
+          const col = qq.mag>=6?'var(--red)':qq.mag>=5?'var(--amber)':qq.mag>=4?'#f0d050':'var(--green)';
+          return (
+            <div className="item" key={i} style={{borderColor:col}}>
+              <div className="i-top">
+                <div><div className="i-name">{qq.place||qq.loc||''}</div><div className="i-meta">Depth: {qq.depth_km||'?'}km · {qq.time||''}</div></div>
+                <span style={{fontFamily:'Orbitron,monospace',fontWeight:700,fontSize:18,color:col}}>M{qq.mag}</span>
+              </div>
+            </div>
+          );
+        }) : <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:10,color:'var(--text3)',padding:'12px 0'}}>Polling USGS…</div>}
+      </div>
+    </div>
+  );
+}
+
+function KPPanel({kp,kpStatus,kpSeries}){
+  const col = kp>=5?'var(--red)':kp>=3?'var(--amber)':'var(--green)';
+  const bars = (kpSeries||[]).slice(-24);
+  return (
+    <div className="card">
+      <div className="ch">
+        <div className="ch-ico" style={{background:'rgba(0,229,160,.08)',color:'var(--green)'}}>☀</div>
+        <div className="ch-title">Space Weather / KP Index</div>
+        <div className="live-chip"><span className="dot" style={{background:'var(--green)'}}></span>NOAA</div>
+      </div>
+      <div style={{padding:'14px 16px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:18,marginBottom:12}}>
+          <div>
+            <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:8,letterSpacing:'.18em',textTransform:'uppercase',color:'var(--text3)',marginBottom:4}}>KP INDEX</div>
+            <div style={{fontFamily:'Orbitron,monospace',fontWeight:900,fontSize:48,color:col,lineHeight:1}}>{kp}</div>
+          </div>
+          <div>
+            <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:11,color:col,marginBottom:4}}>{kpStatus||'Quiet'}</div>
+            <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:8,color:'var(--text3)'}}>≥5 Storm · ≥7 Severe · ≥9 Extreme</div>
+          </div>
+        </div>
+        <div className="kp-bars">
+          {bars.map((p,i)=>{
+            const v = Math.min(p.kp||p||0,9);
+            const h = Math.max(Math.round((v/9)*100),3);
+            const c = v>=5?'var(--red)':v>=3?'var(--amber)':'var(--green)';
+            return <div className="kp-seg" key={i} style={{height:h+'%',background:c,opacity:.8}}></div>;
+          })}
+        </div>
+        <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:7,color:'var(--text3)',marginTop:3,textAlign:'right'}}>← 24h Kp history</div>
+      </div>
+    </div>
+  );
+}
+
+function OutagesPanel({outages}){
+  const items = (outages||[]).slice(0,10);
+  return (
+    <CardShell icoBg="rgba(255,45,85,.08)" icoColor="var(--red)" icon="🔌" title="Internet Outages" liveChip="Live">
+      {items.length ? items.map((o,i)=>(
+        <div className="item" key={i} style={{borderColor:'var(--red)'}}>
+          <div className="i-name">{o.region||o.title||''}</div>
+          <div className="i-meta">{o.provider||o.source||''} · {o.time||o.ts||''}</div>
+        </div>
+      )) : <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:10,color:'var(--text3)',padding:'12px 0'}}>No major outages detected.</div>}
+    </CardShell>
+  );
+}
+
+function LiveFeedPanel({feed}){
+  const cc = {CONFLICT:'var(--red)',MILITARY:'var(--amber)',NUCLEAR:'var(--red)',OSINT:'var(--cyan)',CYBER:'var(--violet)'};
+  const all = (feed||[]).slice(0,25);
+  return (
+    <CardShell icoBg="rgba(0,212,255,.08)" icoColor="var(--cyan)" icon="📰" title="Live OSINT / SIGINT Feed" liveChip={all.length+' signals'}>
+      {all.length ? all.map((a,i)=>{
+        const col = cc[a.cat||''] || 'var(--cyan)';
+        return (
+          <div className="fi" key={i} style={{borderLeftColor:col}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:3}}>
+              <span className="fi-src" style={{color:col}}>{(a.source||'').slice(0,22).toUpperCase()}</span>
+              <span className="fi-time">{a.time||''}</span>
+            </div>
+            <div className="fi-title">{(a.title||'').slice(0,110)}</div>
+            {a.url && <a className="fi-link" href={a.url} target="_blank" rel="noopener">READ →</a>}
+          </div>
+        );
+      }) : <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:10,color:'var(--text3)',padding:'12px 0'}}>Fetching live signals…</div>}
+    </CardShell>
+  );
+}
+
+function OSINTPanel({platforms}){
+  const items = platforms||[];
+  return (
+    <CardShell icoBg="rgba(0,229,160,.08)" icoColor="var(--green)" icon="👁" title="OSINT Collection Platforms" count={items.length+' sources'}>
+      {items.map((p,i)=>(
+        <div className="item" key={i} style={{borderColor:'var(--green)'}}>
+          <div className="i-top">
+            <div><div className="i-name">{p.name||''}</div><div className="i-meta">{p.type||''} · {p.provider||''} · Res: {p.resolution||''}</div></div>
+            <Badge cls="bl">{p.status||''}</Badge>
+          </div>
+          <div className="i-detail">{p.use_case||''}</div>
+        </div>
+      ))}
+    </CardShell>
+  );
+}
+
+function CIIPanel({cii}){
+  const sorted = [...(cii||[])].sort((a,b)=>b.risk-a.risk);
+  return (
+    <CardShell icoBg="rgba(255,45,85,.08)" icoColor="var(--red)" icon="🏗" title="GEOINT — Critical Infrastructure" count={sorted.length+' tracked'} classif="GEOINT // INFRA">
+      {sorted.map((c,i)=>{
+        const col = c.risk>=90?'var(--red)':c.risk>=75?'var(--amber)':'#f0d050';
+        return (
+          <div className="cii-item" key={i} style={{borderColor:col}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}}>
+              <div><div className="i-name">{c.name||''}</div><div className="i-meta">{c.country||''} · {c.sector||''}</div></div>
+              <span style={{fontFamily:'Orbitron,monospace',fontWeight:900,fontSize:20,color:col}}>{c.risk}</span>
+            </div>
+            <MBar pct={c.risk} color={col} />
+          </div>
+        );
+      })}
+    </CardShell>
+  );
+}
+
+// ── KPI strip + ticker ────────────────────────────────────────
+function KPIStrip({gpsJamming,actors,elint,cii}){
+  const jam  = (gpsJamming||[]).filter(z=>z.severity==='High').length;
+  const act  = (actors||[]).filter(a=>a.threat_level>=85).length;
+  const elnt = (elint||[]).filter(e=>e.status==='Active').length;
+  const ciic = (cii||[]).filter(c=>c.risk>=90).length;
+  const data = [
+    {v:jam,l:'Active GPS Jamming',s:'High-severity zones',c:'var(--red)'},
+    {v:act,l:'Critical Threat Actors',s:'Threat level ≥85',c:'var(--amber)'},
+    {v:elnt,l:'Active ELINT Systems',s:'Emissions tracked',c:'var(--cyan)'},
+    {v:ciic,l:'CII Critical Risk',s:'Infrastructure risk ≥90',c:'var(--red)'},
   ];
-  document.getElementById('kpi-strip').innerHTML=data.map(k=>
-    '<div class="kpi" style="--kc:'+k.c+'"><div class="kpi-l">'+esc(k.l)+'</div>'+
-    '<div class="kpi-v">'+k.v+'</div><div class="kpi-s">'+esc(k.s)+'</div></div>'
-  ).join('');
-}}
+  return (
+    <div className="kpis">
+      {data.map((k,i)=>(
+        <div className="kpi" key={i} style={{'--kc':k.c}}>
+          <div className="kpi-l">{k.l}</div>
+          <div className="kpi-v">{k.v}</div>
+          <div className="kpi-s">{k.s}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
-function buildTicker(){{
-  var all=(D.live_events||[]).concat(D.live_conflict||[]).concat(D.live_feed||[]).slice(0,24);
-  if(!all.length)return;
-  var h=all.map(a=>'<span class="ti"><span class="ti-s">▶ '+esc((a.source||'').toUpperCase().slice(0,18))+'</span>'+esc((a.title||'').slice(0,88))+'</span>').join('');
-  document.getElementById('ticker-inner').innerHTML=h+h;
-}}
+function Ticker({feed,cyber}){
+  const all = [...(feed||[]), ...(cyber||[])].slice(0,20);
+  if(!all.length) return <div className="ticker"><div className="t-inner">Loading intelligence feed…</div></div>;
+  const items = all.map((a,i)=>(
+    <span className="ti" key={i}><span className="ti-s">▶ {(a.source||'').toUpperCase().slice(0,18)}</span>{(a.title||'').slice(0,88)}</span>
+  ));
+  return <div className="ticker"><div className="t-inner">{items}{items}</div></div>;
+}
 
-function updateHeader(){{
-  var ts=document.getElementById('live-ts');
-  if(ts)ts.textContent=new Date().toUTCString().replace(/.*([0-9][0-9]:[0-9][0-9]:[0-9][0-9]).*/,'$1')+' UTC';
-}}
+// ── Root App ─────────────────────────────────────────────────
+function App(){
+  const [ls, setLs] = useState({
+    feed: [...(D.live_events||[]), ...(D.live_conflict||[]), ...(D.live_feed||[])].slice(0,25),
+    cyber: D.live_cyber||[],
+    quakes: D.live_quakes||[],
+    kp: D.kp_current||0,
+    kpStatus: D.kp_status||'Quiet',
+    kpSeries: (D.kp_series||[]).slice(-24),
+  });
+  const [pollStatus, setPollStatus] = useState('LIVE');
+  const [countdown, setCountdown] = useState(D.refresh_interval || 180);
+  const [nowTs, setNowTs] = useState(D.ts || '');
+  const pollingRef = useRef(false);
 
-function panelActors(){{
-  var sorted=(D.actors||[]).slice().sort((a,b)=>b.threat_level-a.threat_level);
-  var rows=sorted.map(a=>{{
-    var col=tlvl(a.threat_level);
-    var doms=(a.domain||[]).map(d=>'<span class="dom">'+esc(d)+'</span>').join('');
-    var ops=(a.operations||[]).map(o=>'<span class="a-op">'+esc(o)+'</span>').join('');
-    return '<div class="actor" style="border-color:'+col+'">'+
-      '<div><div class="a-score" style="color:'+col+'">'+a.threat_level+'</div><div class="a-slbl">THREAT</div></div>'+
-      '<div class="a-body"><div class="a-name">'+esc(a.actor)+'</div><div class="a-unit">'+esc(a.unit||'')+'</div>'+
-      mbar(a.threat_level,col)+
-      '<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:4px">'+doms+
-      '<span style="margin-left:auto;font-family:JetBrains Mono,monospace;font-size:7.5px;color:var(--text3)">ATTR '+(a.attribution||0)+'%</span></div>'+
-      '<div class="a-ops">'+ops+'</div></div></div>';
-  }}).join('');
-  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(255,45,85,.1);color:var(--red)">⚠</div>'+
-    '<div class="ch-title">Threat Actor Matrix</div><div class="ch-ct">'+sorted.length+' actors</div></div>'+
-    '<div class="scroll">'+rows+'</div><div class="classif">SIGINT // EYES ONLY</div></div>';
-}}
+  // 1s countdown ticker (matches original `cd` element)
+  useEffect(() => {
+    const id = setInterval(() => {
+      setCountdown(c => (c<=0 ? (D.refresh_interval||180) : c-1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
 
-function panelCollection(){{
-  var priCol=p=>p<=2?'var(--red)':p<=4?'var(--amber)':p<=6?'#f0d050':'var(--green)';
-  var rows=(D.collection||[]).map(p=>{{
-    var col=priCol(p.priority);
-    var st=p.status==='Active'?'<span class="badge bc">Active</span>':'<span class="badge bl">Routine</span>';
-    var plats=(p.collection||[]).map(c=>'<span class="p-plat">'+esc(c)+'</span>').join('');
-    return '<div class="prio" style="border-color:'+col+'">'+
-      '<div class="p-row"><div><div class="p-num" style="color:'+col+'">P'+p.priority+'</div></div>'+
-      '<div class="a-body"><div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">'+
-      '<span class="p-target">'+esc(p.target)+'</span>'+st+'</div>'+
-      '<div class="p-type">'+esc(p.type||'')+' · '+esc(p.last_update||'')+'</div>'+
-      '<div class="p-plats">'+plats+'</div>'+
-      '<div class="p-gap">'+esc(p.intel_gap||'')+'</div>'+
-      '</div></div></div>';
-  }}).join('');
-  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(240,165,0,.1);color:var(--amber)">🎯</div>'+
-    '<div class="ch-title">Collection Requirements</div><div class="ch-ct">P1–'+(D.collection||[]).length+'</div></div>'+
-    '<div class="scroll">'+rows+'</div><div class="classif">COLLECTION PLAN</div></div>';
-}}
+  async function pollAll(){
+    if (pollingRef.current) return;
+    pollingRef.current = true;
+    setPollStatus('UPDATING…');
+    try{
+      const [feed, cyber, geo, quakes, kpData] = await Promise.all([
+        fetchGDELT('war military strike conflict bombing 2026'),
+        fetchGDELT('cyber attack espionage hacking malware APT'),
+        fetchGDELT('geopolitics sanctions nuclear ballistic missile diplomacy'),
+        fetchUSGS(),
+        fetchKP(),
+      ]);
+      setLs(prev => ({
+        feed:  (feed && feed.length) ? [...(geo||[]), ...feed].slice(0,25) : prev.feed,
+        cyber: (cyber && cyber.length) ? cyber : prev.cyber,
+        quakes: (quakes && quakes.length) ? quakes : prev.quakes,
+        kp: kpData ? kpData.current : prev.kp,
+        kpStatus: kpData ? kpData.status : prev.kpStatus,
+        kpSeries: kpData ? kpData.series : prev.kpSeries,
+      }));
+      setNowTs(new Date().toUTCString().replace(/.*([0-9][0-9]:[0-9][0-9]:[0-9][0-9]).*/, '$1') + ' UTC');
+    }catch(e){ console.warn('poll', e); }
+    pollingRef.current = false;
+    setPollStatus('LIVE');
+  }
 
-function panelCOMINT(){{
-  var rows=(D.comint||[]).map(s=>{{
-    var col=s.intercept==='Active'?'var(--amber)':'var(--violet)';
-    var bc=s.intercept==='Active'?'bh':'bv';
-    return '<div class="item" style="border-color:'+col+'">'+
-      '<div class="i-top"><div><div class="i-name">'+esc(s.actor)+'</div>'+
-      '<div class="i-meta">'+esc(s.id||'')+' · '+esc(s.signal_type||'')+' · '+esc(s.freq||'')+'</div></div>'+
-      '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">'+
-      '<span class="badge '+bc+'">'+esc(s.intercept||'')+'</span>'+
-      '<span style="font-family:JetBrains Mono,monospace;font-size:7.5px;color:var(--text3)">CONF '+(s.confidence||0)+'%</span></div></div>'+
-      mbar(s.confidence||0,col)+
-      '<div class="i-detail">'+esc(s.detail||'')+'</div>'+
-      '<div style="font-family:JetBrains Mono,monospace;font-size:8px;color:var(--text3);margin-top:5px">⊳ TARGET: '+esc(s.target||'')+'</div></div>';
-  }}).join('');
-  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(240,165,0,.1);color:var(--amber)">📡</div>'+
-    '<div class="ch-title">COMINT — Communications Intel</div><div class="ch-ct">'+((D.comint||[]).length)+' signals</div></div>'+
-    '<div class="scroll">'+rows+'</div><div class="classif">TOP SECRET // COMINT</div></div>';
-}}
+  useEffect(() => {
+    const t1 = setTimeout(pollAll, 4000);
+    const t2 = setInterval(pollAll, D.refresh_interval ? D.refresh_interval*1000 : 180000);
+    return () => { clearTimeout(t1); clearInterval(t2); };
+  }, []);
 
-function panelELINT(){{
-  var ac=a=>a.includes('Russia')?'var(--red)':a.includes('China')?'var(--amber)':a.includes('USA')?'var(--cyan)':'var(--green)';
-  var rows=(D.elint||[]).map(e=>{{
-    var col=ac(e.actor||'');
-    return '<div class="item" style="border-color:'+col+'">'+
-      '<div class="i-top"><div><div class="i-name">'+esc(e.system||'')+'</div>'+
-      '<div class="i-meta">'+esc(e.type||'')+' · '+esc(e.freq||'')+' · Range: '+(e.range_km||'?')+'km</div></div>'+
-      '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0">'+
-      '<span class="badge" style="color:'+col+';border-color:'+col+'40;background:'+col+'12">'+esc(e.actor||'')+'</span>'+
-      '<span style="font-family:JetBrains Mono,monospace;font-size:7.5px;color:var(--text3);text-align:right">'+esc(e.capability||'')+'</span></div></div>'+
-      '<div class="i-detail">'+esc(e.detail||'')+'</div></div>';
-  }}).join('');
-  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(0,212,255,.08);color:var(--cyan)">⚡</div>'+
-    '<div class="ch-title">ELINT — Electronic Intelligence</div><div class="ch-ct">'+((D.elint||[]).length)+' tracked</div></div>'+
-    '<div class="scroll">'+rows+'</div><div class="classif">TOP SECRET // ELINT</div></div>';
-}}
+  const sigRisk = D.live_risk || {};
+  const jamCount = (D.gps_jamming||[]).filter(z=>z.severity==='High').length;
+  const critActors = (D.actors||[]).filter(a=>a.threat_level>=85).length;
+  const ciiCrit = (D.cii||[]).filter(c=>c.risk>=90).length;
+  const liveCount = (D.live_feed||[]).length + (D.live_conflict||[]).length;
 
-function panelMASINT(){{
-  var tc={{Seismic:'#f0d050','Nuclear Radiation':'var(--red)',Acoustic:'var(--cyan)',Chemical:'var(--amber)',Thermal:'var(--amber)'}};
-  var rows=(D.masint||[]).map(m=>{{
-    var col=tc[m.type]||'var(--green)';
-    return '<div class="item" style="border-color:'+col+'">'+
-      '<div class="i-top"><div><div class="i-name">'+esc(m.event||'')+'</div>'+
-      '<div class="i-meta">'+esc(m.id||'')+' · '+esc(m.location||'')+' · '+esc(m.date||'')+'</div></div>'+
-      '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0">'+
-      '<span class="badge" style="color:'+col+';border-color:'+col+'40;background:'+col+'12">'+esc(m.type||'')+'</span>'+
-      '<span style="font-family:JetBrains Mono,monospace;font-size:7.5px;color:var(--text3)">CONF '+(m.confidence||0)+'%</span></div></div>'+
-      mbar(m.confidence||0,col)+
-      '<div class="i-detail">'+esc(m.detail||'')+'</div></div>';
-  }}).join('');
-  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(240,208,80,.08);color:#f0d050">🔭</div>'+
-    '<div class="ch-title">MASINT — Measurement & Signature</div><div class="ch-ct">'+((D.masint||[]).length)+' events</div></div>'+
-    '<div class="scroll">'+rows+'</div><div class="classif">TOP SECRET // MASINT</div></div>';
-}}
+  return (
+    <React.Fragment>
+      <div className="topbar">
+        <div className="tb-logo">
+          <div className="tb-name">SIGINT</div>
+          <div className="tb-sub">Signals Intelligence Dashboard</div>
+        </div>
+        <div className="tb-metrics">
+          <div className="tb-m"><div className="tb-ml">Global Risk</div><div className="tb-mv" style={{color:'var(--amber)'}}>{sigRisk.score||'—'} {sigRisk.label||''}</div></div>
+          <div className="tb-m"><div className="tb-ml">KP Index</div><div className="tb-mv" style={{color:'var(--cyan)'}}>{D.kp_current}</div></div>
+          <div className="tb-m"><div className="tb-ml">GPS Jamming</div><div className="tb-mv" style={{color:'var(--red)'}}>{jamCount}</div></div>
+          <div className="tb-m"><div className="tb-ml">Threat Actors</div><div className="tb-mv" style={{color:'var(--amber)'}}>{critActors}</div></div>
+          <div className="tb-m"><div className="tb-ml">CII Critical</div><div className="tb-mv" style={{color:'var(--red)'}}>{ciiCrit}</div></div>
+          <div className="tb-m"><div className="tb-ml">Live Signals</div><div className="tb-mv" style={{color:'var(--green)'}}>{liveCount}</div></div>
+        </div>
+        <div className="tb-right">
+          <span className="tb-ts">{nowTs}</span>
+          <span className="tb-pill"><span className="dot" style={{background:'var(--green)'}}></span>{pollStatus}</span>
+          <span className="tb-cd">↻&thinsp;{countdown}s</span>
+        </div>
+      </div>
 
-function panelJamming(){{
-  var rows=(D.gps_jamming||[]).map(z=>{{
-    var col=z.severity==='High'?'var(--red)':'#f0d050';
-    var bc=z.severity==='High'?'bc':'bh';
-    return '<div class="item" style="border-color:'+col+'">'+
-      '<div class="i-top"><div><div class="i-name">'+esc(z.name||'')+'</div>'+
-      '<div class="i-meta">Source: '+esc(z.source||'')+' · Radius: '+(z.radius_km||'?')+'km</div></div>'+
-      '<span class="badge '+bc+'">'+esc(z.severity||'')+'</span></div>'+mbar(z.severity==='High'?90:55,col)+'</div>';
-  }}).join('');
-  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(255,45,85,.08);color:var(--red)">📵</div>'+
-    '<div class="ch-title">GPS/GNSS Jamming Zones</div><div class="ch-ct">'+((D.gps_jamming||[]).length)+' zones</div></div>'+
-    '<div class="scroll">'+rows+'</div></div>';
-}}
+      <Ticker feed={ls.feed} cyber={ls.cyber} />
+      <KPIStrip gpsJamming={D.gps_jamming} actors={D.actors} elint={D.elint} cii={D.cii} />
 
-function panelOrbital(){{
-  var oc=o=>o.includes('USA')?'var(--cyan)':o.includes('Russia')?'var(--red)':o.includes('China')?'var(--amber)':o.includes('Israel')?'#f0d050':'var(--green)';
-  var rows=(D.orbital||[]).map(o=>{{
-    var col=oc(o.operator||'');
-    return '<div class="item" style="border-color:'+col+'">'+
-      '<div class="i-top"><div><div class="i-name">'+esc(o.name||'')+'</div>'+
-      '<div class="i-meta">'+esc(o.type||'')+'</div></div>'+
-      '<span class="badge" style="color:'+col+';border-color:'+col+'40;background:'+col+'12">'+esc(o.operator||'')+'</span></div></div>';
-  }}).join('');
-  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(0,212,255,.08);color:var(--cyan)">🛰</div>'+
-    '<div class="ch-title">Orbital ISR — Surveillance Sat</div><div class="ch-ct">'+((D.orbital||[]).length)+' systems</div></div>'+
-    '<div class="scroll">'+rows+'</div></div>';
-}}
+      <div className="body">
+        <div className="slbl">Priority Intelligence</div>
+        <div className="r2"><ActorsPanel actors={D.actors} /><CollectionPanel collection={D.collection} /></div>
 
-function panelLiveCyber(){{
-  var ac=a=>a.includes('Russia')?'var(--red)':a.includes('China')?'var(--amber)':a.includes('Iran')?'#f0d050':a.includes('DPRK')?'var(--violet)':'var(--green)';
-  var base=(D.cyber_threats||[]).map(c=>{{
-    var col=ac(c.actor||'');
-    return '<div class="item" style="border-color:'+col+'">'+
-      '<div class="i-top"><div><div class="i-name">'+esc(c.name||'')+'</div>'+
-      '<div class="i-meta">Targets: '+esc(c.targets||'')+'</div></div>'+
-      '<span class="badge" style="color:'+col+';border-color:'+col+'40;background:'+col+'12">'+esc(c.actor||'')+'</span></div></div>';
-  }}).join('');
-  var live=(D.live_cyber||[]).slice(0,5).map(a=>
-    '<div class="fi" style="border-left-color:var(--violet)">'+
-    '<div class="fi-src">'+esc((a.source||'').toUpperCase())+'</div>'+
-    '<div class="fi-title">'+esc((a.title||'').slice(0,100))+'</div>'+
-    '<div class="fi-time">'+esc(a.time||'')+'</div></div>'
-  ).join('');
-  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(168,85,247,.1);color:var(--violet)">💀</div>'+
-    '<div class="ch-title">CYBINT — Cyber Threats</div>'+
-    '<div class="live-chip"><span class="dot" style="background:var(--green)"></span>GDELT</div></div>'+
-    '<div class="scroll" id="live-cyber-inner">'+base+(live?'<div style="height:1px;background:var(--edge2);margin:4px 0"></div>'+live:'')+'</div>'+
-    '<div class="classif">TOP SECRET // CYBER</div></div>';
-}}
+        <div className="slbl">Signals Collection</div>
+        <div className="r3"><COMINTPanel comint={D.comint} /><ELINTPanel elint={D.elint} /><MASINTPanel masint={D.masint} /></div>
 
-function panelSeismic(){{
-  var q=D.live_quakes||[];
-  var rows=q.length?q.map(q=>{{
-    var col=q.mag>=6?'var(--red)':q.mag>=5?'var(--amber)':q.mag>=4?'#f0d050':'var(--green)';
-    return '<div class="item" style="border-color:'+col+'">'+
-      '<div class="i-top"><div><div class="i-name">'+esc(q.place||q.loc||'')+'</div>'+
-      '<div class="i-meta">Depth: '+(q.depth_km||'?')+'km · '+esc(q.time||'')+'</div></div>'+
-      '<span style="font-family:Orbitron,monospace;font-weight:700;font-size:18px;color:'+col+'">M'+q.mag+'</span></div></div>';
-  }}).join(''):'<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--text3);padding:12px 0">Polling USGS…</div>';
-  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(240,208,80,.08);color:#f0d050">🌍</div>'+
-    '<div class="ch-title">MASINT — Live Seismic</div>'+
-    '<div class="live-chip"><span class="dot" style="background:var(--green)"></span>USGS</div></div>'+
-    '<div id="live-seismic-inner" class="scroll">'+rows+'</div></div>';
-}}
+        <div className="slbl">Environment & Cyber Domain</div>
+        <div className="r3"><JammingPanel zones={D.gps_jamming} /><OrbitalPanel orbital={D.orbital} /><CyberPanel cyberThreats={D.cyber_threats} liveCyber={ls.cyber} /></div>
 
-function panelKP(){{
-  var kp=D.kp_current||0;var col=kp>=5?'var(--red)':kp>=3?'var(--amber)':'var(--green)';
-  var bars=(D.kp_series||[]).slice(-24).map(p=>{{
-    var v=Math.min(p.kp||p||0,9);var h=Math.max(Math.round((v/9)*100),3);
-    var c=v>=5?'var(--red)':v>=3?'var(--amber)':'var(--green)';
-    return '<div class="kp-seg" style="height:'+h+'%;background:'+c+';opacity:.8"></div>';
-  }}).join('');
-  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(0,229,160,.08);color:var(--green)">☀</div>'+
-    '<div class="ch-title">Space Weather / KP Index</div>'+
-    '<div class="live-chip"><span class="dot" style="background:var(--green)"></span>NOAA</div></div>'+
-    '<div id="live-kp-inner" style="padding:14px 16px">'+
-    '<div style="display:flex;align-items:center;gap:18px;margin-bottom:12px">'+
-    '<div><div style="font-family:JetBrains Mono,monospace;font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:var(--text3);margin-bottom:4px">KP INDEX</div>'+
-    '<div style="font-family:Orbitron,monospace;font-weight:900;font-size:48px;color:'+col+';line-height:1">'+kp+'</div></div>'+
-    '<div><div style="font-family:JetBrains Mono,monospace;font-size:11px;color:'+col+';margin-bottom:4px">'+esc(D.kp_status||'Quiet')+'</div>'+
-    '<div style="font-family:JetBrains Mono,monospace;font-size:8px;color:var(--text3)">≥5 Storm · ≥7 Severe · ≥9 Extreme</div></div></div>'+
-    '<div class="kp-bars">'+bars+'</div>'+
-    '<div style="font-family:JetBrains Mono,monospace;font-size:7px;color:var(--text3);margin-top:3px;text-align:right">← 24h Kp history</div>'+
-    '</div></div>';
-}}
+        <div className="slbl">Live MASINT & Alerts</div>
+        <div className="r3"><SeismicPanel quakes={ls.quakes} /><KPPanel kp={ls.kp} kpStatus={ls.kpStatus} kpSeries={ls.kpSeries} /><OutagesPanel outages={D.internet_static} /></div>
 
-function panelOutages(){{
-  var items=(D.live_outages||D.internet_static||[]).slice(0,10);
-  var rows=items.length?items.map(o=>
-    '<div class="item" style="border-color:var(--red)">'+
-    '<div class="i-name">'+esc(o.region||o.title||'')+'</div>'+
-    '<div class="i-meta">'+(o.provider||o.source||'')+' · '+(o.time||o.ts||'')+'</div></div>'
-  ).join(''):'<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--text3);padding:12px 0">No major outages detected.</div>';
-  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(255,45,85,.08);color:var(--red)">🔌</div>'+
-    '<div class="ch-title">Internet Outages</div>'+
-    '<div class="live-chip"><span class="dot" style="background:var(--green)"></span>Live</div></div>'+
-    '<div class="scroll">'+rows+'</div></div>';
-}}
+        <div className="slbl">Open Source & Infrastructure</div>
+        <div className="r2"><LiveFeedPanel feed={ls.feed} /><OSINTPanel platforms={D.osint_platforms} /></div>
 
-function panelLiveFeed(){{
-  var all=(D.live_events||[]).concat(D.live_conflict||[]).concat(D.live_feed||[]).slice(0,25);
-  var cc={{CONFLICT:'var(--red)',MILITARY:'var(--amber)',NUCLEAR:'var(--red)',OSINT:'var(--cyan)',CYBER:'var(--violet)'}};
-  var rows=all.length?all.map(a=>{{
-    var col=cc[a.cat||'']||'var(--cyan)';
-    return '<div class="fi" style="border-left-color:'+col+'">'+
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'+
-      '<span class="fi-src" style="color:'+col+'">'+esc((a.source||'').slice(0,22).toUpperCase())+'</span>'+
-      '<span class="fi-time">'+esc(a.time||'')+'</span></div>'+
-      '<div class="fi-title">'+esc((a.title||'').slice(0,110))+'</div>'+
-      (a.url?'<a class="fi-link" href="'+esc(a.url)+'" target="_blank" rel="noopener">READ →</a>':'')+
-      '</div>';
-  }}).join(''):'<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--text3);padding:12px 0">Fetching live signals…</div>';
-  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(0,212,255,.08);color:var(--cyan)">📰</div>'+
-    '<div class="ch-title">Live OSINT / SIGINT Feed</div>'+
-    '<div class="live-chip"><span class="dot" style="background:var(--green)"></span>'+all.length+' signals</div></div>'+
-    '<div class="scroll" id="live-feed-inner">'+rows+'</div></div>';
-}}
+        <CIIPanel cii={D.cii} />
+      </div>
+    </React.Fragment>
+  );
+}
 
-function panelOSINT(){{
-  var rows=(D.osint_platforms||[]).map(p=>
-    '<div class="item" style="border-color:var(--green)">'+
-    '<div class="i-top"><div><div class="i-name">'+esc(p.name||'')+'</div>'+
-    '<div class="i-meta">'+esc(p.type||'')+' · '+esc(p.provider||'')+' · Res: '+esc(p.resolution||'')+'</div></div>'+
-    '<span class="badge bl">'+esc(p.status||'')+'</span></div>'+
-    '<div class="i-detail">'+esc(p.use_case||'')+'</div></div>'
-  ).join('');
-  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(0,229,160,.08);color:var(--green)">👁</div>'+
-    '<div class="ch-title">OSINT Collection Platforms</div>'+
-    '<div class="ch-ct">'+((D.osint_platforms||[]).length)+' sources</div></div>'+
-    '<div class="scroll">'+rows+'</div></div>';
-}}
-
-function panelCII(){{
-  var sorted=(D.cii||[]).slice().sort((a,b)=>b.risk-a.risk);
-  var rows=sorted.map(c=>{{
-    var col=c.risk>=90?'var(--red)':c.risk>=75?'var(--amber)':'#f0d050';
-    return '<div class="cii-item" style="border-color:'+col+'">'+
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'+
-      '<div><div class="i-name">'+esc(c.name||'')+'</div>'+
-      '<div class="i-meta">'+esc(c.country||'')+' · '+esc(c.sector||'')+'</div></div>'+
-      '<span style="font-family:Orbitron,monospace;font-weight:900;font-size:20px;color:'+col+'">'+c.risk+'</span></div>'+
-      mbar(c.risk,col)+'</div>';
-  }}).join('');
-  return '<div class="card"><div class="ch"><div class="ch-ico" style="background:rgba(255,45,85,.08);color:var(--red)">🏗</div>'+
-    '<div class="ch-title">GEOINT — Critical Infrastructure</div>'+
-    '<div class="ch-ct">'+sorted.length+' tracked</div></div>'+
-    '<div class="scroll">'+rows+'</div><div class="classif">GEOINT // INFRA</div></div>';
-}}
-
-/* ── RENDER ── */
-function doRender(){{
-  buildKPIs();buildTicker();
-  document.getElementById('R').innerHTML=
-    '<div class="slbl">Priority Intelligence</div>'+
-    '<div class="r2">'+panelActors()+panelCollection()+'</div>'+
-    '<div class="slbl">Signals Collection</div>'+
-    '<div class="r3">'+panelCOMINT()+panelELINT()+panelMASINT()+'</div>'+
-    '<div class="slbl">Environment & Cyber Domain</div>'+
-    '<div class="r3">'+panelJamming()+panelOrbital()+panelLiveCyber()+'</div>'+
-    '<div class="slbl">Live MASINT & Alerts</div>'+
-    '<div class="r3">'+panelSeismic()+panelKP()+panelOutages()+'</div>'+
-    '<div class="slbl">Open Source & Infrastructure</div>'+
-    '<div class="r2">'+panelLiveFeed()+panelOSINT()+'</div>'+
-    panelCII();
-  updateHeader();
-}}
-doRender();
-
-var _el=0,_rs=D.refresh_interval||180;
-setInterval(()=>{{_el++;var l=Math.max(0,_rs-_el);var e=document.getElementById('cd');if(e)e.textContent=l;if(l===0)_el=0;}},1000);
-
-var _ls={{feed:D.live_feed||[],cyber:D.live_cyber||[],quakes:D.live_quakes||[],kp:D.kp_current||0,kpStatus:D.kp_status||'Quiet',kpSeries:D.kp_series||[]}};
-
-function relTime(iso){{try{{var d=new Date(iso),s=(Date.now()-d)/1000;if(s<60)return Math.round(s)+'s ago';if(s<3600)return Math.round(s/60)+'m ago';return Math.round(s/3600)+'h ago';}}catch{{return iso||'';}}}}
-
-async function fetchGDELT(q){{try{{var r=await fetch('https://api.gdeltproject.org/api/v2/doc/doc?query='+encodeURIComponent(q+' sourcelang:english')+'&mode=artlist&maxrecords=12&format=json&sort=DateDesc',{{signal:AbortSignal.timeout(10000)}});if(!r.ok)return[];var j=await r.json();return(j.articles||[]).map(a=>{{return{{title:a.title||'',source:(a.domain||'').split('.')[0].toUpperCase(),url:a.url||'',time:relTime(a.seendate),cat:''}};}}); }}catch{{return[];}}}}
-async function fetchUSGS(){{try{{var r=await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_hour.geojson',{{signal:AbortSignal.timeout(8000)}});if(!r.ok){{r=await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson',{{signal:AbortSignal.timeout(8000)}});if(!r.ok)return[];}}var j=await r.json();return(j.features||[]).slice(0,10).map(f=>{{return{{place:f.properties.place||'',mag:f.properties.mag||0,depth_km:(f.geometry.coordinates[2]||0).toFixed(1),time:relTime(new Date(f.properties.time).toISOString())}};}}); }}catch{{return[];}}}}
-async function fetchKP(){{try{{var r=await fetch('https://services.swpc.noaa.gov/json/planetary_k_index_1m.json',{{signal:AbortSignal.timeout(8000)}});if(!r.ok)return null;var arr=await r.json();var series=arr.slice(-24).map(x=>{{return{{kp:parseFloat(x.Kp||x.kp_index||0)}}}});var recent=series.slice(-6).map(x=>x.kp);var mx=Math.max(...recent,0);var st=mx>=8?'EXTREME STORM':mx>=7?'SEVERE STORM':mx>=6?'STRONG STORM':mx>=5?'MODERATE STORM':mx>=4?'MINOR STORM':mx>=3?'Unsettled':'Quiet';return{{current:Math.round(mx*10)/10,status:st,series}};}}catch{{return null;}}}}
-
-function patchFeed(){{var el=document.getElementById('live-feed-inner');if(!el)return;var cc={{CONFLICT:'var(--red)',MILITARY:'var(--amber)',NUCLEAR:'var(--red)',OSINT:'var(--cyan)',CYBER:'var(--violet)'}};el.innerHTML=_ls.feed.slice(0,25).map(a=>{{var col=cc[a.cat||'']||'var(--cyan)';return'<div class="fi" style="border-left-color:'+col+'"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><span class="fi-src" style="color:'+col+'">'+esc((a.source||'').slice(0,22).toUpperCase())+'</span><span class="fi-time">'+esc(a.time||'')+'</span></div><div class="fi-title">'+esc((a.title||'').slice(0,110))+'</div>'+(a.url?'<a class="fi-link" href="'+esc(a.url)+'" target="_blank" rel="noopener">READ →</a>':'')+' </div>';}}).join('');}}
-function patchCyber(){{var el=document.getElementById('live-cyber-inner');if(!el)return;var live=_ls.cyber.slice(0,5).map(a=>'<div class="fi" style="border-left-color:var(--violet)"><div class="fi-src">'+esc((a.source||'').toUpperCase())+'</div><div class="fi-title">'+esc((a.title||'').slice(0,100))+'</div><div class="fi-time">'+esc(a.time||'')+'</div></div>').join('');if(live)el.insertAdjacentHTML('beforeend',live);}}
-function patchSeismic(){{var el=document.getElementById('live-seismic-inner');if(!el||!_ls.quakes.length)return;el.innerHTML=_ls.quakes.slice(0,8).map(q=>{{var col=q.mag>=6?'var(--red)':q.mag>=5?'var(--amber)':q.mag>=4?'#f0d050':'var(--green)';return'<div class="item" style="border-color:'+col+'"><div class="i-top"><div><div class="i-name">'+esc(q.place||q.loc||'')+'</div><div class="i-meta">Depth: '+(q.depth_km||'?')+'km · '+esc(q.time||'')+'</div></div><span style="font-family:Orbitron,monospace;font-weight:700;font-size:18px;color:'+col+'">M'+q.mag+'</span></div></div>';}}).join('');}}
-function patchKP(){{var el=document.getElementById('live-kp-inner');if(!el)return;var kp=_ls.kp;var col=kp>=5?'var(--red)':kp>=3?'var(--amber)':'var(--green)';var bars=_ls.kpSeries.slice(-24).map(p=>{{var v=Math.min(p.kp||p||0,9);var h=Math.max(Math.round((v/9)*100),3);var c=v>=5?'var(--red)':v>=3?'var(--amber)':'var(--green)';return'<div class="kp-seg" style="height:'+h+'%;background:'+c+';opacity:.8"></div>';}}).join('');el.innerHTML='<div style="display:flex;align-items:center;gap:18px;margin-bottom:12px"><div><div style="font-family:JetBrains Mono,monospace;font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:var(--text3);margin-bottom:4px">KP INDEX</div><div style="font-family:Orbitron,monospace;font-weight:900;font-size:48px;color:'+col+';line-height:1">'+kp+'</div></div><div><div style="font-family:JetBrains Mono,monospace;font-size:11px;color:'+col+';margin-bottom:4px">'+esc(_ls.kpStatus)+'</div><div style="font-family:JetBrains Mono,monospace;font-size:8px;color:var(--text3)">≥5 Storm · ≥7 Severe · ≥9 Extreme</div></div></div><div class="kp-bars">'+bars+'</div><div style="font-family:JetBrains Mono,monospace;font-size:7px;color:var(--text3);margin-top:3px;text-align:right">← 24h Kp history</div>';}}
-function patchTicker(){{var el=document.getElementById('ticker-inner');if(!el)return;var all=_ls.feed.concat(_ls.cyber).slice(0,20);if(!all.length)return;var h=all.map(a=>'<span class="ti"><span class="ti-s">▶ '+esc((a.source||'').toUpperCase().slice(0,18))+'</span>'+esc((a.title||'').slice(0,88))+'</span>').join('');el.innerHTML=h+h;}}
-
-var _polling=false;
-async function pollAll(){{if(_polling)return;_polling=true;var ps=document.getElementById('poll-status');if(ps)ps.textContent='UPDATING…';
-  try{{var[feed,cyber,geo,quakes,kpData]=await Promise.all([fetchGDELT('war military strike conflict bombing 2026'),fetchGDELT('cyber attack espionage hacking malware APT'),fetchGDELT('geopolitics sanctions nuclear ballistic missile diplomacy'),fetchUSGS(),fetchKP()]);
-    if(feed&&feed.length)_ls.feed=(geo||[]).concat(feed).slice(0,25);
-    if(cyber&&cyber.length)_ls.cyber=cyber;
-    if(quakes&&quakes.length)_ls.quakes=quakes;
-    if(kpData){{_ls.kp=kpData.current;_ls.kpStatus=kpData.status;_ls.kpSeries=kpData.series;}}
-  }}catch(e){{console.warn('poll',e);}}
-  _polling=false;patchFeed();patchCyber();patchSeismic();patchKP();patchTicker();updateHeader();
-  if(ps)ps.textContent='LIVE';
-}}
-setTimeout(pollAll,4000);setInterval(pollAll,180000);
-</script></body></html>"""
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body></html>
+"""
+    _sigint_html = _sigint_template.replace("__PAYLOAD__", _sigint_payload)
     _sc.html(_sigint_html, height=5600, scrolling=True)
 
 
@@ -8177,12 +8381,12 @@ if _active_tab == "📊  Economic & Markets":
         "geo_risk":     GEO_RISK_PREMIUMS,
     })
 
-    _econ_html = f"""<!DOCTYPE html>
+    _econ_template = r"""<!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-:root {{
+:root {
   --void: #04060d;
   --surface: #080d18;
   --raised: #0d1626;
@@ -8202,10 +8406,10 @@ if _active_tab == "📊  Economic & Markets":
   --fd: 'Syne', sans-serif;
   --fb: 'Inter', system-ui, sans-serif;
   --fm: 'JetBrains Mono', monospace;
-}}
-*, *::before, *::after {{ margin:0; padding:0; box-sizing:border-box; }}
-html {{ scroll-behavior:smooth; }}
-body {{
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
   background: var(--void);
   background-image:
     radial-gradient(ellipse 80% 40% at 50% -10%, rgba(56,189,248,.07) 0%, transparent 70%),
@@ -8214,47 +8418,47 @@ body {{
   color: var(--ink);
   padding: 20px 16px 40px;
   min-height: 100vh;
-}}
+}
 
 /* ── TYPOGRAPHY ── */
-.disp {{ font-family: var(--fd); letter-spacing: -.01em; line-height: 1; }}
-.mono {{ font-family: var(--fm); }}
-.overline {{ font-family: var(--fm); font-size: 9px; font-weight: 500; letter-spacing: .18em;
-             text-transform: uppercase; color: var(--ink3); }}
-.section-title {{
+.disp { font-family: var(--fd); letter-spacing: -.01em; line-height: 1; }
+.mono { font-family: var(--fm); }
+.overline { font-family: var(--fm); font-size: 9px; font-weight: 500; letter-spacing: .18em;
+             text-transform: uppercase; color: var(--ink3); }
+.section-title {
   font-family: var(--fm); font-size: 9px; font-weight: 500;
   letter-spacing: .2em; text-transform: uppercase; color: var(--ink3);
   display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
-}}
-.section-title::after {{ content:''; flex:1; height:1px; background:var(--edge2); }}
+}
+.section-title::after { content:''; flex:1; height:1px; background:var(--edge2); }
 
 /* ── LAYOUT ── */
-.main-grid {{
+.main-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1.2fr;
   gap: 16px;
   margin-bottom: 24px;
-}}
-.duo-grid  {{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }}
-.trio-grid {{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:24px; }}
-@media(max-width:960px) {{ .main-grid {{ grid-template-columns:1fr 1fr; }} }}
-@media(max-width:580px) {{ .main-grid, .duo-grid, .trio-grid {{ grid-template-columns:1fr; }} }}
+}
+.duo-grid  { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+.trio-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:24px; }
+@media(max-width:960px) { .main-grid { grid-template-columns:1fr 1fr; } }
+@media(max-width:580px) { .main-grid, .duo-grid, .trio-grid { grid-template-columns:1fr; } }
 
 /* ── SURFACE CARDS ── */
-.card {{
+.card {
   background: var(--surface);
   border: 1px solid var(--edge);
   border-radius: 14px;
   padding: 20px 22px;
   position: relative;
   overflow: hidden;
-}}
-.card::before {{
+}
+.card::before {
   content: '';
   position: absolute; top:0; left:0; right:0; height:1px;
   background: linear-gradient(90deg, transparent 0%, rgba(148,163,184,.15) 40%, transparent 100%);
-}}
-.card-row {{
+}
+.card-row {
   background: var(--raised);
   border: 1px solid var(--edge2);
   border-left: 3px solid;
@@ -8263,799 +8467,767 @@ body {{
   margin-bottom: 8px;
   transition: background .15s, border-color .15s;
   cursor: default;
-}}
-.card-row:last-child {{ margin-bottom: 0; }}
-.card-row:hover {{ background: var(--lift); }}
+}
+.card-row:last-child { margin-bottom: 0; }
+.card-row:hover { background: var(--lift); }
 
 /* ── KPI CARDS ── */
-.kpi-grid {{
+.kpi-grid {
   display: grid;
   grid-template-columns: repeat(4,1fr);
   gap: 14px;
   margin-bottom: 28px;
-}}
-@media(max-width:700px) {{ .kpi-grid {{ grid-template-columns:1fr 1fr; }} }}
-.kpi {{
+}
+@media(max-width:700px) { .kpi-grid { grid-template-columns:1fr 1fr; } }
+.kpi {
   background: var(--surface);
   border: 1px solid var(--edge);
   border-radius: 14px;
   padding: 22px 24px 18px;
   position: relative;
   overflow: hidden;
-}}
-.kpi-glow {{
+}
+.kpi-glow {
   position: absolute; top:0; left:0; right:0; height:60px;
   background: radial-gradient(ellipse at 50% 0%, var(--accent-glow, rgba(56,189,248,.12)), transparent 70%);
   pointer-events: none;
-}}
-.kpi-top-bar {{
+}
+.kpi-top-bar {
   position: absolute; top:0; left:0; right:0; height:2px;
   background: var(--accent-bar, linear-gradient(90deg,transparent,var(--sky),transparent));
-}}
-.kpi-num {{ font-family:var(--fd); font-size:46px; line-height:.95; letter-spacing:-.01em; margin-bottom:8px; }}
-.kpi-label {{ font-family:var(--fm); font-size:9px; font-weight:500; letter-spacing:.2em;
-              text-transform:uppercase; color:var(--ink3); margin-bottom:4px; }}
-.kpi-sub {{ font-family:var(--fm); font-size:10px; color:var(--ink3); }}
+}
+.kpi-num { font-family:var(--fd); font-size:46px; line-height:.95; letter-spacing:-.01em; margin-bottom:8px; }
+.kpi-label { font-family:var(--fm); font-size:9px; font-weight:500; letter-spacing:.2em;
+              text-transform:uppercase; color:var(--ink3); margin-bottom:4px; }
+.kpi-sub { font-family:var(--fm); font-size:10px; color:var(--ink3); }
 
 /* ── PILL TABS ── */
-.pill-tabs {{ display:flex; gap:5px; margin-bottom:16px; flex-wrap:wrap; }}
-.pill {{
+.pill-tabs { display:flex; gap:5px; margin-bottom:16px; flex-wrap:wrap; }
+.pill {
   padding: 5px 14px; border-radius: 20px;
   font-size: 11px; font-weight: 600; cursor: pointer;
   background: var(--raised); border: 1px solid var(--edge2);
   color: var(--ink3); transition: all .15s;
   font-family: var(--fb);
-}}
-.pill:hover {{ border-color: var(--edge); color: var(--ink2); }}
-.pill.on {{ background:rgba(56,189,248,.1); border-color:rgba(56,189,248,.3); color:var(--sky); }}
-.pane {{ display:none; }} .pane.on {{ display:block; }}
+}
+.pill:hover { border-color: var(--edge); color: var(--ink2); }
+.pill.on { background:rgba(56,189,248,.1); border-color:rgba(56,189,248,.3); color:var(--sky); }
+.pane { display:none; } .pane.on { display:block; }
 
 /* ── BADGE ── */
-.badge {{
+.badge {
   display:inline-flex; align-items:center; padding:2px 9px; border-radius:5px;
   font-family:var(--fm); font-size:9px; font-weight:600; letter-spacing:.04em;
   border:1px solid; white-space:nowrap;
-}}
-.crit  {{ color:var(--rose);   border-color:rgba(248,113,113,.3); background:rgba(248,113,113,.08); }}
-.high  {{ color:var(--coral);  border-color:rgba(251,146,60,.3);  background:rgba(251,146,60,.08);  }}
-.med   {{ color:var(--gold);   border-color:rgba(251,191,36,.3);  background:rgba(251,191,36,.08);  }}
-.low   {{ color:var(--mint);   border-color:rgba(52,211,153,.3);  background:rgba(52,211,153,.08);  }}
-.neu   {{ color:var(--ink3);   border-color:rgba(71,85,105,.4);   background:rgba(71,85,105,.06);   }}
-.sky-b {{ color:var(--sky);    border-color:rgba(56,189,248,.3);  background:rgba(56,189,248,.08);  }}
-.vio-b {{ color:var(--violet); border-color:rgba(167,139,250,.3); background:rgba(167,139,250,.08); }}
+}
+.crit  { color:var(--rose);   border-color:rgba(248,113,113,.3); background:rgba(248,113,113,.08); }
+.high  { color:var(--coral);  border-color:rgba(251,146,60,.3);  background:rgba(251,146,60,.08);  }
+.med   { color:var(--gold);   border-color:rgba(251,191,36,.3);  background:rgba(251,191,36,.08);  }
+.low   { color:var(--mint);   border-color:rgba(52,211,153,.3);  background:rgba(52,211,153,.08);  }
+.neu   { color:var(--ink3);   border-color:rgba(71,85,105,.4);   background:rgba(71,85,105,.06);   }
+.sky-b { color:var(--sky);    border-color:rgba(56,189,248,.3);  background:rgba(56,189,248,.08);  }
+.vio-b { color:var(--violet); border-color:rgba(167,139,250,.3); background:rgba(167,139,250,.08); }
 
 /* ── LIVE PULSE ── */
-.live-chip {{
+.live-chip {
   display:inline-flex; align-items:center; gap:5px; padding:3px 10px;
   background:rgba(248,113,113,.08); border:1px solid rgba(248,113,113,.25);
   border-radius:20px; font-family:var(--fm); font-size:8px; color:var(--rose);
   letter-spacing:.1em; text-transform:uppercase;
-}}
-.live-dot {{
+}
+.live-dot {
   width:5px; height:5px; border-radius:50%; background:var(--rose);
   animation:pulse 1.4s ease-in-out infinite;
-}}
-@keyframes pulse {{ 0%,100%{{opacity:1;transform:scale(1)}} 50%{{opacity:.3;transform:scale(.7)}} }}
+}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.7)} }
 
 /* ── BAR ── */
-.bar-track {{ height:4px; background:rgba(148,163,184,.08); border-radius:2px; overflow:hidden; margin:6px 0; }}
-.bar-track.thick {{ height:7px; border-radius:4px; margin:8px 0; }}
-.bar-fill  {{ height:100%; border-radius:inherit; transition:width .4s ease; }}
+.bar-track { height:4px; background:rgba(148,163,184,.08); border-radius:2px; overflow:hidden; margin:6px 0; }
+.bar-track.thick { height:7px; border-radius:4px; margin:8px 0; }
+.bar-fill  { height:100%; border-radius:inherit; transition:width .4s ease; }
 
 /* ── DIVIDER ── */
-.divider {{ border:none; border-top:1px solid var(--edge2); margin:28px 0; }}
+.divider { border:none; border-top:1px solid var(--edge2); margin:28px 0; }
 
 /* ── SECTOR GRID ── */
-.sector-grid {{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }}
-.sector-cell {{
+.sector-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+.sector-cell {
   border-radius:8px; padding:9px 6px; text-align:center;
   transition:transform .15s, filter .15s;
-}}
-.sector-cell:hover {{ transform:translateY(-2px); filter:brightness(1.1); }}
+}
+.sector-cell:hover { transform:translateY(-2px); filter:brightness(1.1); }
 
 /* ── SCROLLABLE ── */
-.scroll {{ max-height:380px; overflow-y:auto; padding-right:4px; }}
-.scroll::-webkit-scrollbar {{ width:3px; }}
-.scroll::-webkit-scrollbar-thumb {{ background:rgba(148,163,184,.15); border-radius:2px; }}
+.scroll { max-height:380px; overflow-y:auto; padding-right:4px; }
+.scroll::-webkit-scrollbar { width:3px; }
+.scroll::-webkit-scrollbar-thumb { background:rgba(148,163,184,.15); border-radius:2px; }
 
 /* ── PIZZA ── */
-.pz-score {{
+.pz-score {
   font-family: var(--fd);
   font-size: 96px; line-height:.85;
   letter-spacing: -.02em;
-}}
-.pz-bar {{
+}
+.pz-bar {
   height: 10px; border-radius:5px; overflow:hidden;
   background: linear-gradient(90deg,#34d399 0%,#fbbf24 42%,#fb923c 64%,#f87171 100%);
   margin: 12px 0 4px; position:relative;
-}}
-.pz-needle {{
+}
+.pz-needle {
   position:absolute; top:-4px; width:3px; height:18px;
   background:#fff; border-radius:2px;
   box-shadow:0 0 8px rgba(255,255,255,.6);
   transform:translateX(-50%);
-}}
+}
 
 /* ── FIRE TABLE ── */
-.fire-tbl {{ width:100%; border-collapse:collapse; }}
-.fire-tbl th {{
+.fire-tbl { width:100%; border-collapse:collapse; }
+.fire-tbl th {
   font-family:var(--fm); font-size:9px; font-weight:500; letter-spacing:.12em;
   text-transform:uppercase; color:var(--ink3); text-align:left;
   padding:0 0 10px; border-bottom:1px solid var(--edge2);
-}}
-.fire-tbl th:not(:first-child) {{ text-align:right; }}
-.fire-tbl td {{ padding:9px 0; border-bottom:1px solid var(--edge2); vertical-align:middle; }}
-.fire-tbl tr:last-child td {{ border-bottom:none; }}
-.fire-tbl td:not(:first-child) {{ text-align:right; font-family:var(--fm); font-size:11px; }}
+}
+.fire-tbl th:not(:first-child) { text-align:right; }
+.fire-tbl td { padding:9px 0; border-bottom:1px solid var(--edge2); vertical-align:middle; }
+.fire-tbl tr:last-child td { border-bottom:none; }
+.fire-tbl td:not(:first-child) { text-align:right; font-family:var(--fm); font-size:11px; }
 
 /* ── ENTRY ANIMATIONS ── */
-@keyframes fadeUp {{
-  from {{ opacity:0; transform:translateY(10px); }}
-  to   {{ opacity:1; transform:translateY(0); }}
-}}
-.card {{ animation: fadeUp .35s ease both; }}
-.kpi:nth-child(1) {{ animation-delay:.04s; }}
-.kpi:nth-child(2) {{ animation-delay:.08s; }}
-.kpi:nth-child(3) {{ animation-delay:.12s; }}
-.kpi:nth-child(4) {{ animation-delay:.16s; }}
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(10px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.card { animation: fadeUp .35s ease both; }
+.kpi:nth-child(1) { animation-delay:.04s; }
+.kpi:nth-child(2) { animation-delay:.08s; }
+.kpi:nth-child(3) { animation-delay:.12s; }
+.kpi:nth-child(4) { animation-delay:.16s; }
 
-  .mn{{font-family:var(--fm);}}
-  .fw6{{font-weight:600;}}
-  .muted{{color:var(--ink3);}}
-  .ink2{{color:var(--ink2);}}
-  .s8{{font-size:8px;}}.s9{{font-size:9px;}}.s10{{font-size:10px;}}.s11{{font-size:11px;}}.s12{{font-size:12px;}}.s13{{font-size:13px;}}
-  .overline{{font-family:var(--fm);letter-spacing:.12em;text-transform:uppercase;}}
-  .panel{{background:var(--surface);border:1px solid var(--edge);border-radius:14px;padding:16px 18px;}}
-  .panel-hdr{{display:flex;align-items:center;gap:8px;font-family:var(--fm);font-size:9px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--ink3);margin-bottom:12px;}}
+  .mn{font-family:var(--fm);}
+  .fw6{font-weight:600;}
+  .muted{color:var(--ink3);}
+  .ink2{color:var(--ink2);}
+  .s8{font-size:8px;}.s9{font-size:9px;}.s10{font-size:10px;}.s11{font-size:11px;}.s12{font-size:12px;}.s13{font-size:13px;}
+  .overline{font-family:var(--fm);letter-spacing:.12em;text-transform:uppercase;}
+  .panel{background:var(--surface);border:1px solid var(--edge);border-radius:14px;padding:16px 18px;}
+  .panel-hdr{display:flex;align-items:center;gap:8px;font-family:var(--fm);font-size:9px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--ink3);margin-bottom:12px;}
 </style>
-</head>
 <body>
 <div id="root"></div>
-<script>
-const D = {_econ_payload};
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel" data-presets="react">
+const {useState} = React;
+const D = __PAYLOAD__;
 
 // ── Helpers ──────────────────────────────────────────────────
-const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-const chg = (v,decimals=2) => {{
-  const up=v>=0, c=up?'var(--mint)':'var(--rose)', sym=up?'▲':'▼';
-  return `<span style="font-family:var(--fm);font-size:10px;color:${{c}}">${{sym}}${{Math.abs(v).toFixed(decimals)}}</span>`;
-}};
-const bar = (pct,col,thick=false) =>
-  `<div class="bar-track${{thick?' thick':''}}"><div class="bar-fill" style="width:${{pct}}%;background:${{col}}"></div></div>`;
-const badge = (txt,cls) => `<span class="badge ${{cls}}">${{esc(txt)}}</span>`;
 const sevCls = s => s==='Critical'?'crit':s==='High'?'high':s==='Med'?'med':'low';
 const rCol = r => r>=75?'var(--rose)':r>=50?'var(--coral)':r>=35?'var(--gold)':'var(--mint)';
 
-// ── KPI Strip ─────────────────────────────────────────────────
-function kpiStrip() {{
-  // Prefer live data; fall back to static oil/crypto
+function Chg({v, decimals=2}){
+  const up = v>=0, c = up?'var(--mint)':'var(--rose)', sym = up?'▲':'▼';
+  return <span style={{fontFamily:'var(--fm)',fontSize:10,color:c}}>{sym}{Math.abs(v).toFixed(decimals)}</span>;
+}
+function Bar({pct,col,thick}){
+  return <div className={"bar-track"+(thick?" thick":"")}><div className="bar-fill" style={{width:pct+'%',background:col}}></div></div>;
+}
+function Badge({txt,cls}){ return <span className={"badge "+cls}>{txt}</span>; }
+function LiveTag(){
+  if(!D.ts) return null;
+  return <span style={{fontFamily:'var(--fm)',fontSize:8,display:'inline-flex',alignItems:'center',gap:4,padding:'2px 7px',background:'rgba(52,211,153,.08)',border:'1px solid rgba(52,211,153,.2)',borderRadius:10,color:'var(--mint)'}}>
+    <span style={{width:4,height:4,borderRadius:'50%',background:'var(--mint)',display:'inline-block'}}></span>LIVE {D.ts}
+  </span>;
+}
+function Panel({title,children,note}){
+  return <div className="panel">
+    <div className="panel-hdr">{title} <LiveTag /></div>
+    {note && <div className="mn s9" style={{color:'var(--coral)',marginBottom:10}}>{note}</div>}
+    <div className="scroll">{children}</div>
+  </div>;
+}
+// Pill-tab card: local state per card, no global window state needed
+function PillCard({title,tabs,liveTs}){
+  const [active, setActive] = useState(0);
+  return (
+    <div className="card">
+      <div className="section-title">{title}{liveTs}</div>
+      <div className="pill-tabs">
+        {tabs.map((t,i)=>(
+          <div key={i} className={"pill"+(i===active?" on":"")} onClick={()=>setActive(i)}>{t.label}</div>
+        ))}
+      </div>
+      <div className="scroll">{tabs[active].content}</div>
+    </div>
+  );
+}
+
+// ── KPI Strip ────────────────────────────────────────────────
+function KPIStrip(){
   const brentLive = D.commodities.find(c=>c.name.includes('Brent')||c.sym==='BZ=F');
-  const wtiLive   = D.commodities.find(c=>c.name.includes('WTI')||c.sym==='CL=F');
-  const brentStatic = D.oil.find(o=>o.name.includes('Brent'))||{{}};
-  const brentVal  = brentLive ? brentLive.price : brentStatic.val;
-  const brentChg  = brentLive ? brentLive.chg_pct : (brentStatic.change||0);
-  const wtiVal    = wtiLive ? wtiLive.price : ((D.oil.find(o=>o.name.includes('WTI'))||{{}}).val||0);
-
-  const fed       = D.indicators.find(i=>i.ticker==='FEDFUNDS')||{{}};
-  const unrate    = D.indicators.find(i=>i.ticker==='UNRATE')||{{}};
-
+  const brentStatic = D.oil.find(o=>o.name.includes('Brent'))||{};
+  const brentVal = brentLive ? brentLive.price : brentStatic.val;
+  const brentChg = brentLive ? brentLive.chg_pct : (brentStatic.change||0);
+  const wtiVal = (D.commodities.find(c=>c.name.includes('WTI')||c.sym==='CL=F')||{}).price
+               || ((D.oil.find(o=>o.name.includes('WTI'))||{}).val||0);
+  const fed = D.indicators.find(i=>i.ticker==='FEDFUNDS')||{};
+  const unrate = D.indicators.find(i=>i.ticker==='UNRATE')||{};
   const cryptoSrc = (D.crypto_live && D.crypto_live.length) ? D.crypto_live : (D.crypto||[]);
-  const btc       = cryptoSrc.find(c=>c.ticker==='BTC')||{{}};
-  const eth       = cryptoSrc.find(c=>c.ticker==='ETH')||{{}};
-  const btcPrice  = btc.price !== undefined ? btc.price : (btc.val||0);
-  const ethPrice  = eth.price !== undefined ? eth.price : (eth.val||0);
-  const btcChg    = btc.chg_pct !== undefined ? btc.chg_pct : (btc.change||0);
-
-  const sp        = D.indices.find(i=>i.sym==='^GSPC');
-  const spChg     = sp ? sp.chg_pct : 0;
-  const spCol     = spChg >= 0 ? 'var(--mint)' : 'var(--rose)';
-
-  const pz        = D.pizza;
-  const pzCol     = pz.score>=75?'var(--rose)':pz.score>=55?'var(--coral)':pz.score>=35?'var(--gold)':'var(--mint)';
-  const brentCol  = brentChg >= 0 ? 'var(--coral)' : 'var(--mint)';
-  const btcCol    = btcChg >= 0 ? 'var(--gold)' : 'var(--rose)';
+  const btc = cryptoSrc.find(c=>c.ticker==='BTC')||{};
+  const eth = cryptoSrc.find(c=>c.ticker==='ETH')||{};
+  const btcPrice = btc.price !== undefined ? btc.price : (btc.val||0);
+  const ethPrice = eth.price !== undefined ? eth.price : (eth.val||0);
+  const btcChg = btc.chg_pct !== undefined ? btc.chg_pct : (btc.change||0);
+  const pz = D.pizza;
+  const pzCol = pz.score>=75?'var(--rose)':pz.score>=55?'var(--coral)':pz.score>=35?'var(--gold)':'var(--mint)';
+  const brentCol = brentChg>=0 ? 'var(--coral)' : 'var(--mint)';
+  const btcCol = btcChg>=0 ? 'var(--gold)' : 'var(--rose)';
 
   const items = [
-    {{ num: brentVal ? `$${{brentVal.toFixed(0)}}` : '-',
-       lbl: 'Brent Crude',
-       sub: `WTI $${{wtiVal ? wtiVal.toFixed(0) : '-'}} · ${{brentChg>=0?'+':''}}${{brentChg.toFixed(1)}}% today`,
-       col: brentCol, glow:'rgba(251,146,60,.14)', bar:`linear-gradient(90deg,transparent,${{brentCol}},transparent)` }},
-    {{ num: fed.val||'-',
-       lbl: 'Fed Funds Rate',
-       sub: `Unemployment ${{unrate.val||'-'}}`,
-       col:'var(--sky)', glow:'rgba(56,189,248,.12)', bar:'linear-gradient(90deg,transparent,var(--sky),transparent)' }},
-    {{ num: btcPrice ? `$${{(btcPrice/1000).toFixed(1)}}K` : '-',
-       lbl: 'Bitcoin',
-       sub: `ETH $${{ethPrice ? ethPrice.toFixed(0) : '-'}} · ${{btcChg>=0?'+':''}}${{btcChg.toFixed(1)}}% 24h`,
-       col: btcCol, glow:'rgba(251,191,36,.12)', bar:`linear-gradient(90deg,transparent,${{btcCol}},transparent)` }},
-    {{ num: pz.score,
-       lbl: '🍕 Pizza Index',
-       sub: pz.label,
-       col: pzCol, glow:'rgba(251,146,60,.12)', bar:`linear-gradient(90deg,transparent,${{pzCol}},transparent)` }},
+    {num: brentVal ? `$${brentVal.toFixed(0)}` : '-', lbl:'Brent Crude',
+     sub:`WTI $${wtiVal ? wtiVal.toFixed(0) : '-'} · ${brentChg>=0?'+':''}${brentChg.toFixed(1)}% today`,
+     col: brentCol, glow:'rgba(251,146,60,.14)', bar:`linear-gradient(90deg,transparent,${brentCol},transparent)`},
+    {num: fed.val||'-', lbl:'Fed Funds Rate', sub:`Unemployment ${unrate.val||'-'}`,
+     col:'var(--sky)', glow:'rgba(56,189,248,.12)', bar:'linear-gradient(90deg,transparent,var(--sky),transparent)'},
+    {num: btcPrice ? `$${(btcPrice/1000).toFixed(1)}K` : '-', lbl:'Bitcoin',
+     sub:`ETH $${ethPrice ? ethPrice.toFixed(0) : '-'} · ${btcChg>=0?'+':''}${btcChg.toFixed(1)}% 24h`,
+     col: btcCol, glow:'rgba(251,191,36,.12)', bar:`linear-gradient(90deg,transparent,${btcCol},transparent)`},
+    {num: pz.score, lbl:'🍕 Pizza Index', sub: pz.label,
+     col: pzCol, glow:'rgba(251,146,60,.12)', bar:`linear-gradient(90deg,transparent,${pzCol},transparent)`},
   ];
-  return `<div class="kpi-grid">${{items.map(k=>`
-    <div class="kpi">
-      <div class="kpi-glow" style="--accent-glow:${{k.glow}}"></div>
-      <div class="kpi-top-bar" style="--accent-bar:${{k.bar}}"></div>
-      <div class="kpi-label">${{k.lbl}}</div>
-      <div class="kpi-num" style="color:${{k.col}}">${{esc(k.num)}}</div>
-      <div class="kpi-sub">${{esc(k.sub)}}</div>
-    </div>`).join('')}}</div>`;
-}}
+  return <div className="kpi-grid">
+    {items.map((k,i)=>(
+      <div className="kpi" key={i}>
+        <div className="kpi-glow" style={{'--accent-glow':k.glow}}></div>
+        <div className="kpi-top-bar" style={{'--accent-bar':k.bar}}></div>
+        <div className="kpi-label">{k.lbl}</div>
+        <div className="kpi-num" style={{color:k.col}}>{k.num}</div>
+        <div className="kpi-sub">{k.sub}</div>
+      </div>
+    ))}
+  </div>;
+}
 
-
-// ── Economic Indicators ───────────────────────────────────────
-function econPanel() {{
-  const indRows = D.indicators.map(e => {{
-    const up=e.up, cc=up?'var(--mint)':'var(--rose)';
-    return `<div class="card-row" style="border-left-color:${{cc}}">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div>
-          <div style="font-size:13px;font-weight:600;color:var(--ink)">${{esc(e.name)}}</div>
-          <div class="mono" style="font-size:9px;color:var(--ink3);margin-top:2px">${{e.ticker}} · ${{e.date}}</div>
+// ── Row 1: Indices / Forex / Commodities / Defense ─────────────
+function PanelIndices(){
+  const arr = D.indices||[];
+  if(!arr.length) return <Panel title="Global Indices"><div className="mn s10 muted">Fetching live data...</div></Panel>;
+  const vix = arr.find(x=>x.sym==='^VIX'), vv = vix?vix.price:0;
+  const vc = vv>=30?'var(--rose)':vv>=20?'var(--gold)':'var(--mint)';
+  return <Panel title="Global Indices">
+    {vix && <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 12px',background:'rgba(0,0,0,.3)',border:'1px solid rgba(148,163,184,.1)',borderRadius:8,marginBottom:10}}>
+      <span style={{fontFamily:'var(--fm)',fontSize:9,fontWeight:600,color:vc}}>VIX FEAR</span>
+      <span style={{fontFamily:'var(--fd)',fontSize:22,color:vc}}>{vv.toFixed(1)} <span style={{fontSize:9}}>{vv>=30?'EXTREME':vv>=20?'HIGH':'CALM'}</span></span>
+    </div>}
+    {arr.filter(x=>x.sym!=='^VIX').map((x,i)=>{
+      const up = x.chg_pct>=0, c = up?'var(--mint)':'var(--rose)';
+      const ps = x.price>999 ? x.price.toLocaleString('en-US',{maximumFractionDigits:0}) : x.price.toFixed(2);
+      return <div className="card-row" key={i} style={{borderLeftColor:c}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div><span style={{fontSize:12,fontWeight:600,color:'var(--ink)'}}>{x.name}</span> <span className="mn s9 muted">{x.country}</span></div>
+          <div><span className="mn">{ps}</span> <span className="mn s10" style={{color:c}}>{up?'▲':'▼'}{Math.abs(x.chg_pct).toFixed(2)}%</span></div>
         </div>
-        <div style="text-align:right">
-          <div class="disp" style="font-size:24px;color:var(--sky)">${{esc(e.val)}}</div>
-          <div>${{chg(parseFloat(e.change)||0)}}</div>
+      </div>;
+    })}
+  </Panel>;
+}
+
+function PanelForex(){
+  const arr = D.forex||[];
+  if(!arr.length) return <Panel title="Forex Rates"><div className="mn s10 muted">Fetching live data...</div></Panel>;
+  const cmap = {}; (D.currency_crisis||[]).forEach(c=>{ cmap[c.currency]=c.status; });
+  return <Panel title="Forex Rates">
+    {arr.map((x,i)=>{
+      const up = x.chg_pct>=0, c = up?'var(--mint)':'var(--rose)';
+      const cur = x.usd_base ? x.pair.split('/')[1] : x.pair.split('/')[0];
+      const cris = cmap[cur]||'';
+      return <div className="card-row" key={i} style={{borderLeftColor: cris?'var(--rose)':c}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div>
+            <span className="mn" style={{fontWeight:600,color:'var(--ink)'}}>{x.pair}</span>
+            {cris && <span className="mn s8" style={{padding:'1px 5px',borderRadius:3,background:'rgba(255,61,90,.1)',color:'var(--rose)',border:'1px solid rgba(255,61,90,.2)',marginLeft:4}}>{cris}</span>}
+            <div className="s9 muted">{x.currency_name}</div>
+          </div>
+          <div><span className="mn">{x.rate.toFixed(4)}</span> <span className="mn s10" style={{color:c}}>{up?'▲':'▼'}{Math.abs(x.chg_pct).toFixed(2)}%</span></div>
+        </div>
+      </div>;
+    })}
+  </Panel>;
+}
+
+function PanelCommodities(){
+  const arr = D.commodities||[];
+  if(!arr.length) return <Panel title="Commodities"><div className="mn s10 muted">Fetching live data...</div></Panel>;
+  const catL = {energy:'Energy',precious:'Precious Metals',agri:'Agriculture',industrial:'Industrial',nuclear:'Nuclear'};
+  const geoNames = ['WTI Crude','Brent Crude','Natural Gas','Wheat (CBOT)'];
+  return <Panel title="Commodities">
+    {['energy','precious','agri','industrial','nuclear'].map(cat=>{
+      const items = arr.filter(x=>x.cat===cat);
+      if(!items.length) return null;
+      return <React.Fragment key={cat}>
+        <div className="mn s8 muted overline" style={{margin:'10px 0 6px'}}>{catL[cat]}</div>
+        {items.map((x,i)=>{
+          const up = x.chg_pct>=0, c = up?'var(--mint)':'var(--rose)';
+          const geo = geoNames.indexOf(x.name)>-1;
+          return <div className="card-row" key={i} style={{borderLeftColor: geo?'var(--gold)':c}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <div><span style={{fontSize:12,fontWeight:600,color:'var(--ink)'}}>{x.name}</span>{geo && <span className="mn s8" style={{color:'var(--gold)',marginLeft:4}}>GEO</span>}</div>
+              <div><span className="mn" style={{color:'var(--gold)'}}>{x.price.toLocaleString('en-US',{maximumFractionDigits:2})}</span> <span className="mn s9 muted">{x.unit}</span> <span className="mn s10" style={{color:c}}>{up?'▲':'▼'}{Math.abs(x.chg_pct).toFixed(2)}%</span></div>
+            </div>
+          </div>;
+        })}
+      </React.Fragment>;
+    })}
+  </Panel>;
+}
+
+function PanelDefense(){
+  const arr = D.defense||[];
+  if(!arr.length) return <Panel title="Defense & Aerospace"><div className="mn s10 muted">Fetching live data...</div></Panel>;
+  return <Panel title="Defense & Aerospace" note="Conflict escalation drives these higher">
+    {arr.map((x,i)=>{
+      const up = x.chg_pct>=0, c = up?'var(--mint)':'var(--rose)';
+      const cs = x.currency==='USD'?'$':x.currency==='EUR'?'€':(x.currency==='GBX'||x.currency==='GBP')?'£':'';
+      const ps = x.currency==='GBX' ? (x.price/100).toFixed(2) : x.price.toFixed(2);
+      return <div className="card-row" key={i} style={{borderLeftColor:'var(--sky)'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div><span style={{fontSize:12,fontWeight:600,color:'var(--ink)'}}>{x.name}</span><div className="mn s9 muted">{x.country} · {x.sym}</div></div>
+          <div><span className="mn" style={{color:'var(--sky)'}}>{cs}{ps}</span> <span className="mn s10" style={{color:c}}>{up?'▲':'▼'}{Math.abs(x.chg_pct).toFixed(2)}%</span></div>
+        </div>
+      </div>;
+    })}
+  </Panel>;
+}
+
+// ── Row 2: Crypto / Sanctions / Currency Crisis ────────────────
+function PanelCrypto(){
+  const arr = (D.crypto_live && D.crypto_live.length) ? D.crypto_live : (D.crypto||[]);
+  return <Panel title="Cryptocurrency">
+    {arr.length ? arr.map((x,i)=>{
+      const chgV = x.chg_pct!=null ? x.chg_pct : (x.change||0), up = chgV>=0, c = up?'var(--mint)':'var(--rose)';
+      const mcap = x.mcap>1e12 ? '$'+(x.mcap/1e12).toFixed(2)+'T' : x.mcap>1e9 ? '$'+(x.mcap/1e9).toFixed(1)+'B' : '';
+      const price = x.price!=null ? x.price : (x.val||0);
+      return <div className="card-row" key={i} style={{borderLeftColor:'var(--gold)'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div><span style={{fontSize:12,fontWeight:600,color:'var(--ink)'}}>{x.name}</span> <span className="mn s9 muted">{x.ticker}</span>{mcap && <div className="mn s9 muted">MCap {mcap}</div>}</div>
+          <div><span className="mn" style={{color:'var(--gold)'}}>${price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span> <span className="mn s10" style={{color:c}}>{up?'▲':'▼'}{Math.abs(chgV).toFixed(2)}%</span></div>
+        </div>
+      </div>;
+    }) : <div className="mn s10 muted">Loading from CoinGecko...</div>}
+  </Panel>;
+}
+
+function PanelSanctions(){
+  const arr = D.sanctions||[];
+  return <Panel title="Active Sanctions">
+    {arr.map((s,i)=>{
+      const col = s.impact==='Critical'?'var(--rose)':s.impact==='High'?'var(--coral)':'var(--gold)';
+      return <div className="card-row" key={i} style={{borderLeftColor:col}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:5}}>
+          <div><span style={{fontSize:13,fontWeight:700,color:'var(--ink)'}}>{s.entity}</span> <span className="mn s9 muted">{s.type} · Since {s.year}</span></div>
+          <span className="mn s9" style={{padding:'2px 7px',borderRadius:4,background:'rgba(0,0,0,.3)',color:col}}>{s.impact}</span>
+        </div>
+        <div className="mn s9 muted" style={{marginBottom:4}}>{s.scope}</div>
+        <div style={{fontSize:11,color:'var(--ink2)',lineHeight:1.6}}>{s.detail}</div>
+      </div>;
+    })}
+  </Panel>;
+}
+
+function PanelCurrencyCrisis(){
+  const sorted = [...(D.currency_crisis||[])].sort((a,b)=>b.yoy_chg-a.yoy_chg);
+  return <Panel title="Currency Devaluation Monitor">
+    {sorted.map((c,i)=>{
+      const pct = Math.min(c.yoy_chg/250*100,100), col = c.col||'var(--rose)';
+      return <div className="card-row" key={i} style={{borderLeftColor:col}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+          <div><span style={{fontSize:12,fontWeight:700,color:'var(--ink)'}}>{c.country}</span> <span className="mn s9 muted">{c.currency}</span></div>
+          <div><span className="mn s11">1 USD = {c.usd_rate.toLocaleString()}</span> <span className="mn s10" style={{color:col,marginLeft:8}}>▲{c.yoy_chg}% YoY</span></div>
+        </div>
+        <div style={{height:4,background:'rgba(148,163,184,.08)',borderRadius:2,overflow:'hidden',marginBottom:5}}>
+          <div style={{height:'100%',width:pct+'%',background:col,borderRadius:2}}></div>
+        </div>
+        <div className="s10 muted">{c.note}</div>
+      </div>;
+    })}
+  </Panel>;
+}
+
+function PanelGeoRisk(){
+  const arr = D.geo_risk||[];
+  return <Panel title="Geopolitical Risk Premiums">
+    <div className="s10 muted" style={{marginBottom:10}}>Market price impact of active conflicts and tensions</div>
+    {arr.map((r,i)=>{
+      const col = r.status==='Active'?'var(--rose)':r.status==='Elevated'?'var(--coral)':'var(--gold)';
+      return <div className="card-row" key={i} style={{borderLeftColor:col}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:12}}>
+          <div><div style={{fontSize:12,fontWeight:700,color:'var(--ink)'}}>{r.name}</div><div className="mn s9 muted" style={{marginTop:2}}>{r.driver} — <span style={{color:'var(--sky)'}}>{r.asset}</span></div></div>
+          <div style={{textAlign:'right',flexShrink:0}}><div className="mn s11" style={{fontWeight:700,color:col}}>{r.impact}</div><span className="mn s9" style={{padding:'1px 6px',borderRadius:3,background:'rgba(0,0,0,.3)',color:col}}>{r.status}</span></div>
+        </div>
+      </div>;
+    })}
+  </Panel>;
+}
+
+// ── Economic Indicators (pill tabs: Macro / Energy / Bonds) ────
+function EconPanel(){
+  const ind = D.indicators.map((e,i)=>{
+    const cc = e.up ? 'var(--mint)' : 'var(--rose)';
+    return <div className="card-row" key={i} style={{borderLeftColor:cc}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <div><div style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{e.name}</div><div className="mono" style={{fontSize:9,color:'var(--ink3)',marginTop:2}}>{e.ticker} · {e.date}</div></div>
+        <div style={{textAlign:'right'}}><div className="disp" style={{fontSize:24,color:'var(--sky)'}}>{e.val}</div><div><Chg v={parseFloat(e.change)||0} /></div></div>
+      </div>
+    </div>;
+  });
+  const oil = D.oil.map((o,i)=>(
+    <div className="card-row" key={i} style={{borderLeftColor:'var(--coral)'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <div style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{o.name}</div>
+        <div style={{textAlign:'right'}}>
+          <span className="disp" style={{fontSize:24,color:'var(--gold)'}}>{o.val.toFixed(2)}</span>
+          <span className="mono" style={{fontSize:10,color:'var(--ink3)',marginLeft:5}}>{o.unit}</span>
+          <div><Chg v={o.change} /></div>
         </div>
       </div>
-    </div>`;
-  }}).join('');
-
-  const oilRows = D.oil.map(o => {{
-    const up=o.change>=0, cc=up?'var(--mint)':'var(--rose)';
-    return `<div class="card-row" style="border-left-color:var(--coral)">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:13px;font-weight:600;color:var(--ink)">${{esc(o.name)}}</div>
-        <div style="text-align:right">
-          <span class="disp" style="font-size:24px;color:var(--gold)">${{o.val.toFixed(2)}}</span>
-          <span class="mono" style="font-size:10px;color:var(--ink3);margin-left:5px">${{esc(o.unit)}}</span>
-          <div>${{chg(o.change)}}</div>
-        </div>
-      </div>
-    </div>`;
-  }}).join('');
-
-  const bondRows = D.bonds.map(b => {{
-    const up=b.change>=0;
-    return `<div class="card-row" style="border-left-color:${{b.col}}">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:13px;font-weight:600;color:var(--ink)">${{esc(b.name)}}</span>
-          ${{badge(b.rating,'neu')}}
-        </div>
-        <div style="display:flex;align-items:center;gap:12px">
-          <span class="disp" style="font-size:22px;color:${{b.col}}">${{b.yield.toFixed(2)}}%</span>
-          ${{chg(b.change)}}
-        </div>
-      </div>
-    </div>`;
-  }}).join('');
-
-  return `<div class="card">
-    <div class="section-title">Economic Indicators</div>
-    <div class="pill-tabs">
-      <div class="pill on" onclick="sw('ei','ind',this)">Macro</div>
-      <div class="pill" onclick="sw('ei','oil',this)">Energy</div>
-      <div class="pill" onclick="sw('ei','bnd',this)">Bonds</div>
     </div>
-    <div class="scroll">
-      <div id="ei-ind" class="pane on">${{indRows}}</div>
-      <div id="ei-oil" class="pane">${{oilRows}}</div>
-      <div id="ei-bnd" class="pane">${{bondRows}}</div>
+  ));
+  const bonds = D.bonds.map((b,i)=>(
+    <div className="card-row" key={i} style={{borderLeftColor:b.col}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <div style={{display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{b.name}</span><Badge txt={b.rating} cls="neu" /></div>
+        <div style={{display:'flex',alignItems:'center',gap:12}}><span className="disp" style={{fontSize:22,color:b.col}}>{b.yield.toFixed(2)}%</span><Chg v={b.change} /></div>
+      </div>
     </div>
-  </div>`;
-}}
+  ));
+  return <PillCard title="Economic Indicators" tabs={[
+    {label:'Macro', content: ind}, {label:'Energy', content: oil}, {label:'Bonds', content: bonds},
+  ]} />;
+}
 
-// ── Trade Policy ──────────────────────────────────────────────
-function tradePanel() {{
-  const restrRows = D.restrictions.map(t => `
-    <div class="card-row" style="border-left-color:rgba(148,163,184,.2)">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px">
-        <div>
-          <div style="font-size:13px;font-weight:600;color:var(--ink)">${{esc(t.country)}}</div>
-          <div style="font-size:11px;color:var(--ink2);margin-top:3px;line-height:1.45">${{esc(t.coverage)}}</div>
-        </div>
-        ${{badge(t.impact,sevCls(t.impact))}}
+// ── Trade Policy (pill tabs) ────────────────────────────────────
+function TradePanel(){
+  const restr = D.restrictions.map((t,i)=>(
+    <div className="card-row" key={i} style={{borderLeftColor:'rgba(148,163,184,.2)'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10,marginBottom:6}}>
+        <div><div style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{t.country}</div><div style={{fontSize:11,color:'var(--ink2)',marginTop:3,lineHeight:1.45}}>{t.coverage}</div></div>
+        <Badge txt={t.impact} cls={sevCls(t.impact)} />
       </div>
-      <div class="mono" style="font-size:9px;color:var(--ink3)">Avg tariff ${{t.avg_rate}}% · ${{t.year}} · WTO</div>
-    </div>`).join('');
-
-  const tariffRows = D.tariffs.map(t => `
-    <div class="card-row" style="border-left-color:rgba(248,113,113,.3)">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
-        <span style="font-size:13px;font-weight:600;color:var(--ink)">${{esc(t.route)}}</span>
-        ${{badge(t.impact,sevCls(t.impact))}}
-      </div>
-      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:3px">
-        <span class="disp" style="font-size:28px;color:var(--rose)">${{t.rate}}%</span>
-        <span class="mono" style="font-size:11px;color:var(--coral)">${{esc(t.change)}}</span>
-      </div>
-      <div class="mono" style="font-size:9px;color:var(--ink3)">${{esc(t.sector)}}</div>
-    </div>`).join('');
-
-  return `<div class="card">
-    <div class="section-title">Trade Policy</div>
-    <div class="pill-tabs">
-      <div class="pill on" onclick="sw('tp','re',this)">Restrictions</div>
-      <div class="pill" onclick="sw('tp','ta',this)">Tariffs</div>
+      <div className="mono" style={{fontSize:9,color:'var(--ink3)'}}>Avg tariff {t.avg_rate}% · {t.year} · WTO</div>
     </div>
-    <div class="scroll">
-      <div id="tp-re" class="pane on">${{restrRows}}</div>
-      <div id="tp-ta" class="pane">${{tariffRows}}</div>
+  ));
+  const tariffs = D.tariffs.map((t,i)=>(
+    <div className="card-row" key={i} style={{borderLeftColor:'rgba(248,113,113,.3)'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:4}}>
+        <span style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{t.route}</span><Badge txt={t.impact} cls={sevCls(t.impact)} />
+      </div>
+      <div style={{display:'flex',alignItems:'baseline',gap:10,marginBottom:3}}>
+        <span className="disp" style={{fontSize:28,color:'var(--rose)'}}>{t.rate}%</span>
+        <span className="mono" style={{fontSize:11,color:'var(--coral)'}}>{t.change}</span>
+      </div>
+      <div className="mono" style={{fontSize:9,color:'var(--ink3)'}}>{t.sector}</div>
     </div>
-  </div>`;
-}}
+  ));
+  return <PillCard title="Trade Policy" tabs={[{label:'Restrictions',content:restr},{label:'Tariffs',content:tariffs}]} />;
+}
 
-// ── Supply Chain ──────────────────────────────────────────────
-function supplyPanel() {{
-  const chkRows = D.chokepoints.map(cp => {{
-    const sc=cp.status==='red'?'var(--rose)':cp.status==='amber'?'var(--gold)':'var(--mint)';
-    const wc=cp.wow_change<0?'var(--rose)':'var(--mint)';
-    return `<div class="card-row" style="border-left-color:${{sc}};margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
-        <span style="font-size:13px;font-weight:700;color:var(--ink)">${{esc(cp.name)}}</span>
-        <span class="disp" style="font-size:20px;color:${{sc}}">${{cp.risk}}</span>
+// ── Supply Chain (pill tabs) ─────────────────────────────────────
+function SupplyPanel(){
+  const chk = D.chokepoints.map((cp,i)=>{
+    const sc = cp.status==='red'?'var(--rose)':cp.status==='amber'?'var(--gold)':'var(--mint)';
+    const wc = cp.wow_change<0?'var(--rose)':'var(--mint)';
+    const ctx = cp.context||'';
+    return <div className="card-row" key={i} style={{borderLeftColor:sc,marginBottom:12}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}}>
+        <span style={{fontSize:13,fontWeight:700,color:'var(--ink)'}}>{cp.name}</span>
+        <span className="disp" style={{fontSize:20,color:sc}}>{cp.risk}</span>
       </div>
-      ${{bar(cp.risk,sc,true)}}
-      <div style="display:flex;gap:14px;margin-top:5px;flex-wrap:wrap">
-        <span class="mono" style="font-size:9px;color:var(--ink3)">${{cp.warnings}} warning(s)</span>
-        <span class="mono" style="font-size:9px;color:var(--ink3)">${{cp.ais_disruptions}} AIS</span>
-        <span class="mono" style="font-size:9px;color:${{wc}}">WoW ${{cp.wow_change>0?'+':''}}${{cp.wow_change}}%</span>
+      <Bar pct={cp.risk} col={sc} thick />
+      <div style={{display:'flex',gap:14,marginTop:5,flexWrap:'wrap'}}>
+        <span className="mono" style={{fontSize:9,color:'var(--ink3)'}}>{cp.warnings} warning(s)</span>
+        <span className="mono" style={{fontSize:9,color:'var(--ink3)'}}>{cp.ais_disruptions} AIS</span>
+        <span className="mono" style={{fontSize:9,color:wc}}>WoW {cp.wow_change>0?'+':''}{cp.wow_change}%</span>
       </div>
-      <div style="font-size:11px;color:var(--ink2);line-height:1.55;margin-top:6px">${{esc(cp.context.substring(0,150))}}${{cp.context.length>150?'…':''}}</div>
-    </div>`;
-  }}).join('');
-
-  const shipRows = D.shipping.map(r => {{
-    const sc=r.status==='Elevated'?'var(--rose)':r.status==='Rising'?'var(--gold)':r.status==='Reduced'?'var(--coral)':'var(--mint)';
-    const up=r.change>=0;
-    const rateStr=r.rate>999?r.rate.toLocaleString():typeof r.rate==='number'?r.rate.toFixed(2):r.rate;
-    return `<div class="card-row" style="border-left-color:${{sc}}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-        <div>
-          <div style="font-size:12px;font-weight:600;color:var(--ink)">${{esc(r.route)}}</div>
-          <div class="mono" style="font-size:9px;color:var(--ink3);margin-top:2px">${{esc(r.type)}} · ${{esc(r.note)}}</div>
-        </div>
-        <div style="text-align:right;flex-shrink:0">
-          <span class="disp" style="font-size:20px;color:${{sc}}">${{rateStr}}</span>
-          <span class="mono" style="font-size:9px;color:var(--ink3);margin-left:3px">${{esc(r.unit)}}</span>
-          <div class="mono" style="font-size:10px;color:${{up?'var(--rose)':'var(--mint)'}}">${{up?'▲':'▼'}}${{Math.abs(r.change).toFixed(1)}}%</div>
+      <div style={{fontSize:11,color:'var(--ink2)',lineHeight:1.55,marginTop:6}}>{ctx.substring(0,150)}{ctx.length>150?'…':''}</div>
+    </div>;
+  });
+  const ship = D.shipping.map((r,i)=>{
+    const sc = r.status==='Elevated'?'var(--rose)':r.status==='Rising'?'var(--gold)':r.status==='Reduced'?'var(--coral)':'var(--mint)';
+    const up = r.change>=0;
+    const rateStr = r.rate>999 ? r.rate.toLocaleString() : (typeof r.rate==='number' ? r.rate.toFixed(2) : r.rate);
+    return <div className="card-row" key={i} style={{borderLeftColor:sc}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10}}>
+        <div><div style={{fontSize:12,fontWeight:600,color:'var(--ink)'}}>{r.route}</div><div className="mono" style={{fontSize:9,color:'var(--ink3)',marginTop:2}}>{r.type} · {r.note}</div></div>
+        <div style={{textAlign:'right',flexShrink:0}}>
+          <span className="disp" style={{fontSize:20,color:sc}}>{rateStr}</span>
+          <span className="mono" style={{fontSize:9,color:'var(--ink3)',marginLeft:3}}>{r.unit}</span>
+          <div className="mono" style={{fontSize:10,color: up?'var(--rose)':'var(--mint)'}}>{up?'▲':'▼'}{Math.abs(r.change).toFixed(1)}%</div>
         </div>
       </div>
-    </div>`;
-  }}).join('');
-
-  const minRows = D.minerals.map(m => {{
-    const dn=m.change<=0, mc=dn?'var(--mint)':'var(--rose)';
-    const sr=m.supply_risk, sc=sr>=80?'var(--rose)':sr>=60?'var(--coral)':sr>=40?'var(--gold)':'var(--mint)';
-    return `<div class="card-row" style="border-left-color:${{m.col}}">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-        <span style="font-size:13px;font-weight:700;color:var(--ink)">${{esc(m.mineral)}}</span>
-        <div style="display:flex;align-items:baseline;gap:8px">
-          <span class="disp" style="font-size:20px;color:${{m.col}}">${{m.price}}</span>
-          <span class="mono" style="font-size:9px;color:var(--ink3)">${{esc(m.unit)}}</span>
-          <span class="mono" style="font-size:10px;color:${{mc}}">${{dn?'▼':'▲'}}${{Math.abs(m.change).toFixed(1)}}%</span>
+    </div>;
+  });
+  const min = D.minerals.map((m,i)=>{
+    const dn = m.change<=0, mc = dn?'var(--mint)':'var(--rose)';
+    const sr = m.supply_risk, sc = sr>=80?'var(--rose)':sr>=60?'var(--coral)':sr>=40?'var(--gold)':'var(--mint)';
+    return <div className="card-row" key={i} style={{borderLeftColor:m.col}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+        <span style={{fontSize:13,fontWeight:700,color:'var(--ink)'}}>{m.mineral}</span>
+        <div style={{display:'flex',alignItems:'baseline',gap:8}}>
+          <span className="disp" style={{fontSize:20,color:m.col}}>{m.price}</span>
+          <span className="mono" style={{fontSize:9,color:'var(--ink3)'}}>{m.unit}</span>
+          <span className="mono" style={{fontSize:10,color:mc}}>{dn?'▼':'▲'}{Math.abs(m.change).toFixed(1)}%</span>
         </div>
       </div>
-      ${{bar(sr,sc)}}
-      <div style="display:flex;justify-content:space-between;margin-top:3px">
-        <span class="mono" style="font-size:9px;color:var(--ink3)">Supply risk: <span style="color:${{sc}}">${{sr}}</span></span>
-        <span class="mono" style="font-size:9px;color:var(--ink3)">${{esc(m.top_producer)}}</span>
+      <Bar pct={sr} col={sc} />
+      <div style={{display:'flex',justifyContent:'space-between',marginTop:3}}>
+        <span className="mono" style={{fontSize:9,color:'var(--ink3)'}}>Supply risk: <span style={{color:sc}}>{sr}</span></span>
+        <span className="mono" style={{fontSize:9,color:'var(--ink3)'}}>{m.top_producer}</span>
       </div>
-    </div>`;
-  }}).join('');
+    </div>;
+  });
+  return <PillCard title="Supply Chain" tabs={[{label:'Chokepoints',content:chk},{label:'Shipping',content:ship},{label:'Minerals',content:min}]} />;
+}
 
-  return `<div class="card">
-    <div class="section-title">Supply Chain</div>
-    <div class="pill-tabs">
-      <div class="pill on" onclick="sw('sc','ch',this)">Chokepoints</div>
-      <div class="pill" onclick="sw('sc','sh',this)">Shipping</div>
-      <div class="pill" onclick="sw('sc','mn',this)">Minerals</div>
-    </div>
-    <div class="scroll">
-      <div id="sc-ch" class="pane on">${{chkRows}}</div>
-      <div id="sc-sh" class="pane">${{shipRows}}</div>
-      <div id="sc-mn" class="pane">${{minRows}}</div>
-    </div>
-  </div>`;
-}}
-
-// ── Financial ─────────────────────────────────────────────────
-function finPanel() {{
-  const nfUp = D.btc_etf.net_flow >= 0;
-  const nfCol = nfUp ? 'var(--mint)' : 'var(--rose)';
-  const mCol  = D.market.label === 'CASH' ? 'var(--gold)' : 'var(--sky)';
-
-  // ── Crypto: prefer live CoinGecko data ───────────────────────
+// ── Financial (crypto + sector heatmap + posture) ───────────────
+function FinPanel(){
+  const nfUp = D.btc_etf.net_flow >= 0, nfCol = nfUp ? 'var(--mint)' : 'var(--rose)';
+  const mCol = D.market.label === 'CASH' ? 'var(--gold)' : 'var(--sky)';
   const cryptoSrc = (D.crypto_live && D.crypto_live.length) ? D.crypto_live : (D.crypto || []);
-  const cryptoRows = cryptoSrc.map(c => {{
-    const chgV = c.chg_pct !== undefined ? c.chg_pct : (c.change || 0);
-    const price = c.price !== undefined ? c.price : (c.val || 0);
-    const up = chgV >= 0, cc = up ? 'var(--mint)' : 'var(--rose)';
-    const mcap = c.mcap > 1e12 ? `$${{(c.mcap/1e12).toFixed(2)}}T`
-               : c.mcap > 1e9  ? `$${{(c.mcap/1e9).toFixed(1)}}B` : '';
-    return `<div class="card-row" style="border-left-color:${{cc}};display:flex;justify-content:space-between;align-items:center">
+  const isLive = D.crypto_live && D.crypto_live.length;
+
+  return <div className="card">
+    <div className="section-title">Financial {D.ts && <span className="mono" style={{fontSize:8,color:'var(--ink3)',marginLeft:8}}>{D.ts}</span>}</div>
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
       <div>
-        <div style="font-size:13px;font-weight:600;color:var(--ink)">${{esc(c.name)}}</div>
-        <div class="mono" style="font-size:9px;color:var(--ink3)">${{esc(c.ticker)}}${{mcap ? ' · ' + mcap : ''}}</div>
+        <div className="overline" style={{marginBottom:10}}>Crypto
+          {isLive
+            ? <span className="live-chip" style={{marginLeft:6}}><span className="live-dot"></span>CoinGecko</span>
+            : <span className="mono" style={{fontSize:8,color:'var(--ink3)',marginLeft:6}}>static</span>}
+        </div>
+        {cryptoSrc.length ? cryptoSrc.map((c,i)=>{
+          const chgV = c.chg_pct !== undefined ? c.chg_pct : (c.change || 0);
+          const price = c.price !== undefined ? c.price : (c.val || 0);
+          const up = chgV >= 0, cc = up ? 'var(--mint)' : 'var(--rose)';
+          const mcap = c.mcap > 1e12 ? `$${(c.mcap/1e12).toFixed(2)}T` : c.mcap > 1e9 ? `$${(c.mcap/1e9).toFixed(1)}B` : '';
+          return <div className="card-row" key={i} style={{borderLeftColor:cc,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <div><div style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{c.name}</div><div className="mono" style={{fontSize:9,color:'var(--ink3)'}}>{c.ticker}{mcap?' · '+mcap:''}</div></div>
+            <div style={{textAlign:'right'}}>
+              <div className="mono" style={{fontSize:13,color:'var(--ink)'}}>${price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+              <div className="mono" style={{fontSize:10,color:cc}}>{up?'+':''}{Math.abs(chgV).toFixed(2)}%</div>
+            </div>
+          </div>;
+        }) : <div className="mono" style={{fontSize:10,color:'var(--ink3)'}}>Loading…</div>}
       </div>
-      <div style="text-align:right">
-        <div class="mono" style="font-size:13px;color:var(--ink)">$${{price.toLocaleString('en-US',{{minimumFractionDigits:2,maximumFractionDigits:2}})}}</div>
-        <div class="mono" style="font-size:10px;color:${{cc}}">${{up ? '+' : ''}}${{Math.abs(chgV).toFixed(2)}}%</div>
-      </div>
-    </div>`;
-  }}).join('');
-
-  // ── Sector Heatmap: use live defense/indices if available for context ──
-  const heatCells = D.sectors.map(s => {{
-    const up = s.v >= 0;
-    const intensity = Math.min(Math.abs(s.v) / 8, 1);
-    const bg = up ? `rgba(52,211,153,${{.08 + intensity * .18}})` : `rgba(248,113,113,${{.08 + intensity * .18}})`;
-    const col = up ? 'var(--mint)' : 'var(--rose)';
-    return `<div class="sector-cell" style="background:${{bg}}">
-      <div class="mono" style="font-size:8px;color:var(--ink3);margin-bottom:3px">${{esc(s.s)}}</div>
-      <div class="mono" style="font-size:12px;font-weight:700;color:${{col}}">${{up ? '+' : ''}}${{s.v}}%</div>
-    </div>`;
-  }}).join('');
-
-  // ── Live timestamp badge ──────────────────────────────────────
-  const liveTs = D.ts ? `<span class="mono" style="font-size:8px;color:var(--ink3);margin-left:8px">${{esc(D.ts)}}</span>` : '';
-  const liveBadge = (D.crypto_live && D.crypto_live.length)
-    ? `<span class="live-chip" style="margin-left:6px"><span class="live-dot"></span>CoinGecko</span>`
-    : `<span class="mono" style="font-size:8px;color:var(--ink3);margin-left:6px">static</span>`;
-
-  return `<div class="card">
-    <div class="section-title">Financial${{liveTs}}</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-
       <div>
-        <div class="overline" style="margin-bottom:10px">Crypto${{liveBadge}}</div>
-        ${{cryptoRows || '<div class="mono" style="font-size:10px;color:var(--ink3)">Loading…</div>'}}
-      </div>
-
-      <div>
-        <div class="overline" style="margin-bottom:10px">Sector Heatmap</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px">${{heatCells}}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div style="background:var(--raised);border:1px solid var(--edge2);border-radius:10px;padding:14px;text-align:center">
-            <div class="overline" style="margin-bottom:8px">Market Posture</div>
-            <div class="disp" style="font-size:28px;color:${{mCol}};margin-bottom:5px">${{D.market.label}}</div>
-            <div class="mono" style="font-size:9px;color:var(--ink3)">${{D.market.posture}}</div>
-            <div class="mono" style="font-size:9px;color:var(--gold);margin-top:3px">${{D.market.flow}}</div>
+        <div className="overline" style={{marginBottom:10}}>Sector Heatmap</div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:16}}>
+          {D.sectors.map((s,i)=>{
+            const up = s.v >= 0, intensity = Math.min(Math.abs(s.v)/8, 1);
+            const bg = up ? `rgba(52,211,153,${.08+intensity*.18})` : `rgba(248,113,113,${.08+intensity*.18})`;
+            const col = up ? 'var(--mint)' : 'var(--rose)';
+            return <div className="sector-cell" key={i} style={{background:bg}}>
+              <div className="mono" style={{fontSize:8,color:'var(--ink3)',marginBottom:3}}>{s.s}</div>
+              <div className="mono" style={{fontSize:12,fontWeight:700,color:col}}>{up?'+':''}{s.v}%</div>
+            </div>;
+          })}
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+          <div style={{background:'var(--raised)',border:'1px solid var(--edge2)',borderRadius:10,padding:14,textAlign:'center'}}>
+            <div className="overline" style={{marginBottom:8}}>Market Posture</div>
+            <div className="disp" style={{fontSize:28,color:mCol,marginBottom:5}}>{D.market.label}</div>
+            <div className="mono" style={{fontSize:9,color:'var(--ink3)'}}>{D.market.posture}</div>
+            <div className="mono" style={{fontSize:9,color:'var(--gold)',marginTop:3}}>{D.market.flow}</div>
           </div>
-          <div style="background:var(--raised);border:1px solid var(--edge2);border-radius:10px;padding:14px;text-align:center">
-            <div class="overline" style="margin-bottom:8px">BTC ETF Flow</div>
-            <div class="disp" style="font-size:28px;color:${{nfCol}};margin-bottom:5px">$${{Math.abs(D.btc_etf.net_flow)}}M</div>
-            ${{badge(nfUp ? 'INFLOW' : 'OUTFLOW', nfUp ? 'low' : 'crit')}}
-            <div class="mono" style="font-size:9px;color:var(--ink3);margin-top:6px">Est. $${{D.btc_etf.est_flow}}M</div>
+          <div style={{background:'var(--raised)',border:'1px solid var(--edge2)',borderRadius:10,padding:14,textAlign:'center'}}>
+            <div className="overline" style={{marginBottom:8}}>BTC ETF Flow</div>
+            <div className="disp" style={{fontSize:28,color:nfCol,marginBottom:5}}>${Math.abs(D.btc_etf.net_flow)}M</div>
+            <Badge txt={nfUp?'INFLOW':'OUTFLOW'} cls={nfUp?'low':'crit'} />
+            <div className="mono" style={{fontSize:9,color:'var(--ink3)',marginTop:6}}>Est. ${D.btc_etf.est_flow}M</div>
           </div>
         </div>
       </div>
-
     </div>
-  </div>`;
-}}
+  </div>;
+}
 
-
-// ── Row 2: Layoffs + Fires ────────────────────────────────────
-function row2() {{
-  // ── Sector filter state ──────────────────────────────────────
+// ── Row 2: Layoffs (with sector filter state) + Fires table ────
+function Row2(){
+  const [selSec, setSelSec] = useState('All');
   const allSectors = [...new Set((D.layoffs||[]).map(l=>l.sector||'Other'))].sort();
-  const selSec = window._layoffSector || 'All';
+  const filtered = (D.layoffs||[]).filter(l=> selSec==='All' || (l.sector||'Other')===selSec);
 
-  const filtered = (D.layoffs||[]).filter(l=>
-    selSec === 'All' || (l.sector||'Other') === selSec
-  );
-
-  const sectorBtns = ['All',...allSectors].map(s=>
-    `<button onclick="window._layoffSector='${{s}}';doRender()"
-      style="font-family:JetBrains Mono,monospace;font-size:9px;padding:3px 10px;border-radius:3px;
-             cursor:pointer;border:1px solid ${{s===selSec?'var(--sky)':'rgba(148,163,184,.15)'}};
-             background:${{s===selSec?'rgba(56,189,248,.1)':'transparent'}};
-             color:${{s===selSec?'var(--sky)':'var(--ink3)'}};margin:0 3px 4px 0">${{s}}</button>`
-  ).join('');
-
-  const layoffRows = filtered.slice(0,20).map(l=>{{
-    const sc=l.severity==='Critical'?'var(--rose)':l.severity==='High'?'var(--coral)':l.severity==='Med'?'var(--gold)':'var(--mint)';
-    const hasUrl = l.url && l.url.length > 4;
-    const readBtn = hasUrl
-      ? `<a href="${{esc(l.url)}}" target="_blank" rel="noopener"
-           style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--sky);
-                  text-decoration:none;padding:2px 8px;border:1px solid rgba(56,189,248,.25);
-                  border-radius:3px;white-space:nowrap">Read ↗</a>`
-      : '';
-    const ageBadge = l.age
-      ? `<span class="mono" style="font-size:8px;color:var(--ink3);margin-left:6px">${{esc(l.age)}}</span>`
-      : '';
-    return `<div class="card-row" style="border-left-color:${{sc}};padding:10px 12px">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap">
-            <span style="font-size:13px;font-weight:700;color:var(--ink)">${{esc(l.company)}}</span>
-            ${{badge(l.severity.toUpperCase(),sevCls(l.severity))}}
-            ${{ageBadge}}
-          </div>
-          <div style="font-size:11px;color:var(--ink2);line-height:1.45;margin-bottom:4px">${{esc((l.headline||'').slice(0,100))}}</div>
+  return <div className="duo-grid">
+    <div className="card" style={{gridColumn:'1/-1'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8,marginBottom:10}}>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <div className="section-title" style={{margin:0}}>Corporate Layoffs</div>
+          <span className="live-chip"><span className="live-dot"></span>Live · Google News + GDELT</span>
         </div>
-        <div style="flex-shrink:0;margin-left:10px;text-align:right">
-          <div class="mono" style="font-size:11px;color:var(--gold);font-weight:600">${{esc(l.count)}}</div>
-          <div class="mono" style="font-size:9px;color:var(--ink3);margin-top:2px">${{esc(l.sector||'')}}</div>
-        </div>
+        <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:9,color:'var(--ink3)'}}>{filtered.length} reports · refreshes every 5 min</div>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span class="mono" style="font-size:9px;color:var(--ink3)">${{esc(l.source||'')}} · ${{esc(l.date||'')}}</span>
-        ${{readBtn}}
+      <div style={{marginBottom:10,display:'flex',flexWrap:'wrap'}}>
+        {['All',...allSectors].map((s,i)=>(
+          <button key={i} onClick={()=>setSelSec(s)}
+            style={{fontFamily:'JetBrains Mono,monospace',fontSize:9,padding:'3px 10px',borderRadius:3,cursor:'pointer',
+                    border:'1px solid '+(s===selSec?'var(--sky)':'rgba(148,163,184,.15)'),
+                    background: s===selSec?'rgba(56,189,248,.1)':'transparent',
+                    color: s===selSec?'var(--sky)':'var(--ink3)', margin:'0 3px 4px 0'}}>{s}</button>
+        ))}
       </div>
-    </div>`;
-  }}).join('');
-
-  const emptyMsg = filtered.length === 0
-    ? `<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--ink3);padding:20px;text-align:center">No layoffs reported for this sector.</div>`
-    : '';
-
-  const fireRows = D.fires.map(f=>{{
-    const ic=f.high>50?'var(--rose)':f.high>20?'var(--coral)':'var(--gold)';
-    return `<tr>
-      <td><span style="font-size:12px;font-weight:600;color:var(--ink)">${{esc(f.region)}}</span>
-          <span style="display:block;font-size:9px;color:var(--ink3)" class="mono">${{f.biome||''}}</span></td>
-      <td class="mono" style="color:var(--sky)">${{f.fires.toLocaleString()}}</td>
-      <td class="mono" style="color:${{ic}}">${{f.high}}</td>
-      <td class="mono" style="color:var(--ink3)">${{(f.frp/1000).toFixed(1)}}k FRP</td>
-    </tr>`;
-  }}).join('');
-
-  return `<div class="duo-grid">
-    <div class="card" style="grid-column:1/-1">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div class="section-title" style="margin:0">Corporate Layoffs</div>
-          <span class="live-chip"><span class="live-dot"></span>Live · Google News + GDELT</span>
-        </div>
-        <div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--ink3)">
-          ${{filtered.length}} reports · refreshes every 5 min
-        </div>
-      </div>
-      <div style="margin-bottom:10px;display:flex;flex-wrap:wrap">${{sectorBtns}}</div>
-      <div class="scroll" style="max-height:420px">
-        ${{layoffRows}}${{emptyMsg}}
+      <div className="scroll" style={{maxHeight:420}}>
+        {filtered.slice(0,20).map((l,i)=>{
+          const sc = l.severity==='Critical'?'var(--rose)':l.severity==='High'?'var(--coral)':l.severity==='Med'?'var(--gold)':'var(--mint)';
+          const hasUrl = l.url && l.url.length > 4;
+          return <div className="card-row" key={i} style={{borderLeftColor:sc,padding:'10px 12px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:5}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:3,flexWrap:'wrap'}}>
+                  <span style={{fontSize:13,fontWeight:700,color:'var(--ink)'}}>{l.company}</span>
+                  <Badge txt={(l.severity||'').toUpperCase()} cls={sevCls(l.severity)} />
+                  {l.age && <span className="mono" style={{fontSize:8,color:'var(--ink3)',marginLeft:6}}>{l.age}</span>}
+                </div>
+                <div style={{fontSize:11,color:'var(--ink2)',lineHeight:1.45,marginBottom:4}}>{(l.headline||'').slice(0,100)}</div>
+              </div>
+              <div style={{flexShrink:0,marginLeft:10,textAlign:'right'}}>
+                <div className="mono" style={{fontSize:11,color:'var(--gold)',fontWeight:600}}>{l.count}</div>
+                <div className="mono" style={{fontSize:9,color:'var(--ink3)',marginTop:2}}>{l.sector||''}</div>
+              </div>
+            </div>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <span className="mono" style={{fontSize:9,color:'var(--ink3)'}}>{l.source||''} · {l.date||''}</span>
+              {hasUrl && <a href={l.url} target="_blank" rel="noopener" style={{fontFamily:'JetBrains Mono,monospace',fontSize:9,color:'var(--sky)',textDecoration:'none',padding:'2px 8px',border:'1px solid rgba(56,189,248,.25)',borderRadius:3,whiteSpace:'nowrap'}}>Read ↗</a>}
+            </div>
+          </div>;
+        })}
+        {filtered.length===0 && <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:10,color:'var(--ink3)',padding:20,textAlign:'center'}}>No layoffs reported for this sector.</div>}
       </div>
     </div>
-    <div class="card">
-      <div class="section-title">🔥 Active Wildfires</div>
-      <table class="fire-tbl">
+    <div className="card">
+      <div className="section-title">🔥 Active Wildfires</div>
+      <table className="fire-tbl">
         <thead><tr><th>Region</th><th>Fires</th><th>High</th><th>FRP</th></tr></thead>
-        <tbody>${{fireRows}}</tbody>
+        <tbody>
+          {D.fires.map((f,i)=>{
+            const ic = f.high>50?'var(--rose)':f.high>20?'var(--coral)':'var(--gold)';
+            return <tr key={i}>
+              <td><span style={{fontSize:12,fontWeight:600,color:'var(--ink)'}}>{f.region}</span><span style={{display:'block',fontSize:9,color:'var(--ink3)'}} className="mono">{f.biome||''}</span></td>
+              <td className="mono" style={{color:'var(--sky)'}}>{f.fires.toLocaleString()}</td>
+              <td className="mono" style={{color:ic}}>{f.high}</td>
+              <td className="mono" style={{color:'var(--ink3)'}}>{(f.frp/1000).toFixed(1)}k FRP</td>
+            </tr>;
+          })}
+        </tbody>
       </table>
     </div>
-  </div>`;
-}}
+  </div>;
+}
 
-// ── Pizza Index ───────────────────────────────────────────────
-function pizzaSection() {{
-  const pz=D.pizza;
-  const col=pz.score>=75?'var(--rose)':pz.score>=55?'var(--coral)':pz.score>=35?'var(--gold)':'var(--mint)';
-  const needlePct=pz.score;
-
-  const compRows = pz.components.map(c=>{{
-    const sc=c.stress; const scol=sc>=80?'var(--rose)':sc>=60?'var(--coral)':sc>=40?'var(--gold)':'var(--mint)';
-    const up=c.change>0; const csym=up?'▲':'▼'; const ccol=up?'var(--rose)':'var(--mint)';
-    return `<div class="card-row" style="border-left-color:${{scol}}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">
+// ── Pizza Index ──────────────────────────────────────────────
+function PizzaSection(){
+  const pz = D.pizza;
+  const col = pz.score>=75?'var(--rose)':pz.score>=55?'var(--coral)':pz.score>=35?'var(--gold)':'var(--mint)';
+  return <React.Fragment>
+    <div style={{background:'var(--surface)',border:'1px solid var(--edge)',borderRadius:16,padding:'28px 30px',marginBottom:24,position:'relative',overflow:'hidden'}}>
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:32,flexWrap:'wrap'}}>
         <div>
-          <div style="font-size:13px;font-weight:600;color:var(--ink)">${{esc(c.name)}}</div>
-          <div class="mono" style="font-size:9px;color:var(--ink3);margin-top:2px">${{esc(c.note)}}</div>
+          <div className="overline" style={{marginBottom:12}}>🍕 Pizza Index &nbsp;<span className="badge neu" style={{fontSize:8}}>PIZZAINT METHODOLOGY</span></div>
+          <div className="pz-score" style={{color:col}}>{pz.score}</div>
+          <div className="mono" style={{fontSize:13,color:col,marginTop:10,letterSpacing:'.06em'}}>{pz.label}</div>
         </div>
-        <div style="text-align:right;flex-shrink:0;margin-left:14px">
-          <span class="mono" style="font-size:12px;color:var(--ink2)">${{c.val}} <span style="font-size:9px;color:var(--ink3)">${{esc(c.unit)}}</span></span>
-          <div>
-            <span class="mono" style="font-size:10px;color:${{ccol}}">${{csym}}${{Math.abs(c.change).toFixed(1)}}%</span>
-            <span class="disp" style="font-size:22px;color:${{scol}};margin-left:8px">${{sc}}</span>
+        <div style={{flex:1,minWidth:200,maxWidth:500}}>
+          <div style={{fontSize:13,color:'var(--ink2)',lineHeight:1.8,marginBottom:18}}>{pz.description}</div>
+          <div className="overline" style={{marginBottom:8}}>Stress gauge</div>
+          <div className="pz-bar"><div className="pz-needle" style={{left:pz.score+'%'}}></div></div>
+          <div style={{display:'flex',justifyContent:'space-between',marginTop:4}}>
+            <span className="mono" style={{fontSize:9,color:'var(--mint)'}}>Low</span>
+            <span className="mono" style={{fontSize:9,color:'var(--gold)'}}>Threshold 60</span>
+            <span className="mono" style={{fontSize:9,color:'var(--rose)'}}>Critical 80+</span>
           </div>
         </div>
       </div>
-      ${{bar(sc,scol,true)}}
-    </div>`;
-  }}).join('');
-
-  const cityRows = [...pz.city_prices].sort((a,b)=>b.stress-a.stress).map(c=>{{
-    const sc=c.stress; const scol=sc>=80?'var(--rose)':sc>=60?'var(--coral)':sc>=40?'var(--gold)':'var(--mint)';
-    const pct=Math.round((c.price-c.baseline)/c.baseline*100);
-    return `<div class="card-row" style="border-left-color:${{scol}}">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-        <span style="font-size:13px;font-weight:600;color:var(--ink)">${{esc(c.city)}}</span>
-        <div style="display:flex;align-items:center;gap:10px">
-          <span class="mono" style="font-size:13px;color:var(--ink)">${{c.price}} ${{esc(c.currency)}}</span>
-          <span class="mono" style="font-size:10px;color:var(--coral)">+${{pct}}%</span>
-          <span class="disp" style="font-size:22px;color:${{scol}}">${{sc}}</span>
+    </div>
+    <div className="duo-grid">
+      <div className="card">
+        <div className="section-title">📦 Input Components</div>
+        <div className="scroll">
+          {pz.components.map((c,i)=>{
+            const sc = c.stress, scol = sc>=80?'var(--rose)':sc>=60?'var(--coral)':sc>=40?'var(--gold)':'var(--mint)';
+            const up = c.change>0, csym = up?'▲':'▼', ccol = up?'var(--rose)':'var(--mint)';
+            return <div className="card-row" key={i} style={{borderLeftColor:scol}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:5}}>
+                <div><div style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{c.name}</div><div className="mono" style={{fontSize:9,color:'var(--ink3)',marginTop:2}}>{c.note}</div></div>
+                <div style={{textAlign:'right',flexShrink:0,marginLeft:14}}>
+                  <span className="mono" style={{fontSize:12,color:'var(--ink2)'}}>{c.val} <span style={{fontSize:9,color:'var(--ink3)'}}>{c.unit}</span></span>
+                  <div><span className="mono" style={{fontSize:10,color:ccol}}>{csym}{Math.abs(c.change).toFixed(1)}%</span><span className="disp" style={{fontSize:22,color:scol,marginLeft:8}}>{sc}</span></div>
+                </div>
+              </div>
+              <Bar pct={sc} col={scol} thick />
+            </div>;
+          })}
         </div>
       </div>
-      ${{bar(sc,scol)}}
-      <div class="mono" style="font-size:9px;color:var(--ink3);margin-top:2px">baseline ${{c.baseline}} ${{esc(c.currency)}}</div>
-    </div>`;
-  }}).join('');
-
-  return `
-  <div style="background:var(--surface);border:1px solid var(--edge);border-radius:16px;padding:28px 30px;margin-bottom:24px;position:relative;overflow:hidden">
-    <div style="position:absolute;top:0;left:0;right:0;height:80px;
-                background:radial-gradient(ellipse at 50% -20%, rgba(251,146,60,.1),transparent 70%);pointer-events:none"></div>
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:32px;flex-wrap:wrap">
-      <div>
-        <div class="overline" style="margin-bottom:12px">🍕 Pizza Index &nbsp;
-          <span class="badge neu" style="font-size:8px">PIZZAINT METHODOLOGY</span></div>
-        <div class="pz-score" style="color:${{col}}">${{pz.score}}</div>
-        <div class="mono" style="font-size:13px;color:${{col}};margin-top:10px;letter-spacing:.06em">${{esc(pz.label)}}</div>
-      </div>
-      <div style="flex:1;min-width:200px;max-width:500px">
-        <div style="font-size:13px;color:var(--ink2);line-height:1.8;margin-bottom:18px">${{esc(pz.description)}}</div>
-        <div class="overline" style="margin-bottom:8px">Stress gauge</div>
-        <div class="pz-bar">
-          <div class="pz-needle" style="left:${{needlePct}}%"></div>
+      <div className="card">
+        <div className="section-title">🌍 City Price Index</div>
+        <div className="scroll">
+          {[...pz.city_prices].sort((a,b)=>b.stress-a.stress).map((c,i)=>{
+            const sc = c.stress, scol = sc>=80?'var(--rose)':sc>=60?'var(--coral)':sc>=40?'var(--gold)':'var(--mint)';
+            const pct = Math.round((c.price-c.baseline)/c.baseline*100);
+            return <div className="card-row" key={i} style={{borderLeftColor:scol}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+                <span style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{c.city}</span>
+                <div style={{display:'flex',alignItems:'center',gap:10}}>
+                  <span className="mono" style={{fontSize:13,color:'var(--ink)'}}>{c.price} {c.currency}</span>
+                  <span className="mono" style={{fontSize:10,color:'var(--coral)'}}>+{pct}%</span>
+                  <span className="disp" style={{fontSize:22,color:scol}}>{sc}</span>
+                </div>
+              </div>
+              <Bar pct={sc} col={scol} />
+              <div className="mono" style={{fontSize:9,color:'var(--ink3)',marginTop:2}}>baseline {c.baseline} {c.currency}</div>
+            </div>;
+          })}
         </div>
-        <div style="display:flex;justify-content:space-between;margin-top:4px">
-          <span class="mono" style="font-size:9px;color:var(--mint)">Low</span>
-          <span class="mono" style="font-size:9px;color:var(--gold)">Threshold 60</span>
-          <span class="mono" style="font-size:9px;color:var(--rose)">Critical 80+</span>
+        <div style={{marginTop:16,padding:'16px 18px',background:'rgba(251,146,60,.06)',border:'1px solid rgba(251,146,60,.18)',borderRadius:10}}>
+          <div className="overline" style={{color:'var(--coral)',marginBottom:8}}>Methodology</div>
+          <div style={{fontSize:12,color:'var(--ink2)',lineHeight:1.75}}>
+            Inspired by <em>The Economist</em>'s Big Mac Index. Tracks margherita pizza prices
+            as a proxy for wheat disruption, energy costs, and purchasing power stress.
+            Scores above <strong style={{color:'var(--gold)'}}>60</strong> indicate material supply-chain pressure.
+          </div>
         </div>
       </div>
     </div>
-  </div>
-  <div class="duo-grid">
-    <div class="card">
-      <div class="section-title">📦 Input Components</div>
-      <div class="scroll">${{compRows}}</div>
+  </React.Fragment>;
+}
+
+// ── Root App ────────────────────────────────────────────────
+function App(){
+  return <React.Fragment>
+    <KPIStrip />
+    <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,marginBottom:18}}>
+      <PanelIndices /><PanelForex /><PanelCommodities /><PanelDefense />
     </div>
-    <div class="card">
-      <div class="section-title">🌍 City Price Index</div>
-      <div class="scroll">${{cityRows}}</div>
-      <div style="margin-top:16px;padding:16px 18px;background:rgba(251,146,60,.06);
-                  border:1px solid rgba(251,146,60,.18);border-radius:10px">
-        <div class="overline" style="color:var(--coral);margin-bottom:8px">Methodology</div>
-        <div style="font-size:12px;color:var(--ink2);line-height:1.75">
-          Inspired by <em>The Economist</em>&rsquo;s Big Mac Index. Tracks margherita pizza prices
-          as a proxy for wheat disruption, energy costs, and purchasing power stress.
-          Scores above <strong style="color:var(--gold)">60</strong> indicate material supply-chain pressure.
-        </div>
-      </div>
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:14,marginBottom:18}}>
+      <PanelCrypto /><PanelSanctions /><PanelCurrencyCrisis />
     </div>
-  </div>`;
-}}
+    <PanelGeoRisk />
+    <div className="main-grid" style={{marginTop:18}}>
+      <EconPanel /><TradePanel /><SupplyPanel />
+    </div>
+    <div style={{marginBottom:24}}><FinPanel /></div>
+    <hr className="divider" />
+    <Row2 />
+    <hr className="divider" />
+    <PizzaSection />
+  </React.Fragment>;
+}
 
-// ── Tab switch ────────────────────────────────────────────────
-function sw(group, id, el) {{
-  const card = el.closest('.card');
-  card.querySelectorAll('.pill').forEach(p => p.classList.remove('on'));
-  el.classList.add('on');
-  card.querySelectorAll('.pane').forEach(p => p.classList.remove('on'));
-  card.querySelector('#'+group+'-'+id).classList.add('on');
-}}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
 
-// ── Live tag helper ──────────────────────────────────────────
-function mkLt(){{
-  if(!D.ts)return'';
-  return '<span style="font-family:var(--fm);font-size:8px;display:inline-flex;align-items:center;gap:4px;padding:2px 7px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);border-radius:10px;color:var(--mint)"><span style="width:4px;height:4px;border-radius:50%;background:var(--mint);display:inline-block;animation:bl 1.2s ease-in-out infinite"></span>LIVE '+esc(D.ts)+'</span>';
-}}
-
-// ── Global Stock Indices ──────────────────────────────────────
-function panelIndices(){{
-  var arr=D.indices||[];
-  if(!arr.length)return'<div class="panel"><div class="panel-hdr">Global Indices '+mkLt()+'</div><div class="mn s10 muted">Fetching live data...</div></div>';
-  var vix=arr.filter(function(x){{return x.sym==='^VIX';}})[0],vv=vix?vix.price:0;
-  var vc=vv>=30?'var(--rose)':vv>=20?'var(--gold)':'var(--mint)';
-  var vixH=vix?('<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(0,0,0,.3);border:1px solid rgba(148,163,184,.1);border-radius:8px;margin-bottom:10px">'+'<span style="font-family:var(--fm);font-size:9px;font-weight:600;color:'+vc+'">VIX FEAR</span>'+'<span style="font-family:var(--fd);font-size:22px;color:'+vc+'">'+vv.toFixed(1)+' <span style="font-size:9px">'+(vv>=30?'EXTREME':vv>=20?'HIGH':'CALM')+'</span></span></div>'):'';
-  var rows=arr.filter(function(x){{return x.sym!=='^VIX';}}).map(function(x){{
-    var up=x.chg_pct>=0,c=up?'var(--mint)':'var(--rose)';
-    var ps=x.price>999?x.price.toLocaleString('en-US',{{maximumFractionDigits:0}}):x.price.toFixed(2);
-    return'<div class="card-row" style="border-left-color:'+c+'"><div style="display:flex;justify-content:space-between;align-items:center">'+'<div><span style="font-size:12px;font-weight:600;color:var(--ink)">'+esc(x.name)+'</span> <span class="mn s9 muted">'+esc(x.country)+'</span></div>'+'<div><span class="mn">'+ps+'</span> <span class="mn s10" style="color:'+c+'">'+(up?'&#9650;':'&#9660;')+Math.abs(x.chg_pct).toFixed(2)+'%</span></div>'+'</div></div>';
-  }}).join('');
-  return'<div class="panel"><div class="panel-hdr">Global Indices '+mkLt()+'</div>'+vixH+'<div class="scroll">'+rows+'</div></div>';
-}}
-
-// ── Forex Rates ───────────────────────────────────────────────
-function panelForex(){{
-  var arr=D.forex||[];
-  if(!arr.length)return'<div class="panel"><div class="panel-hdr">Forex Rates '+mkLt()+'</div><div class="mn s10 muted">Fetching live data...</div></div>';
-  var cmap={{}};(D.currency_crisis||[]).forEach(function(c){{cmap[c.currency]=c.status;}});
-  var rows=arr.map(function(x){{
-    var up=x.chg_pct>=0,c=up?'var(--mint)':'var(--rose)';
-    var cur=x.usd_base?x.pair.split('/')[1]:x.pair.split('/')[0];
-    var cris=cmap[cur]||'';
-    var cb=cris?('<span class="mn s8" style="padding:1px 5px;border-radius:3px;background:rgba(255,61,90,.1);color:var(--rose);border:1px solid rgba(255,61,90,.2);margin-left:4px">'+cris+'</span>'):'';
-    return'<div class="card-row" style="border-left-color:'+(cris?'var(--rose)':c)+'">'+'<div style="display:flex;justify-content:space-between;align-items:center">'+'<div><span class="mn" style="font-weight:600;color:var(--ink)">'+esc(x.pair)+'</span>'+cb+'<div class="s9 muted">'+esc(x.currency_name)+'</div></div>'+'<div><span class="mn">'+x.rate.toFixed(4)+'</span> <span class="mn s10" style="color:'+c+'">'+(up?'&#9650;':'&#9660;')+Math.abs(x.chg_pct).toFixed(2)+'%</span></div>'+'</div></div>';
-  }}).join('');
-  return'<div class="panel"><div class="panel-hdr">Forex Rates '+mkLt()+'</div><div class="scroll">'+rows+'</div></div>';
-}}
-
-// ── Commodities ───────────────────────────────────────────────
-function panelCommodities(){{
-  var arr=D.commodities||[];
-  if(!arr.length)return'<div class="panel"><div class="panel-hdr">Commodities '+mkLt()+'</div><div class="mn s10 muted">Fetching live data...</div></div>';
-  var catL={{energy:'Energy',precious:'Precious Metals',agri:'Agriculture',industrial:'Industrial',nuclear:'Nuclear'}};
-  var h='';
-  ['energy','precious','agri','industrial','nuclear'].forEach(function(cat){{
-    var items=arr.filter(function(x){{return x.cat===cat;}});
-    if(!items.length)return;
-    h+='<div class="mn s8 muted overline" style="margin:10px 0 6px">'+catL[cat]+'</div>';
-    h+=items.map(function(x){{
-      var up=x.chg_pct>=0,c=up?'var(--mint)':'var(--rose)';
-      var geo=['WTI Crude','Brent Crude','Natural Gas','Wheat (CBOT)'].indexOf(x.name)>-1;
-      return'<div class="card-row" style="border-left-color:'+(geo?'var(--gold)':c)+'">'+'<div style="display:flex;justify-content:space-between;align-items:center">'+'<div><span style="font-size:12px;font-weight:600;color:var(--ink)">'+esc(x.name)+'</span>'+(geo?'<span class="mn s8" style="color:var(--gold);margin-left:4px">GEO</span>':'')+'</div>'+'<div><span class="mn" style="color:var(--gold)">'+x.price.toLocaleString('en-US',{{maximumFractionDigits:2}})+'</span> <span class="mn s9 muted">'+esc(x.unit)+'</span> <span class="mn s10" style="color:'+c+'">'+(up?'&#9650;':'&#9660;')+Math.abs(x.chg_pct).toFixed(2)+'%</span></div>'+'</div></div>';
-    }}).join('');
-  }});
-  return'<div class="panel"><div class="panel-hdr">Commodities '+mkLt()+'</div><div class="scroll">'+h+'</div></div>';
-}}
-
-// ── Defense & Aerospace Stocks ────────────────────────────────
-function panelDefense(){{
-  var arr=D.defense||[];
-  if(!arr.length)return'<div class="panel"><div class="panel-hdr">Defense &amp; Aerospace '+mkLt()+'</div><div class="mn s10 muted">Fetching live data...</div></div>';
-  var rows=arr.map(function(x){{
-    var up=x.chg_pct>=0,c=up?'var(--mint)':'var(--rose)';
-    var cs=x.currency==='USD'?'$':x.currency==='EUR'?'\u20ac':(x.currency==='GBX'||x.currency==='GBP')?'\u00a3':'';
-    var ps=x.currency==='GBX'?(x.price/100).toFixed(2):x.price.toFixed(2);
-    return'<div class="card-row" style="border-left-color:var(--sky)">'+'<div style="display:flex;justify-content:space-between;align-items:center">'+'<div><span style="font-size:12px;font-weight:600;color:var(--ink)">'+esc(x.name)+'</span><div class="mn s9 muted">'+esc(x.country)+' \u00b7 '+esc(x.sym)+'</div></div>'+'<div><span class="mn" style="color:var(--sky)">'+cs+ps+'</span> <span class="mn s10" style="color:'+c+'">'+(up?'&#9650;':'&#9660;')+Math.abs(x.chg_pct).toFixed(2)+'%</span></div>'+'</div></div>';
-  }}).join('');
-  return'<div class="panel"><div class="panel-hdr">Defense &amp; Aerospace '+mkLt()+'</div>'+'<div class="mn s9" style="color:var(--coral);margin-bottom:10px">Conflict escalation drives these higher</div>'+'<div class="scroll">'+rows+'</div></div>';
-}}
-
-// ── Crypto (CoinGecko live) ───────────────────────────────────
-function panelCrypto(){{
-  var arr=(D.crypto_live&&D.crypto_live.length)?D.crypto_live:(D.crypto||[]);
-  var rows=arr.map(function(x){{
-    var chgV=x.chg_pct!=null?x.chg_pct:(x.change||0),up=chgV>=0,c=up?'var(--mint)':'var(--rose)';
-    var mcap=x.mcap>1e12?('$'+(x.mcap/1e12).toFixed(2)+'T'):x.mcap>1e9?('$'+(x.mcap/1e9).toFixed(1)+'B'):'';
-    var price=x.price!=null?x.price:(x.val||0);
-    return'<div class="card-row" style="border-left-color:var(--gold)">'+'<div style="display:flex;justify-content:space-between;align-items:center">'+'<div><span style="font-size:12px;font-weight:600;color:var(--ink)">'+esc(x.name)+'</span> <span class="mn s9 muted">'+esc(x.ticker)+'</span>'+(mcap?'<div class="mn s9 muted">MCap '+mcap+'</div>':'')+'</div>'+'<div><span class="mn" style="color:var(--gold)">$'+price.toLocaleString('en-US',{{minimumFractionDigits:2,maximumFractionDigits:2}})+'</span> <span class="mn s10" style="color:'+c+'">'+(up?'&#9650;':'&#9660;')+Math.abs(chgV).toFixed(2)+'%</span></div>'+'</div></div>';
-  }}).join('')||'<div class="mn s10 muted">Loading from CoinGecko...</div>';
-  return'<div class="panel"><div class="panel-hdr">Cryptocurrency '+mkLt()+'</div><div class="scroll">'+rows+'</div></div>';
-}}
-
-// ── Sanctions Tracker ─────────────────────────────────────────
-function panelSanctions(){{
-  var rows=(D.sanctions||[]).map(function(s){{
-    var col=s.impact==='Critical'?'var(--rose)':s.impact==='High'?'var(--coral)':'var(--gold)';
-    return'<div class="card-row" style="border-left-color:'+col+'">'+'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">'+'<div><span style="font-size:13px;font-weight:700;color:var(--ink)">'+esc(s.entity)+'</span> <span class="mn s9 muted">'+esc(s.type)+' \u00b7 Since '+s.year+'</span></div>'+'<span class="mn s9" style="padding:2px 7px;border-radius:4px;background:rgba(0,0,0,.3);color:'+col+'">'+s.impact+'</span></div>'+'<div class="mn s9 muted" style="margin-bottom:4px">'+esc(s.scope)+'</div>'+'<div style="font-size:11px;color:var(--ink2);line-height:1.6">'+esc(s.detail)+'</div></div>';
-  }}).join('');
-  return'<div class="panel"><div class="panel-hdr">Active Sanctions</div><div class="scroll">'+rows+'</div></div>';
-}}
-
-// ── Currency Devaluation Monitor ──────────────────────────────
-function panelCurrencyCrisis(){{
-  var sorted=[].concat(D.currency_crisis||[]).sort(function(a,b){{return b.yoy_chg-a.yoy_chg;}});
-  var rows=sorted.map(function(c){{
-    var pct=Math.min(c.yoy_chg/250*100,100),col=c.col||'var(--rose)';
-    return'<div class="card-row" style="border-left-color:'+col+'">'+'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+'<div><span style="font-size:12px;font-weight:700;color:var(--ink)">'+esc(c.country)+'</span> <span class="mn s9 muted">'+esc(c.currency)+'</span></div>'+'<div><span class="mn s11">1 USD = '+c.usd_rate.toLocaleString()+'</span> <span class="mn s10" style="color:'+col+';margin-left:8px">&#9650;'+c.yoy_chg+'% YoY</span></div></div>'+'<div style="height:4px;background:rgba(148,163,184,.08);border-radius:2px;overflow:hidden;margin-bottom:5px"><div style="height:100%;width:'+pct+'%;background:'+col+';border-radius:2px"></div></div>'+'<div class="s10 muted">'+esc(c.note)+'</div></div>';
-  }}).join('');
-  return'<div class="panel"><div class="panel-hdr">Currency Devaluation Monitor</div><div class="scroll">'+rows+'</div></div>';
-}}
-
-// ── Geopolitical Risk Premiums ────────────────────────────────
-function panelGeoRisk(){{
-  var rows=(D.geo_risk||[]).map(function(r){{
-    var col=r.status==='Active'?'var(--rose)':r.status==='Elevated'?'var(--coral)':'var(--gold)';
-    return'<div class="card-row" style="border-left-color:'+col+'">'+'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">'+'<div><div style="font-size:12px;font-weight:700;color:var(--ink)">'+esc(r.name)+'</div><div class="mn s9 muted" style="margin-top:2px">'+esc(r.driver)+' \u2014 <span style="color:var(--sky)">'+esc(r.asset)+'</span></div></div>'+'<div style="text-align:right;flex-shrink:0"><div class="mn s11" style="font-weight:700;color:'+col+'">'+esc(r.impact)+'</div><span class="mn s9" style="padding:1px 6px;border-radius:3px;background:rgba(0,0,0,.3);color:'+col+'">'+esc(r.status)+'</span></div>'+'</div></div>';
-  }}).join('');
-  return'<div class="panel"><div class="panel-hdr">Geopolitical Risk Premiums</div>'+'<div class="s10 muted" style="margin-bottom:10px">Market price impact of active conflicts and tensions</div>'+'<div class="scroll">'+rows+'</div></div>';
-}}
-
-// ── Render ────────────────────────────────────────────────────
-document.getElementById('root').innerHTML =
-  kpiStrip() +
-  '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px">' +
-    panelIndices() + panelForex() + panelCommodities() + panelDefense() +
-  '</div>' +
-  '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px">' +
-    panelCrypto() + panelSanctions() + panelCurrencyCrisis() +
-  '</div>' +
-  panelGeoRisk() +
-  '<div class="main-grid" style="margin-top:18px">' + econPanel() + tradePanel() + supplyPanel() + '</div>' +
-  '<div style="margin-bottom:24px">' + finPanel() + '</div>' +
-  '<hr class="divider">' +
-  row2() +
-  '<hr class="divider">' +
-  pizzaSection();
 </script>
 </body></html>"""
+    _econ_html = _econ_template.replace("__PAYLOAD__", _econ_payload)
 
     _ec.html(_econ_html, height=5200, scrolling=True)
 
