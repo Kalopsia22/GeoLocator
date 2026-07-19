@@ -4370,7 +4370,7 @@ st.markdown(f"""
   <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
     <div class="map-title-text">🌐 GLOBAL COMMAND GLOBE</div>
     <div style="font-family:var(--fm);font-size:10px;color:var(--muted)">
-      Drag to rotate · {len(_globe_markers)} markers from {len(HISTORICAL_EVENTS)} historical events since 2022 · Toggle categories in sidebar
+      Drag to rotate · hover a marker for details · {len(_globe_markers)} markers from {len(HISTORICAL_EVENTS)} historical events since 2022 · Toggle categories in sidebar
     </div>
   </div>
   <div class="map-legend">
@@ -4390,7 +4390,11 @@ _globe_html = f"""
             overflow:hidden;margin-bottom:8px;background:#050a12;display:flex;justify-content:center;">
   <div style="position:relative;width:100%;max-width:560px;aspect-ratio:1;">
     <canvas id="cobeGlobe"   style="position:absolute;inset:0;width:100%;height:100%;cursor:grab"></canvas>
-    <canvas id="cobeOverlay" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
+    <canvas id="cobeOverlay" style="position:absolute;inset:0;width:100%;height:100%"></canvas>
+    <div id="cobeTooltip" style="position:absolute;display:none;pointer-events:none;z-index:5;
+         background:rgba(5,10,18,.96);border:1px solid rgba(0,200,255,.35);border-radius:6px;
+         padding:5px 9px;font-family:monospace;font-size:10.5px;color:#dce8f5;max-width:230px;
+         white-space:pre-wrap;box-shadow:0 4px 14px rgba(0,0,0,.5)"></div>
   </div>
 </div>
 <script type="module">
@@ -4398,17 +4402,22 @@ _globe_html = f"""
 
   const canvas   = document.getElementById("cobeGlobe");
   const overlay  = document.getElementById("cobeOverlay");
+  const tooltip  = document.getElementById("cobeTooltip");
   const octx     = overlay.getContext("2d");
   let phi = 0;
   const theta = 0.24;
   let width = 0;
   let pointerInteracting = null;
   let pointerInteractionMovement = 0;
+  let lastProjected = [];   // {{x, y, r, tip, color}} for hit-testing on hover
+  let hoverPt = null;
 
   // Per-layer-colored points — Cobe's native marker renderer only supports
   // ONE global markerColor, so with 37 distinguishable layers we draw every
   // point ourselves on a transparent 2D canvas stacked on top, re-projected
-  // through the globe's live rotation on every frame.
+  // through the globe's live rotation on every frame. Each point carries a
+  // "tip" string (name/details) that's otherwise inaccessible — Cobe has no
+  // hover/click picking, so we implement it ourselves below.
   const points = {_globe_markers_json};
 
   function onResize() {{
@@ -4417,6 +4426,7 @@ _globe_html = f"""
     const dpr = window.devicePixelRatio || 1;
     overlay.width  = width * dpr;
     overlay.height = width * dpr;
+    octx.setTransform(1, 0, 0, 1, 0, 0);
     octx.scale(dpr, dpr);
   }}
   window.addEventListener("resize", onResize);
@@ -4430,22 +4440,59 @@ _globe_html = f"""
     const z0 = Math.cos(latRad) * Math.cos(lonRad);
     const y  = y0 * Math.cos(thetaNow) - z0 * Math.sin(thetaNow);
     const z  = y0 * Math.sin(thetaNow) + z0 * Math.cos(thetaNow);
-    if (z < 0.02) return null;  // back-facing — hidden behind the globe
+    if (z < 0.06) return null;  // back-facing / grazing edge — hidden
     return {{ x: cx + x * radius, y: cy - y * radius, depth: z }};
   }}
 
   function drawOverlay(phiNow) {{
     const w = width;
     octx.clearRect(0, 0, w, w);
-    const cx = w / 2, cy = w / 2, radius = w * 0.485;
+    const cx = w / 2, cy = w / 2;
+    // Slightly smaller than the canvas half-width so points sit safely on
+    // the visible sphere surface rather than the true edge of the canvas —
+    // combined with the hard clip below, points can never render outside
+    // the globe even if this estimate isn't pixel-perfect.
+    const radius = w * 0.46;
+
+    octx.save();
+    octx.beginPath();
+    octx.arc(cx, cy, radius, 0, Math.PI * 2);
+    octx.clip();   // hard boundary — nothing can paint past the globe's edge
+
+    lastProjected = [];
     for (const m of points) {{
       const p = project(m.lat, m.lon, phiNow, theta, radius, cx, cy);
       if (!p) continue;
       const r = Math.max(1.4, m.size * radius * 0.9) * (0.6 + p.depth * 0.4);
       octx.beginPath();
       octx.arc(p.x, p.y, r, 0, Math.PI * 2);
-      octx.fillStyle = `rgba(${{m.color[0]}},${{m.color[1]}},${{m.color[2]}},${{0.55 + p.depth * 0.4}})`;
+      octx.fillStyle = `rgba(${{m.color[0]}},${{m.color[1]}},${{m.color[2]}},${{0.6 + p.depth * 0.4}})`;
       octx.fill();
+      lastProjected.push({{ x: p.x, y: p.y, r: Math.max(r, 5), tip: m.tip, color: m.color }});
+    }}
+    octx.restore();
+
+    // Re-draw the hovered point's tooltip position each frame in case the
+    // globe is auto-rotating under a stationary cursor
+    if (hoverPt) updateTooltip(hoverPt.clientX, hoverPt.clientY);
+  }}
+
+  function updateTooltip(clientX, clientY) {{
+    const rect = overlay.getBoundingClientRect();
+    const mx = clientX - rect.left, my = clientY - rect.top;
+    let nearest = null, bestD = Infinity;
+    for (const p of lastProjected) {{
+      const d = Math.hypot(p.x - mx, p.y - my);
+      if (d <= p.r + 5 && d < bestD) {{ bestD = d; nearest = p; }}
+    }}
+    if (nearest && nearest.tip) {{
+      tooltip.style.display = "block";
+      tooltip.style.left = Math.min(mx + 12, width - 236) + "px";
+      tooltip.style.top  = Math.max(my - 10, 4) + "px";
+      tooltip.style.borderColor = `rgba(${{nearest.color[0]}},${{nearest.color[1]}},${{nearest.color[2]}},.6)`;
+      tooltip.textContent = nearest.tip;
+    }} else {{
+      tooltip.style.display = "none";
     }}
   }}
 
@@ -4477,25 +4524,35 @@ _globe_html = f"""
     }},
   }});
 
-  canvas.addEventListener("pointerdown", (e) => {{
+  // Drag-to-rotate — attached to the overlay now, since it sits on top and
+  // also needs pointer events for hover tooltips.
+  overlay.style.cursor = "grab";
+  overlay.addEventListener("pointerdown", (e) => {{
     pointerInteracting = e.clientX - pointerInteractionMovement;
-    canvas.style.cursor = "grabbing";
+    overlay.style.cursor = "grabbing";
   }});
   window.addEventListener("pointerup", () => {{
     pointerInteracting = null;
-    canvas.style.cursor = "grab";
+    overlay.style.cursor = "grab";
   }});
   window.addEventListener("pointerout", () => {{
     pointerInteracting = null;
-    canvas.style.cursor = "grab";
+    overlay.style.cursor = "grab";
+    hoverPt = null;
+    tooltip.style.display = "none";
   }});
-  window.addEventListener("pointermove", (e) => {{
+  overlay.addEventListener("pointermove", (e) => {{
     if (pointerInteracting !== null) {{
       const delta = e.clientX - pointerInteracting;
       pointerInteractionMovement = delta * 0.005;
+      tooltip.style.display = "none";
+      hoverPt = null;
+    }} else {{
+      hoverPt = {{ clientX: e.clientX, clientY: e.clientY }};
+      updateTooltip(e.clientX, e.clientY);
     }}
   }});
-  canvas.addEventListener("touchmove", (e) => {{
+  overlay.addEventListener("touchmove", (e) => {{
     if (pointerInteracting !== null && e.touches[0]) {{
       const delta = e.touches[0].clientX - pointerInteracting;
       pointerInteractionMovement = delta * 0.005;
