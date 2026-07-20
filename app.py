@@ -7829,467 +7829,964 @@ body::after{content:'';pointer-events:none;position:fixed;inset:0;z-index:9999;
 
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-<script type="text/babel" data-presets="react">
-const {useState, useEffect, useRef} = React;
+<script type="text/javascript">
+const {
+  useState,
+  useEffect,
+  useRef
+} = React;
 const D = __PAYLOAD__;
 
 // ── Helpers ──────────────────────────────────────────────────
-function tlvl(v){ return v>=85?'var(--red)':v>=70?'var(--amber)':v>=50?'#f0d050':'var(--green)'; }
-function relTime(iso){
-  try{ const d=new Date(iso), s=(Date.now()-d)/1000;
-    if(s<60) return Math.round(s)+'s ago';
-    if(s<3600) return Math.round(s/60)+'m ago';
-    return Math.round(s/3600)+'h ago';
-  }catch(e){ return iso||''; }
+function tlvl(v) {
+  return v >= 85 ? 'var(--red)' : v >= 70 ? 'var(--amber)' : v >= 50 ? '#f0d050' : 'var(--green)';
 }
-async function fetchGDELT(q){
-  try{
-    const r = await fetch('https://api.gdeltproject.org/api/v2/doc/doc?query='+encodeURIComponent(q+' sourcelang:english')+'&mode=artlist&maxrecords=12&format=json&sort=DateDesc',{signal:AbortSignal.timeout(10000)});
-    if(!r.ok) return [];
+function relTime(iso) {
+  try {
+    const d = new Date(iso),
+      s = (Date.now() - d) / 1000;
+    if (s < 60) return Math.round(s) + 's ago';
+    if (s < 3600) return Math.round(s / 60) + 'm ago';
+    return Math.round(s / 3600) + 'h ago';
+  } catch (e) {
+    return iso || '';
+  }
+}
+async function fetchGDELT(q) {
+  try {
+    const r = await fetch('https://api.gdeltproject.org/api/v2/doc/doc?query=' + encodeURIComponent(q + ' sourcelang:english') + '&mode=artlist&maxrecords=12&format=json&sort=DateDesc', {
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!r.ok) return [];
     const j = await r.json();
-    return (j.articles||[]).map(a=>({title:a.title||'',source:(a.domain||'').split('.')[0].toUpperCase(),url:a.url||'',time:relTime(a.seendate),cat:''}));
-  }catch(e){ return []; }
+    return (j.articles || []).map(a => ({
+      title: a.title || '',
+      source: (a.domain || '').split('.')[0].toUpperCase(),
+      url: a.url || '',
+      time: relTime(a.seendate),
+      cat: ''
+    }));
+  } catch (e) {
+    return [];
+  }
 }
-async function fetchUSGS(){
-  try{
-    let r = await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_hour.geojson',{signal:AbortSignal.timeout(8000)});
-    if(!r.ok){ r = await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson',{signal:AbortSignal.timeout(8000)}); if(!r.ok) return []; }
+async function fetchUSGS() {
+  try {
+    let r = await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_hour.geojson', {
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!r.ok) {
+      r = await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson', {
+        signal: AbortSignal.timeout(8000)
+      });
+      if (!r.ok) return [];
+    }
     const j = await r.json();
-    return (j.features||[]).slice(0,10).map(f=>({place:f.properties.place||'',mag:f.properties.mag||0,depth_km:(f.geometry.coordinates[2]||0).toFixed(1),time:relTime(new Date(f.properties.time).toISOString())}));
-  }catch(e){ return []; }
+    return (j.features || []).slice(0, 10).map(f => ({
+      place: f.properties.place || '',
+      mag: f.properties.mag || 0,
+      depth_km: (f.geometry.coordinates[2] || 0).toFixed(1),
+      time: relTime(new Date(f.properties.time).toISOString())
+    }));
+  } catch (e) {
+    return [];
+  }
 }
-async function fetchKP(){
-  try{
-    const r = await fetch('https://services.swpc.noaa.gov/json/planetary_k_index_1m.json',{signal:AbortSignal.timeout(8000)});
-    if(!r.ok) return null;
+async function fetchKP() {
+  try {
+    const r = await fetch('https://services.swpc.noaa.gov/json/planetary_k_index_1m.json', {
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!r.ok) return null;
     const arr = await r.json();
-    const series = arr.slice(-24).map(x=>({kp:parseFloat(x.Kp||x.kp_index||0)}));
-    const recent = series.slice(-6).map(x=>x.kp);
-    const mx = Math.max(...recent,0);
-    const st = mx>=8?'EXTREME STORM':mx>=7?'SEVERE STORM':mx>=6?'STRONG STORM':mx>=5?'MODERATE STORM':mx>=4?'MINOR STORM':mx>=3?'Unsettled':'Quiet';
-    return {current:Math.round(mx*10)/10, status:st, series};
-  }catch(e){ return null; }
+    const series = arr.slice(-24).map(x => ({
+      kp: parseFloat(x.Kp || x.kp_index || 0)
+    }));
+    const recent = series.slice(-6).map(x => x.kp);
+    const mx = Math.max(...recent, 0);
+    const st = mx >= 8 ? 'EXTREME STORM' : mx >= 7 ? 'SEVERE STORM' : mx >= 6 ? 'STRONG STORM' : mx >= 5 ? 'MODERATE STORM' : mx >= 4 ? 'MINOR STORM' : mx >= 3 ? 'Unsettled' : 'Quiet';
+    return {
+      current: Math.round(mx * 10) / 10,
+      status: st,
+      series
+    };
+  } catch (e) {
+    return null;
+  }
 }
 
 // ── Small building blocks ───────────────────────────────────
-function MBar({pct,color}){
-  return <div className="mbar"><div className="mbar-f" style={{width:Math.min(pct,100)+'%',background:color}}></div></div>;
+function MBar({
+  pct,
+  color
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "mbar"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mbar-f",
+    style: {
+      width: Math.min(pct, 100) + '%',
+      background: color
+    }
+  }));
 }
-function Badge({cls,children}){ return <span className={"badge "+cls}>{children}</span>; }
-function CardShell({icoBg,icoColor,icon,title,count,liveChip,classif,children}){
-  return (
-    <div className="card">
-      <div className="ch">
-        <div className="ch-ico" style={{background:icoBg,color:icoColor}}>{icon}</div>
-        <div className="ch-title">{title}</div>
-        {liveChip ? <div className="live-chip"><span className="dot" style={{background:'var(--green)'}}></span>{liveChip}</div>
-                  : (count!=null && <div className="ch-ct">{count}</div>)}
-      </div>
-      <div className="scroll">{children}</div>
-      {classif && <div className="classif">{classif}</div>}
-    </div>
-  );
+function Badge({
+  cls,
+  children
+}) {
+  return /*#__PURE__*/React.createElement("span", {
+    className: "badge " + cls
+  }, children);
+}
+function CardShell({
+  icoBg,
+  icoColor,
+  icon,
+  title,
+  count,
+  liveChip,
+  classif,
+  children
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "ch"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "ch-ico",
+    style: {
+      background: icoBg,
+      color: icoColor
+    }
+  }, icon), /*#__PURE__*/React.createElement("div", {
+    className: "ch-title"
+  }, title), liveChip ? /*#__PURE__*/React.createElement("div", {
+    className: "live-chip"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "dot",
+    style: {
+      background: 'var(--green)'
+    }
+  }), liveChip) : count != null && /*#__PURE__*/React.createElement("div", {
+    className: "ch-ct"
+  }, count)), /*#__PURE__*/React.createElement("div", {
+    className: "scroll"
+  }, children), classif && /*#__PURE__*/React.createElement("div", {
+    className: "classif"
+  }, classif));
 }
 
 // ── Panels (each = one card) ─────────────────────────────────
-function ActorsPanel({actors}){
-  const sorted = [...(actors||[])].sort((a,b)=>b.threat_level-a.threat_level);
-  return (
-    <CardShell icoBg="rgba(255,45,85,.1)" icoColor="var(--red)" icon="⚠" title="Threat Actor Matrix" count={sorted.length+' actors'} classif="SIGINT // EYES ONLY">
-      {sorted.map((a,i)=>{
-        const col = tlvl(a.threat_level);
-        return (
-          <div className="actor" key={i} style={{borderColor:col}}>
-            <div><div className="a-score" style={{color:col}}>{a.threat_level}</div><div className="a-slbl">THREAT</div></div>
-            <div className="a-body">
-              <div className="a-name">{a.actor}</div>
-              <div className="a-unit">{a.unit||''}</div>
-              <MBar pct={a.threat_level} color={col} />
-              <div style={{display:'flex',gap:5,alignItems:'center',flexWrap:'wrap',marginBottom:4}}>
-                {(a.domain||[]).map((d,j)=><span className="dom" key={j}>{d}</span>)}
-                <span style={{marginLeft:'auto',fontFamily:'JetBrains Mono,monospace',fontSize:7.5,color:'var(--text3)'}}>ATTR {a.attribution||0}%</span>
-              </div>
-              <div className="a-ops">{(a.operations||[]).map((o,j)=><span className="a-op" key={j}>{o}</span>)}</div>
-            </div>
-          </div>
-        );
-      })}
-    </CardShell>
-  );
+function ActorsPanel({
+  actors
+}) {
+  const sorted = [...(actors || [])].sort((a, b) => b.threat_level - a.threat_level);
+  return /*#__PURE__*/React.createElement(CardShell, {
+    icoBg: "rgba(255,45,85,.1)",
+    icoColor: "var(--red)",
+    icon: "⚠",
+    title: "Threat Actor Matrix",
+    count: sorted.length + ' actors',
+    classif: "SIGINT // EYES ONLY"
+  }, sorted.map((a, i) => {
+    const col = tlvl(a.threat_level);
+    return /*#__PURE__*/React.createElement("div", {
+      className: "actor",
+      key: i,
+      style: {
+        borderColor: col
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      className: "a-score",
+      style: {
+        color: col
+      }
+    }, a.threat_level), /*#__PURE__*/React.createElement("div", {
+      className: "a-slbl"
+    }, "THREAT")), /*#__PURE__*/React.createElement("div", {
+      className: "a-body"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "a-name"
+    }, a.actor), /*#__PURE__*/React.createElement("div", {
+      className: "a-unit"
+    }, a.unit || ''), /*#__PURE__*/React.createElement(MBar, {
+      pct: a.threat_level,
+      color: col
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 5,
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        marginBottom: 4
+      }
+    }, (a.domain || []).map((d, j) => /*#__PURE__*/React.createElement("span", {
+      className: "dom",
+      key: j
+    }, d)), /*#__PURE__*/React.createElement("span", {
+      style: {
+        marginLeft: 'auto',
+        fontFamily: 'JetBrains Mono,monospace',
+        fontSize: 7.5,
+        color: 'var(--text3)'
+      }
+    }, "ATTR ", a.attribution || 0, "%")), /*#__PURE__*/React.createElement("div", {
+      className: "a-ops"
+    }, (a.operations || []).map((o, j) => /*#__PURE__*/React.createElement("span", {
+      className: "a-op",
+      key: j
+    }, o)))));
+  }));
 }
-
-function CollectionPanel({collection}){
-  const priCol = p => p<=2?'var(--red)':p<=4?'var(--amber)':p<=6?'#f0d050':'var(--green)';
-  const items = collection||[];
-  return (
-    <CardShell icoBg="rgba(240,165,0,.1)" icoColor="var(--amber)" icon="🎯" title="Collection Requirements" count={'P1–'+items.length}>
-      {items.map((p,i)=>{
-        const col = priCol(p.priority);
-        return (
-          <div className="prio" key={i} style={{borderColor:col}}>
-            <div className="p-row">
-              <div><div className="p-num" style={{color:col}}>P{p.priority}</div></div>
-              <div className="a-body">
-                <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:3}}>
-                  <span className="p-target">{p.target}</span>
-                  {p.status==='Active' ? <Badge cls="bc">Active</Badge> : <Badge cls="bl">Routine</Badge>}
-                </div>
-                <div className="p-type">{p.type||''} · {p.last_update||''}</div>
-                <div className="p-plats">{(p.collection||[]).map((c,j)=><span className="p-plat" key={j}>{c}</span>)}</div>
-                <div className="p-gap">{p.intel_gap||''}</div>
-              </div>
-            </div>
-          </div>
-        );
-      })}
-    </CardShell>
-  );
+function CollectionPanel({
+  collection
+}) {
+  const priCol = p => p <= 2 ? 'var(--red)' : p <= 4 ? 'var(--amber)' : p <= 6 ? '#f0d050' : 'var(--green)';
+  const items = collection || [];
+  return /*#__PURE__*/React.createElement(CardShell, {
+    icoBg: "rgba(240,165,0,.1)",
+    icoColor: "var(--amber)",
+    icon: "🎯",
+    title: "Collection Requirements",
+    count: 'P1–' + items.length
+  }, items.map((p, i) => {
+    const col = priCol(p.priority);
+    return /*#__PURE__*/React.createElement("div", {
+      className: "prio",
+      key: i,
+      style: {
+        borderColor: col
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "p-row"
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      className: "p-num",
+      style: {
+        color: col
+      }
+    }, "P", p.priority)), /*#__PURE__*/React.createElement("div", {
+      className: "a-body"
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 7,
+        marginBottom: 3
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "p-target"
+    }, p.target), p.status === 'Active' ? /*#__PURE__*/React.createElement(Badge, {
+      cls: "bc"
+    }, "Active") : /*#__PURE__*/React.createElement(Badge, {
+      cls: "bl"
+    }, "Routine")), /*#__PURE__*/React.createElement("div", {
+      className: "p-type"
+    }, p.type || '', " · ", p.last_update || ''), /*#__PURE__*/React.createElement("div", {
+      className: "p-plats"
+    }, (p.collection || []).map((c, j) => /*#__PURE__*/React.createElement("span", {
+      className: "p-plat",
+      key: j
+    }, c))), /*#__PURE__*/React.createElement("div", {
+      className: "p-gap"
+    }, p.intel_gap || ''))));
+  }));
 }
-
-function COMINTPanel({comint}){
-  const items = comint||[];
-  return (
-    <CardShell icoBg="rgba(240,165,0,.1)" icoColor="var(--amber)" icon="📡" title="COMINT — Communications Intel" count={items.length+' signals'} classif="TOP SECRET // COMINT">
-      {items.map((s,i)=>{
-        const col = s.intercept==='Active' ? 'var(--amber)' : 'var(--violet)';
-        const bc  = s.intercept==='Active' ? 'bh' : 'bv';
-        return (
-          <div className="item" key={i} style={{borderColor:col}}>
-            <div className="i-top">
-              <div>
-                <div className="i-name">{s.actor}</div>
-                <div className="i-meta">{s.id||''} · {s.signal_type||''} · {s.freq||''}</div>
-              </div>
-              <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4,flexShrink:0}}>
-                <Badge cls={bc}>{s.intercept||''}</Badge>
-                <span style={{fontFamily:'JetBrains Mono,monospace',fontSize:7.5,color:'var(--text3)'}}>CONF {s.confidence||0}%</span>
-              </div>
-            </div>
-            <MBar pct={s.confidence||0} color={col} />
-            <div className="i-detail">{s.detail||''}</div>
-            <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:8,color:'var(--text3)',marginTop:5}}>⊳ TARGET: {s.target||''}</div>
-          </div>
-        );
-      })}
-    </CardShell>
-  );
+function COMINTPanel({
+  comint
+}) {
+  const items = comint || [];
+  return /*#__PURE__*/React.createElement(CardShell, {
+    icoBg: "rgba(240,165,0,.1)",
+    icoColor: "var(--amber)",
+    icon: "📡",
+    title: "COMINT — Communications Intel",
+    count: items.length + ' signals',
+    classif: "TOP SECRET // COMINT"
+  }, items.map((s, i) => {
+    const col = s.intercept === 'Active' ? 'var(--amber)' : 'var(--violet)';
+    const bc = s.intercept === 'Active' ? 'bh' : 'bv';
+    return /*#__PURE__*/React.createElement("div", {
+      className: "item",
+      key: i,
+      style: {
+        borderColor: col
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "i-top"
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      className: "i-name"
+    }, s.actor), /*#__PURE__*/React.createElement("div", {
+      className: "i-meta"
+    }, s.id || '', " · ", s.signal_type || '', " · ", s.freq || '')), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-end',
+        gap: 4,
+        flexShrink: 0
+      }
+    }, /*#__PURE__*/React.createElement(Badge, {
+      cls: bc
+    }, s.intercept || ''), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontFamily: 'JetBrains Mono,monospace',
+        fontSize: 7.5,
+        color: 'var(--text3)'
+      }
+    }, "CONF ", s.confidence || 0, "%"))), /*#__PURE__*/React.createElement(MBar, {
+      pct: s.confidence || 0,
+      color: col
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "i-detail"
+    }, s.detail || ''), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: 'JetBrains Mono,monospace',
+        fontSize: 8,
+        color: 'var(--text3)',
+        marginTop: 5
+      }
+    }, "⊳ TARGET: ", s.target || ''));
+  }));
 }
-
-function ELINTPanel({elint}){
-  const ac = a => a.includes('Russia')?'var(--red)':a.includes('China')?'var(--amber)':a.includes('USA')?'var(--cyan)':'var(--green)';
-  const items = elint||[];
-  return (
-    <CardShell icoBg="rgba(0,212,255,.08)" icoColor="var(--cyan)" icon="⚡" title="ELINT — Electronic Intelligence" count={items.length+' tracked'} classif="TOP SECRET // ELINT">
-      {items.map((e,i)=>{
-        const col = ac(e.actor||'');
-        return (
-          <div className="item" key={i} style={{borderColor:col}}>
-            <div className="i-top">
-              <div>
-                <div className="i-name">{e.system||''}</div>
-                <div className="i-meta">{e.type||''} · {e.freq||''} · Range: {e.range_km||'?'}km</div>
-              </div>
-              <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:3,flexShrink:0}}>
-                <span className="badge" style={{color:col,borderColor:col+'40',background:col+'12'}}>{e.actor||''}</span>
-                <span style={{fontFamily:'JetBrains Mono,monospace',fontSize:7.5,color:'var(--text3)',textAlign:'right'}}>{e.capability||''}</span>
-              </div>
-            </div>
-            <div className="i-detail">{e.detail||''}</div>
-          </div>
-        );
-      })}
-    </CardShell>
-  );
+function ELINTPanel({
+  elint
+}) {
+  const ac = a => a.includes('Russia') ? 'var(--red)' : a.includes('China') ? 'var(--amber)' : a.includes('USA') ? 'var(--cyan)' : 'var(--green)';
+  const items = elint || [];
+  return /*#__PURE__*/React.createElement(CardShell, {
+    icoBg: "rgba(0,212,255,.08)",
+    icoColor: "var(--cyan)",
+    icon: "⚡",
+    title: "ELINT — Electronic Intelligence",
+    count: items.length + ' tracked',
+    classif: "TOP SECRET // ELINT"
+  }, items.map((e, i) => {
+    const col = ac(e.actor || '');
+    return /*#__PURE__*/React.createElement("div", {
+      className: "item",
+      key: i,
+      style: {
+        borderColor: col
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "i-top"
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      className: "i-name"
+    }, e.system || ''), /*#__PURE__*/React.createElement("div", {
+      className: "i-meta"
+    }, e.type || '', " · ", e.freq || '', " · Range: ", e.range_km || '?', "km")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-end',
+        gap: 3,
+        flexShrink: 0
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "badge",
+      style: {
+        color: col,
+        borderColor: col + '40',
+        background: col + '12'
+      }
+    }, e.actor || ''), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontFamily: 'JetBrains Mono,monospace',
+        fontSize: 7.5,
+        color: 'var(--text3)',
+        textAlign: 'right'
+      }
+    }, e.capability || ''))), /*#__PURE__*/React.createElement("div", {
+      className: "i-detail"
+    }, e.detail || ''));
+  }));
 }
-
-function MASINTPanel({masint}){
-  const tc = {Seismic:'#f0d050','Nuclear Radiation':'var(--red)',Acoustic:'var(--cyan)',Chemical:'var(--amber)',Thermal:'var(--amber)'};
-  const items = masint||[];
-  return (
-    <CardShell icoBg="rgba(240,208,80,.08)" icoColor="#f0d050" icon="🔭" title="MASINT — Measurement & Signature" count={items.length+' events'} classif="TOP SECRET // MASINT">
-      {items.map((m,i)=>{
-        const col = tc[m.type] || 'var(--green)';
-        return (
-          <div className="item" key={i} style={{borderColor:col}}>
-            <div className="i-top">
-              <div>
-                <div className="i-name">{m.event||''}</div>
-                <div className="i-meta">{m.id||''} · {m.location||''} · {m.date||''}</div>
-              </div>
-              <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:3,flexShrink:0}}>
-                <span className="badge" style={{color:col,borderColor:col+'40',background:col+'12'}}>{m.type||''}</span>
-                <span style={{fontFamily:'JetBrains Mono,monospace',fontSize:7.5,color:'var(--text3)'}}>CONF {m.confidence||0}%</span>
-              </div>
-            </div>
-            <MBar pct={m.confidence||0} color={col} />
-            <div className="i-detail">{m.detail||''}</div>
-          </div>
-        );
-      })}
-    </CardShell>
-  );
+function MASINTPanel({
+  masint
+}) {
+  const tc = {
+    Seismic: '#f0d050',
+    'Nuclear Radiation': 'var(--red)',
+    Acoustic: 'var(--cyan)',
+    Chemical: 'var(--amber)',
+    Thermal: 'var(--amber)'
+  };
+  const items = masint || [];
+  return /*#__PURE__*/React.createElement(CardShell, {
+    icoBg: "rgba(240,208,80,.08)",
+    icoColor: "#f0d050",
+    icon: "🔭",
+    title: "MASINT — Measurement & Signature",
+    count: items.length + ' events',
+    classif: "TOP SECRET // MASINT"
+  }, items.map((m, i) => {
+    const col = tc[m.type] || 'var(--green)';
+    return /*#__PURE__*/React.createElement("div", {
+      className: "item",
+      key: i,
+      style: {
+        borderColor: col
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "i-top"
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      className: "i-name"
+    }, m.event || ''), /*#__PURE__*/React.createElement("div", {
+      className: "i-meta"
+    }, m.id || '', " · ", m.location || '', " · ", m.date || '')), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-end',
+        gap: 3,
+        flexShrink: 0
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "badge",
+      style: {
+        color: col,
+        borderColor: col + '40',
+        background: col + '12'
+      }
+    }, m.type || ''), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontFamily: 'JetBrains Mono,monospace',
+        fontSize: 7.5,
+        color: 'var(--text3)'
+      }
+    }, "CONF ", m.confidence || 0, "%"))), /*#__PURE__*/React.createElement(MBar, {
+      pct: m.confidence || 0,
+      color: col
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "i-detail"
+    }, m.detail || ''));
+  }));
 }
-
-function JammingPanel({zones}){
-  const items = zones||[];
-  return (
-    <CardShell icoBg="rgba(255,45,85,.08)" icoColor="var(--red)" icon="📵" title="GPS/GNSS Jamming Zones" count={items.length+' zones'}>
-      {items.map((z,i)=>{
-        const col = z.severity==='High' ? 'var(--red)' : '#f0d050';
-        const bc  = z.severity==='High' ? 'bc' : 'bh';
-        return (
-          <div className="item" key={i} style={{borderColor:col}}>
-            <div className="i-top">
-              <div>
-                <div className="i-name">{z.name||''}</div>
-                <div className="i-meta">Source: {z.source||''} · Radius: {z.radius_km||'?'}km</div>
-              </div>
-              <Badge cls={bc}>{z.severity||''}</Badge>
-            </div>
-            <MBar pct={z.severity==='High'?90:55} color={col} />
-          </div>
-        );
-      })}
-    </CardShell>
-  );
+function JammingPanel({
+  zones
+}) {
+  const items = zones || [];
+  return /*#__PURE__*/React.createElement(CardShell, {
+    icoBg: "rgba(255,45,85,.08)",
+    icoColor: "var(--red)",
+    icon: "📵",
+    title: "GPS/GNSS Jamming Zones",
+    count: items.length + ' zones'
+  }, items.map((z, i) => {
+    const col = z.severity === 'High' ? 'var(--red)' : '#f0d050';
+    const bc = z.severity === 'High' ? 'bc' : 'bh';
+    return /*#__PURE__*/React.createElement("div", {
+      className: "item",
+      key: i,
+      style: {
+        borderColor: col
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "i-top"
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      className: "i-name"
+    }, z.name || ''), /*#__PURE__*/React.createElement("div", {
+      className: "i-meta"
+    }, "Source: ", z.source || '', " · Radius: ", z.radius_km || '?', "km")), /*#__PURE__*/React.createElement(Badge, {
+      cls: bc
+    }, z.severity || '')), /*#__PURE__*/React.createElement(MBar, {
+      pct: z.severity === 'High' ? 90 : 55,
+      color: col
+    }));
+  }));
 }
-
-function OrbitalPanel({orbital}){
-  const oc = o => o.includes('USA')?'var(--cyan)':o.includes('Russia')?'var(--red)':o.includes('China')?'var(--amber)':o.includes('Israel')?'#f0d050':'var(--green)';
-  const items = orbital||[];
-  return (
-    <CardShell icoBg="rgba(0,212,255,.08)" icoColor="var(--cyan)" icon="🛰" title="Orbital ISR — Surveillance Sat" count={items.length+' systems'}>
-      {items.map((o,i)=>{
-        const col = oc(o.operator||'');
-        return (
-          <div className="item" key={i} style={{borderColor:col}}>
-            <div className="i-top">
-              <div><div className="i-name">{o.name||''}</div><div className="i-meta">{o.type||''}</div></div>
-              <span className="badge" style={{color:col,borderColor:col+'40',background:col+'12'}}>{o.operator||''}</span>
-            </div>
-          </div>
-        );
-      })}
-    </CardShell>
-  );
+function OrbitalPanel({
+  orbital
+}) {
+  const oc = o => o.includes('USA') ? 'var(--cyan)' : o.includes('Russia') ? 'var(--red)' : o.includes('China') ? 'var(--amber)' : o.includes('Israel') ? '#f0d050' : 'var(--green)';
+  const items = orbital || [];
+  return /*#__PURE__*/React.createElement(CardShell, {
+    icoBg: "rgba(0,212,255,.08)",
+    icoColor: "var(--cyan)",
+    icon: "🛰",
+    title: "Orbital ISR — Surveillance Sat",
+    count: items.length + ' systems'
+  }, items.map((o, i) => {
+    const col = oc(o.operator || '');
+    return /*#__PURE__*/React.createElement("div", {
+      className: "item",
+      key: i,
+      style: {
+        borderColor: col
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "i-top"
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      className: "i-name"
+    }, o.name || ''), /*#__PURE__*/React.createElement("div", {
+      className: "i-meta"
+    }, o.type || '')), /*#__PURE__*/React.createElement("span", {
+      className: "badge",
+      style: {
+        color: col,
+        borderColor: col + '40',
+        background: col + '12'
+      }
+    }, o.operator || '')));
+  }));
 }
-
-function CyberPanel({cyberThreats,liveCyber}){
-  const ac = a => a.includes('Russia')?'var(--red)':a.includes('China')?'var(--amber)':a.includes('Iran')?'#f0d050':a.includes('DPRK')?'var(--violet)':'var(--green)';
-  const base = cyberThreats||[];
-  const live = (liveCyber||[]).slice(0,5);
-  return (
-    <div className="card">
-      <div className="ch">
-        <div className="ch-ico" style={{background:'rgba(168,85,247,.1)',color:'var(--violet)'}}>💀</div>
-        <div className="ch-title">CYBINT — Cyber Threats</div>
-        <div className="live-chip"><span className="dot" style={{background:'var(--green)'}}></span>GDELT</div>
-      </div>
-      <div className="scroll">
-        {base.map((c,i)=>{
-          const col = ac(c.actor||'');
-          return (
-            <div className="item" key={'b'+i} style={{borderColor:col}}>
-              <div className="i-top">
-                <div><div className="i-name">{c.name||''}</div><div className="i-meta">Targets: {c.targets||''}</div></div>
-                <span className="badge" style={{color:col,borderColor:col+'40',background:col+'12'}}>{c.actor||''}</span>
-              </div>
-            </div>
-          );
-        })}
-        {live.length>0 && <div style={{height:1,background:'var(--edge2)',margin:'4px 0'}}></div>}
-        {live.map((a,i)=>(
-          <div className="fi" key={'l'+i} style={{borderLeftColor:'var(--violet)'}}>
-            <div className="fi-src">{(a.source||'').toUpperCase()}</div>
-            <div className="fi-title">{(a.title||'').slice(0,100)}</div>
-            <div className="fi-time">{a.time||''}</div>
-          </div>
-        ))}
-      </div>
-      <div className="classif">TOP SECRET // CYBER</div>
-    </div>
-  );
+function CyberPanel({
+  cyberThreats,
+  liveCyber
+}) {
+  const ac = a => a.includes('Russia') ? 'var(--red)' : a.includes('China') ? 'var(--amber)' : a.includes('Iran') ? '#f0d050' : a.includes('DPRK') ? 'var(--violet)' : 'var(--green)';
+  const base = cyberThreats || [];
+  const live = (liveCyber || []).slice(0, 5);
+  return /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "ch"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "ch-ico",
+    style: {
+      background: 'rgba(168,85,247,.1)',
+      color: 'var(--violet)'
+    }
+  }, "💀"), /*#__PURE__*/React.createElement("div", {
+    className: "ch-title"
+  }, "CYBINT — Cyber Threats"), /*#__PURE__*/React.createElement("div", {
+    className: "live-chip"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "dot",
+    style: {
+      background: 'var(--green)'
+    }
+  }), "GDELT")), /*#__PURE__*/React.createElement("div", {
+    className: "scroll"
+  }, base.map((c, i) => {
+    const col = ac(c.actor || '');
+    return /*#__PURE__*/React.createElement("div", {
+      className: "item",
+      key: 'b' + i,
+      style: {
+        borderColor: col
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "i-top"
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      className: "i-name"
+    }, c.name || ''), /*#__PURE__*/React.createElement("div", {
+      className: "i-meta"
+    }, "Targets: ", c.targets || '')), /*#__PURE__*/React.createElement("span", {
+      className: "badge",
+      style: {
+        color: col,
+        borderColor: col + '40',
+        background: col + '12'
+      }
+    }, c.actor || '')));
+  }), live.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: 1,
+      background: 'var(--edge2)',
+      margin: '4px 0'
+    }
+  }), live.map((a, i) => /*#__PURE__*/React.createElement("div", {
+    className: "fi",
+    key: 'l' + i,
+    style: {
+      borderLeftColor: 'var(--violet)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fi-src"
+  }, (a.source || '').toUpperCase()), /*#__PURE__*/React.createElement("div", {
+    className: "fi-title"
+  }, (a.title || '').slice(0, 100)), /*#__PURE__*/React.createElement("div", {
+    className: "fi-time"
+  }, a.time || '')))), /*#__PURE__*/React.createElement("div", {
+    className: "classif"
+  }, "TOP SECRET // CYBER"));
 }
-
-function SeismicPanel({quakes}){
-  const q = quakes||[];
-  return (
-    <div className="card">
-      <div className="ch">
-        <div className="ch-ico" style={{background:'rgba(240,208,80,.08)',color:'#f0d050'}}>🌍</div>
-        <div className="ch-title">MASINT — Live Seismic</div>
-        <div className="live-chip"><span className="dot" style={{background:'var(--green)'}}></span>USGS</div>
-      </div>
-      <div className="scroll">
-        {q.length ? q.map((qq,i)=>{
-          const col = qq.mag>=6?'var(--red)':qq.mag>=5?'var(--amber)':qq.mag>=4?'#f0d050':'var(--green)';
-          return (
-            <div className="item" key={i} style={{borderColor:col}}>
-              <div className="i-top">
-                <div><div className="i-name">{qq.place||qq.loc||''}</div><div className="i-meta">Depth: {qq.depth_km||'?'}km · {qq.time||''}</div></div>
-                <span style={{fontFamily:'Orbitron,monospace',fontWeight:700,fontSize:18,color:col}}>M{qq.mag}</span>
-              </div>
-            </div>
-          );
-        }) : <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:10,color:'var(--text3)',padding:'12px 0'}}>Polling USGS…</div>}
-      </div>
-    </div>
-  );
+function SeismicPanel({
+  quakes
+}) {
+  const q = quakes || [];
+  return /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "ch"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "ch-ico",
+    style: {
+      background: 'rgba(240,208,80,.08)',
+      color: '#f0d050'
+    }
+  }, "🌍"), /*#__PURE__*/React.createElement("div", {
+    className: "ch-title"
+  }, "MASINT — Live Seismic"), /*#__PURE__*/React.createElement("div", {
+    className: "live-chip"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "dot",
+    style: {
+      background: 'var(--green)'
+    }
+  }), "USGS")), /*#__PURE__*/React.createElement("div", {
+    className: "scroll"
+  }, q.length ? q.map((qq, i) => {
+    const col = qq.mag >= 6 ? 'var(--red)' : qq.mag >= 5 ? 'var(--amber)' : qq.mag >= 4 ? '#f0d050' : 'var(--green)';
+    return /*#__PURE__*/React.createElement("div", {
+      className: "item",
+      key: i,
+      style: {
+        borderColor: col
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "i-top"
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      className: "i-name"
+    }, qq.place || qq.loc || ''), /*#__PURE__*/React.createElement("div", {
+      className: "i-meta"
+    }, "Depth: ", qq.depth_km || '?', "km · ", qq.time || '')), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontFamily: 'Orbitron,monospace',
+        fontWeight: 700,
+        fontSize: 18,
+        color: col
+      }
+    }, "M", qq.mag)));
+  }) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'JetBrains Mono,monospace',
+      fontSize: 10,
+      color: 'var(--text3)',
+      padding: '12px 0'
+    }
+  }, "Polling USGS…")));
 }
-
-function KPPanel({kp,kpStatus,kpSeries}){
-  const col = kp>=5?'var(--red)':kp>=3?'var(--amber)':'var(--green)';
-  const bars = (kpSeries||[]).slice(-24);
-  return (
-    <div className="card">
-      <div className="ch">
-        <div className="ch-ico" style={{background:'rgba(0,229,160,.08)',color:'var(--green)'}}>☀</div>
-        <div className="ch-title">Space Weather / KP Index</div>
-        <div className="live-chip"><span className="dot" style={{background:'var(--green)'}}></span>NOAA</div>
-      </div>
-      <div style={{padding:'14px 16px'}}>
-        <div style={{display:'flex',alignItems:'center',gap:18,marginBottom:12}}>
-          <div>
-            <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:8,letterSpacing:'.18em',textTransform:'uppercase',color:'var(--text3)',marginBottom:4}}>KP INDEX</div>
-            <div style={{fontFamily:'Orbitron,monospace',fontWeight:900,fontSize:48,color:col,lineHeight:1}}>{kp}</div>
-          </div>
-          <div>
-            <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:11,color:col,marginBottom:4}}>{kpStatus||'Quiet'}</div>
-            <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:8,color:'var(--text3)'}}>≥5 Storm · ≥7 Severe · ≥9 Extreme</div>
-          </div>
-        </div>
-        <div className="kp-bars">
-          {bars.map((p,i)=>{
-            const v = Math.min(p.kp||p||0,9);
-            const h = Math.max(Math.round((v/9)*100),3);
-            const c = v>=5?'var(--red)':v>=3?'var(--amber)':'var(--green)';
-            return <div className="kp-seg" key={i} style={{height:h+'%',background:c,opacity:.8}}></div>;
-          })}
-        </div>
-        <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:7,color:'var(--text3)',marginTop:3,textAlign:'right'}}>← 24h Kp history</div>
-      </div>
-    </div>
-  );
+function KPPanel({
+  kp,
+  kpStatus,
+  kpSeries
+}) {
+  const col = kp >= 5 ? 'var(--red)' : kp >= 3 ? 'var(--amber)' : 'var(--green)';
+  const bars = (kpSeries || []).slice(-24);
+  return /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "ch"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "ch-ico",
+    style: {
+      background: 'rgba(0,229,160,.08)',
+      color: 'var(--green)'
+    }
+  }, "☀"), /*#__PURE__*/React.createElement("div", {
+    className: "ch-title"
+  }, "Space Weather / KP Index"), /*#__PURE__*/React.createElement("div", {
+    className: "live-chip"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "dot",
+    style: {
+      background: 'var(--green)'
+    }
+  }), "NOAA")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '14px 16px'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 18,
+      marginBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'JetBrains Mono,monospace',
+      fontSize: 8,
+      letterSpacing: '.18em',
+      textTransform: 'uppercase',
+      color: 'var(--text3)',
+      marginBottom: 4
+    }
+  }, "KP INDEX"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'Orbitron,monospace',
+      fontWeight: 900,
+      fontSize: 48,
+      color: col,
+      lineHeight: 1
+    }
+  }, kp)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'JetBrains Mono,monospace',
+      fontSize: 11,
+      color: col,
+      marginBottom: 4
+    }
+  }, kpStatus || 'Quiet'), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'JetBrains Mono,monospace',
+      fontSize: 8,
+      color: 'var(--text3)'
+    }
+  }, "≥5 Storm · ≥7 Severe · ≥9 Extreme"))), /*#__PURE__*/React.createElement("div", {
+    className: "kp-bars"
+  }, bars.map((p, i) => {
+    const v = Math.min(p.kp || p || 0, 9);
+    const h = Math.max(Math.round(v / 9 * 100), 3);
+    const c = v >= 5 ? 'var(--red)' : v >= 3 ? 'var(--amber)' : 'var(--green)';
+    return /*#__PURE__*/React.createElement("div", {
+      className: "kp-seg",
+      key: i,
+      style: {
+        height: h + '%',
+        background: c,
+        opacity: .8
+      }
+    });
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'JetBrains Mono,monospace',
+      fontSize: 7,
+      color: 'var(--text3)',
+      marginTop: 3,
+      textAlign: 'right'
+    }
+  }, "← 24h Kp history")));
 }
-
-function OutagesPanel({outages}){
-  const items = (outages||[]).slice(0,10);
-  return (
-    <CardShell icoBg="rgba(255,45,85,.08)" icoColor="var(--red)" icon="🔌" title="Internet Outages" liveChip="Live">
-      {items.length ? items.map((o,i)=>(
-        <div className="item" key={i} style={{borderColor:'var(--red)'}}>
-          <div className="i-name">{o.region||o.title||''}</div>
-          <div className="i-meta">{o.provider||o.source||''} · {o.time||o.ts||''}</div>
-        </div>
-      )) : <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:10,color:'var(--text3)',padding:'12px 0'}}>No major outages detected.</div>}
-    </CardShell>
-  );
+function OutagesPanel({
+  outages
+}) {
+  const items = (outages || []).slice(0, 10);
+  return /*#__PURE__*/React.createElement(CardShell, {
+    icoBg: "rgba(255,45,85,.08)",
+    icoColor: "var(--red)",
+    icon: "🔌",
+    title: "Internet Outages",
+    liveChip: "Live"
+  }, items.length ? items.map((o, i) => /*#__PURE__*/React.createElement("div", {
+    className: "item",
+    key: i,
+    style: {
+      borderColor: 'var(--red)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "i-name"
+  }, o.region || o.title || ''), /*#__PURE__*/React.createElement("div", {
+    className: "i-meta"
+  }, o.provider || o.source || '', " · ", o.time || o.ts || ''))) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'JetBrains Mono,monospace',
+      fontSize: 10,
+      color: 'var(--text3)',
+      padding: '12px 0'
+    }
+  }, "No major outages detected."));
 }
-
-function LiveFeedPanel({feed}){
-  const cc = {CONFLICT:'var(--red)',MILITARY:'var(--amber)',NUCLEAR:'var(--red)',OSINT:'var(--cyan)',CYBER:'var(--violet)'};
-  const all = (feed||[]).slice(0,25);
-  return (
-    <CardShell icoBg="rgba(0,212,255,.08)" icoColor="var(--cyan)" icon="📰" title="Live OSINT / SIGINT Feed" liveChip={all.length+' signals'}>
-      {all.length ? all.map((a,i)=>{
-        const col = cc[a.cat||''] || 'var(--cyan)';
-        return (
-          <div className="fi" key={i} style={{borderLeftColor:col}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:3}}>
-              <span className="fi-src" style={{color:col}}>{(a.source||'').slice(0,22).toUpperCase()}</span>
-              <span className="fi-time">{a.time||''}</span>
-            </div>
-            <div className="fi-title">{(a.title||'').slice(0,110)}</div>
-            {a.url && <a className="fi-link" href={a.url} target="_blank" rel="noopener">READ →</a>}
-          </div>
-        );
-      }) : <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:10,color:'var(--text3)',padding:'12px 0'}}>Fetching live signals…</div>}
-    </CardShell>
-  );
+function LiveFeedPanel({
+  feed
+}) {
+  const cc = {
+    CONFLICT: 'var(--red)',
+    MILITARY: 'var(--amber)',
+    NUCLEAR: 'var(--red)',
+    OSINT: 'var(--cyan)',
+    CYBER: 'var(--violet)'
+  };
+  const all = (feed || []).slice(0, 25);
+  return /*#__PURE__*/React.createElement(CardShell, {
+    icoBg: "rgba(0,212,255,.08)",
+    icoColor: "var(--cyan)",
+    icon: "📰",
+    title: "Live OSINT / SIGINT Feed",
+    liveChip: all.length + ' signals'
+  }, all.length ? all.map((a, i) => {
+    const col = cc[a.cat || ''] || 'var(--cyan)';
+    return /*#__PURE__*/React.createElement("div", {
+      className: "fi",
+      key: i,
+      style: {
+        borderLeftColor: col
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 3
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "fi-src",
+      style: {
+        color: col
+      }
+    }, (a.source || '').slice(0, 22).toUpperCase()), /*#__PURE__*/React.createElement("span", {
+      className: "fi-time"
+    }, a.time || '')), /*#__PURE__*/React.createElement("div", {
+      className: "fi-title"
+    }, (a.title || '').slice(0, 110)), a.url && /*#__PURE__*/React.createElement("a", {
+      className: "fi-link",
+      href: a.url,
+      target: "_blank",
+      rel: "noopener"
+    }, "READ →"));
+  }) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'JetBrains Mono,monospace',
+      fontSize: 10,
+      color: 'var(--text3)',
+      padding: '12px 0'
+    }
+  }, "Fetching live signals…"));
 }
-
-function OSINTPanel({platforms}){
-  const items = platforms||[];
-  return (
-    <CardShell icoBg="rgba(0,229,160,.08)" icoColor="var(--green)" icon="👁" title="OSINT Collection Platforms" count={items.length+' sources'}>
-      {items.map((p,i)=>(
-        <div className="item" key={i} style={{borderColor:'var(--green)'}}>
-          <div className="i-top">
-            <div><div className="i-name">{p.name||''}</div><div className="i-meta">{p.type||''} · {p.provider||''} · Res: {p.resolution||''}</div></div>
-            <Badge cls="bl">{p.status||''}</Badge>
-          </div>
-          <div className="i-detail">{p.use_case||''}</div>
-        </div>
-      ))}
-    </CardShell>
-  );
+function OSINTPanel({
+  platforms
+}) {
+  const items = platforms || [];
+  return /*#__PURE__*/React.createElement(CardShell, {
+    icoBg: "rgba(0,229,160,.08)",
+    icoColor: "var(--green)",
+    icon: "👁",
+    title: "OSINT Collection Platforms",
+    count: items.length + ' sources'
+  }, items.map((p, i) => /*#__PURE__*/React.createElement("div", {
+    className: "item",
+    key: i,
+    style: {
+      borderColor: 'var(--green)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "i-top"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "i-name"
+  }, p.name || ''), /*#__PURE__*/React.createElement("div", {
+    className: "i-meta"
+  }, p.type || '', " · ", p.provider || '', " · Res: ", p.resolution || '')), /*#__PURE__*/React.createElement(Badge, {
+    cls: "bl"
+  }, p.status || '')), /*#__PURE__*/React.createElement("div", {
+    className: "i-detail"
+  }, p.use_case || ''))));
 }
-
-function CIIPanel({cii}){
-  const sorted = [...(cii||[])].sort((a,b)=>b.risk-a.risk);
-  return (
-    <CardShell icoBg="rgba(255,45,85,.08)" icoColor="var(--red)" icon="🏗" title="GEOINT — Critical Infrastructure" count={sorted.length+' tracked'} classif="GEOINT // INFRA">
-      {sorted.map((c,i)=>{
-        const col = c.risk>=90?'var(--red)':c.risk>=75?'var(--amber)':'#f0d050';
-        return (
-          <div className="cii-item" key={i} style={{borderColor:col}}>
-            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}}>
-              <div><div className="i-name">{c.name||''}</div><div className="i-meta">{c.country||''} · {c.sector||''}</div></div>
-              <span style={{fontFamily:'Orbitron,monospace',fontWeight:900,fontSize:20,color:col}}>{c.risk}</span>
-            </div>
-            <MBar pct={c.risk} color={col} />
-          </div>
-        );
-      })}
-    </CardShell>
-  );
+function CIIPanel({
+  cii
+}) {
+  const sorted = [...(cii || [])].sort((a, b) => b.risk - a.risk);
+  return /*#__PURE__*/React.createElement(CardShell, {
+    icoBg: "rgba(255,45,85,.08)",
+    icoColor: "var(--red)",
+    icon: "🏗",
+    title: "GEOINT — Critical Infrastructure",
+    count: sorted.length + ' tracked',
+    classif: "GEOINT // INFRA"
+  }, sorted.map((c, i) => {
+    const col = c.risk >= 90 ? 'var(--red)' : c.risk >= 75 ? 'var(--amber)' : '#f0d050';
+    return /*#__PURE__*/React.createElement("div", {
+      className: "cii-item",
+      key: i,
+      style: {
+        borderColor: col
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 4
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      className: "i-name"
+    }, c.name || ''), /*#__PURE__*/React.createElement("div", {
+      className: "i-meta"
+    }, c.country || '', " · ", c.sector || '')), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontFamily: 'Orbitron,monospace',
+        fontWeight: 900,
+        fontSize: 20,
+        color: col
+      }
+    }, c.risk)), /*#__PURE__*/React.createElement(MBar, {
+      pct: c.risk,
+      color: col
+    }));
+  }));
 }
 
 // ── KPI strip + ticker ────────────────────────────────────────
-function KPIStrip({gpsJamming,actors,elint,cii}){
-  const jam  = (gpsJamming||[]).filter(z=>z.severity==='High').length;
-  const act  = (actors||[]).filter(a=>a.threat_level>=85).length;
-  const elnt = (elint||[]).filter(e=>e.status==='Active').length;
-  const ciic = (cii||[]).filter(c=>c.risk>=90).length;
-  const data = [
-    {v:jam,l:'Active GPS Jamming',s:'High-severity zones',c:'var(--red)'},
-    {v:act,l:'Critical Threat Actors',s:'Threat level ≥85',c:'var(--amber)'},
-    {v:elnt,l:'Active ELINT Systems',s:'Emissions tracked',c:'var(--cyan)'},
-    {v:ciic,l:'CII Critical Risk',s:'Infrastructure risk ≥90',c:'var(--red)'},
-  ];
-  return (
-    <div className="kpis">
-      {data.map((k,i)=>(
-        <div className="kpi" key={i} style={{'--kc':k.c}}>
-          <div className="kpi-l">{k.l}</div>
-          <div className="kpi-v">{k.v}</div>
-          <div className="kpi-s">{k.s}</div>
-        </div>
-      ))}
-    </div>
-  );
+function KPIStrip({
+  gpsJamming,
+  actors,
+  elint,
+  cii
+}) {
+  const jam = (gpsJamming || []).filter(z => z.severity === 'High').length;
+  const act = (actors || []).filter(a => a.threat_level >= 85).length;
+  const elnt = (elint || []).filter(e => e.status === 'Active').length;
+  const ciic = (cii || []).filter(c => c.risk >= 90).length;
+  const data = [{
+    v: jam,
+    l: 'Active GPS Jamming',
+    s: 'High-severity zones',
+    c: 'var(--red)'
+  }, {
+    v: act,
+    l: 'Critical Threat Actors',
+    s: 'Threat level ≥85',
+    c: 'var(--amber)'
+  }, {
+    v: elnt,
+    l: 'Active ELINT Systems',
+    s: 'Emissions tracked',
+    c: 'var(--cyan)'
+  }, {
+    v: ciic,
+    l: 'CII Critical Risk',
+    s: 'Infrastructure risk ≥90',
+    c: 'var(--red)'
+  }];
+  return /*#__PURE__*/React.createElement("div", {
+    className: "kpis"
+  }, data.map((k, i) => /*#__PURE__*/React.createElement("div", {
+    className: "kpi",
+    key: i,
+    style: {
+      '--kc': k.c
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-l"
+  }, k.l), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-v"
+  }, k.v), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-s"
+  }, k.s))));
 }
-
-function Ticker({feed,cyber}){
-  const all = [...(feed||[]), ...(cyber||[])].slice(0,20);
-  if(!all.length) return <div className="ticker"><div className="t-inner">Loading intelligence feed…</div></div>;
-  const items = all.map((a,i)=>(
-    <span className="ti" key={i}><span className="ti-s">▶ {(a.source||'').toUpperCase().slice(0,18)}</span>{(a.title||'').slice(0,88)}</span>
-  ));
-  return <div className="ticker"><div className="t-inner">{items}{items}</div></div>;
+function Ticker({
+  feed,
+  cyber
+}) {
+  const all = [...(feed || []), ...(cyber || [])].slice(0, 20);
+  if (!all.length) return /*#__PURE__*/React.createElement("div", {
+    className: "ticker"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "t-inner"
+  }, "Loading intelligence feed…"));
+  const items = all.map((a, i) => /*#__PURE__*/React.createElement("span", {
+    className: "ti",
+    key: i
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "ti-s"
+  }, "▶ ", (a.source || '').toUpperCase().slice(0, 18)), (a.title || '').slice(0, 88)));
+  return /*#__PURE__*/React.createElement("div", {
+    className: "ticker"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "t-inner"
+  }, items, items));
 }
 
 // ── Root App ─────────────────────────────────────────────────
-function App(){
+function App() {
   const [ls, setLs] = useState({
-    feed: [...(D.live_events||[]), ...(D.live_conflict||[]), ...(D.live_feed||[])].slice(0,25),
-    cyber: D.live_cyber||[],
-    quakes: D.live_quakes||[],
-    kp: D.kp_current||0,
-    kpStatus: D.kp_status||'Quiet',
-    kpSeries: (D.kp_series||[]).slice(-24),
+    feed: [...(D.live_events || []), ...(D.live_conflict || []), ...(D.live_feed || [])].slice(0, 25),
+    cyber: D.live_cyber || [],
+    quakes: D.live_quakes || [],
+    kp: D.kp_current || 0,
+    kpStatus: D.kp_status || 'Quiet',
+    kpSeries: (D.kp_series || []).slice(-24)
   });
   const [pollStatus, setPollStatus] = useState('LIVE');
   const [countdown, setCountdown] = useState(D.refresh_interval || 180);
@@ -8299,97 +8796,185 @@ function App(){
   // 1s countdown ticker (matches original `cd` element)
   useEffect(() => {
     const id = setInterval(() => {
-      setCountdown(c => (c<=0 ? (D.refresh_interval||180) : c-1));
+      setCountdown(c => c <= 0 ? D.refresh_interval || 180 : c - 1);
     }, 1000);
     return () => clearInterval(id);
   }, []);
-
-  async function pollAll(){
+  async function pollAll() {
     if (pollingRef.current) return;
     pollingRef.current = true;
     setPollStatus('UPDATING…');
-    try{
-      const [feed, cyber, geo, quakes, kpData] = await Promise.all([
-        fetchGDELT('war military strike conflict bombing 2026'),
-        fetchGDELT('cyber attack espionage hacking malware APT'),
-        fetchGDELT('geopolitics sanctions nuclear ballistic missile diplomacy'),
-        fetchUSGS(),
-        fetchKP(),
-      ]);
+    try {
+      const [feed, cyber, geo, quakes, kpData] = await Promise.all([fetchGDELT('war military strike conflict bombing 2026'), fetchGDELT('cyber attack espionage hacking malware APT'), fetchGDELT('geopolitics sanctions nuclear ballistic missile diplomacy'), fetchUSGS(), fetchKP()]);
       setLs(prev => ({
-        feed:  (feed && feed.length) ? [...(geo||[]), ...feed].slice(0,25) : prev.feed,
-        cyber: (cyber && cyber.length) ? cyber : prev.cyber,
-        quakes: (quakes && quakes.length) ? quakes : prev.quakes,
+        feed: feed && feed.length ? [...(geo || []), ...feed].slice(0, 25) : prev.feed,
+        cyber: cyber && cyber.length ? cyber : prev.cyber,
+        quakes: quakes && quakes.length ? quakes : prev.quakes,
         kp: kpData ? kpData.current : prev.kp,
         kpStatus: kpData ? kpData.status : prev.kpStatus,
-        kpSeries: kpData ? kpData.series : prev.kpSeries,
+        kpSeries: kpData ? kpData.series : prev.kpSeries
       }));
       setNowTs(new Date().toUTCString().replace(/.*([0-9][0-9]:[0-9][0-9]:[0-9][0-9]).*/, '$1') + ' UTC');
-    }catch(e){ console.warn('poll', e); }
+    } catch (e) {
+      console.warn('poll', e);
+    }
     pollingRef.current = false;
     setPollStatus('LIVE');
   }
-
   useEffect(() => {
     const t1 = setTimeout(pollAll, 4000);
-    const t2 = setInterval(pollAll, D.refresh_interval ? D.refresh_interval*1000 : 180000);
-    return () => { clearTimeout(t1); clearInterval(t2); };
+    const t2 = setInterval(pollAll, D.refresh_interval ? D.refresh_interval * 1000 : 180000);
+    return () => {
+      clearTimeout(t1);
+      clearInterval(t2);
+    };
   }, []);
-
   const sigRisk = D.live_risk || {};
-  const jamCount = (D.gps_jamming||[]).filter(z=>z.severity==='High').length;
-  const critActors = (D.actors||[]).filter(a=>a.threat_level>=85).length;
-  const ciiCrit = (D.cii||[]).filter(c=>c.risk>=90).length;
-  const liveCount = (D.live_feed||[]).length + (D.live_conflict||[]).length;
-
-  return (
-    <React.Fragment>
-      <div className="topbar">
-        <div className="tb-logo">
-          <div className="tb-name">SIGINT</div>
-          <div className="tb-sub">Signals Intelligence Dashboard</div>
-        </div>
-        <div className="tb-metrics">
-          <div className="tb-m"><div className="tb-ml">Global Risk</div><div className="tb-mv" style={{color:'var(--amber)'}}>{sigRisk.score||'—'} {sigRisk.label||''}</div></div>
-          <div className="tb-m"><div className="tb-ml">KP Index</div><div className="tb-mv" style={{color:'var(--cyan)'}}>{D.kp_current}</div></div>
-          <div className="tb-m"><div className="tb-ml">GPS Jamming</div><div className="tb-mv" style={{color:'var(--red)'}}>{jamCount}</div></div>
-          <div className="tb-m"><div className="tb-ml">Threat Actors</div><div className="tb-mv" style={{color:'var(--amber)'}}>{critActors}</div></div>
-          <div className="tb-m"><div className="tb-ml">CII Critical</div><div className="tb-mv" style={{color:'var(--red)'}}>{ciiCrit}</div></div>
-          <div className="tb-m"><div className="tb-ml">Live Signals</div><div className="tb-mv" style={{color:'var(--green)'}}>{liveCount}</div></div>
-        </div>
-        <div className="tb-right">
-          <span className="tb-ts">{nowTs}</span>
-          <span className="tb-pill"><span className="dot" style={{background:'var(--green)'}}></span>{pollStatus}</span>
-          <span className="tb-cd">↻&thinsp;{countdown}s</span>
-        </div>
-      </div>
-
-      <Ticker feed={ls.feed} cyber={ls.cyber} />
-      <KPIStrip gpsJamming={D.gps_jamming} actors={D.actors} elint={D.elint} cii={D.cii} />
-
-      <div className="body">
-        <div className="slbl">Priority Intelligence</div>
-        <div className="r2"><ActorsPanel actors={D.actors} /><CollectionPanel collection={D.collection} /></div>
-
-        <div className="slbl">Signals Collection</div>
-        <div className="r3"><COMINTPanel comint={D.comint} /><ELINTPanel elint={D.elint} /><MASINTPanel masint={D.masint} /></div>
-
-        <div className="slbl">Environment & Cyber Domain</div>
-        <div className="r3"><JammingPanel zones={D.gps_jamming} /><OrbitalPanel orbital={D.orbital} /><CyberPanel cyberThreats={D.cyber_threats} liveCyber={ls.cyber} /></div>
-
-        <div className="slbl">Live MASINT & Alerts</div>
-        <div className="r3"><SeismicPanel quakes={ls.quakes} /><KPPanel kp={ls.kp} kpStatus={ls.kpStatus} kpSeries={ls.kpSeries} /><OutagesPanel outages={D.internet_static} /></div>
-
-        <div className="slbl">Open Source & Infrastructure</div>
-        <div className="r2"><LiveFeedPanel feed={ls.feed} /><OSINTPanel platforms={D.osint_platforms} /></div>
-
-        <CIIPanel cii={D.cii} />
-      </div>
-    </React.Fragment>
-  );
+  const jamCount = (D.gps_jamming || []).filter(z => z.severity === 'High').length;
+  const critActors = (D.actors || []).filter(a => a.threat_level >= 85).length;
+  const ciiCrit = (D.cii || []).filter(c => c.risk >= 90).length;
+  const liveCount = (D.live_feed || []).length + (D.live_conflict || []).length;
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "topbar"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tb-logo"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tb-name"
+  }, "SIGINT"), /*#__PURE__*/React.createElement("div", {
+    className: "tb-sub"
+  }, "Signals Intelligence Dashboard")), /*#__PURE__*/React.createElement("div", {
+    className: "tb-metrics"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tb-m"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tb-ml"
+  }, "Global Risk"), /*#__PURE__*/React.createElement("div", {
+    className: "tb-mv",
+    style: {
+      color: 'var(--amber)'
+    }
+  }, sigRisk.score || '—', " ", sigRisk.label || '')), /*#__PURE__*/React.createElement("div", {
+    className: "tb-m"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tb-ml"
+  }, "KP Index"), /*#__PURE__*/React.createElement("div", {
+    className: "tb-mv",
+    style: {
+      color: 'var(--cyan)'
+    }
+  }, D.kp_current)), /*#__PURE__*/React.createElement("div", {
+    className: "tb-m"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tb-ml"
+  }, "GPS Jamming"), /*#__PURE__*/React.createElement("div", {
+    className: "tb-mv",
+    style: {
+      color: 'var(--red)'
+    }
+  }, jamCount)), /*#__PURE__*/React.createElement("div", {
+    className: "tb-m"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tb-ml"
+  }, "Threat Actors"), /*#__PURE__*/React.createElement("div", {
+    className: "tb-mv",
+    style: {
+      color: 'var(--amber)'
+    }
+  }, critActors)), /*#__PURE__*/React.createElement("div", {
+    className: "tb-m"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tb-ml"
+  }, "CII Critical"), /*#__PURE__*/React.createElement("div", {
+    className: "tb-mv",
+    style: {
+      color: 'var(--red)'
+    }
+  }, ciiCrit)), /*#__PURE__*/React.createElement("div", {
+    className: "tb-m"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tb-ml"
+  }, "Live Signals"), /*#__PURE__*/React.createElement("div", {
+    className: "tb-mv",
+    style: {
+      color: 'var(--green)'
+    }
+  }, liveCount))), /*#__PURE__*/React.createElement("div", {
+    className: "tb-right"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "tb-ts"
+  }, nowTs), /*#__PURE__*/React.createElement("span", {
+    className: "tb-pill"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "dot",
+    style: {
+      background: 'var(--green)'
+    }
+  }), pollStatus), /*#__PURE__*/React.createElement("span", {
+    className: "tb-cd"
+  }, "↻\u2009", countdown, "s"))), /*#__PURE__*/React.createElement(Ticker, {
+    feed: ls.feed,
+    cyber: ls.cyber
+  }), /*#__PURE__*/React.createElement(KPIStrip, {
+    gpsJamming: D.gps_jamming,
+    actors: D.actors,
+    elint: D.elint,
+    cii: D.cii
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "body"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "slbl"
+  }, "Priority Intelligence"), /*#__PURE__*/React.createElement("div", {
+    className: "r2"
+  }, /*#__PURE__*/React.createElement(ActorsPanel, {
+    actors: D.actors
+  }), /*#__PURE__*/React.createElement(CollectionPanel, {
+    collection: D.collection
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "slbl"
+  }, "Signals Collection"), /*#__PURE__*/React.createElement("div", {
+    className: "r3"
+  }, /*#__PURE__*/React.createElement(COMINTPanel, {
+    comint: D.comint
+  }), /*#__PURE__*/React.createElement(ELINTPanel, {
+    elint: D.elint
+  }), /*#__PURE__*/React.createElement(MASINTPanel, {
+    masint: D.masint
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "slbl"
+  }, "Environment & Cyber Domain"), /*#__PURE__*/React.createElement("div", {
+    className: "r3"
+  }, /*#__PURE__*/React.createElement(JammingPanel, {
+    zones: D.gps_jamming
+  }), /*#__PURE__*/React.createElement(OrbitalPanel, {
+    orbital: D.orbital
+  }), /*#__PURE__*/React.createElement(CyberPanel, {
+    cyberThreats: D.cyber_threats,
+    liveCyber: ls.cyber
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "slbl"
+  }, "Live MASINT & Alerts"), /*#__PURE__*/React.createElement("div", {
+    className: "r3"
+  }, /*#__PURE__*/React.createElement(SeismicPanel, {
+    quakes: ls.quakes
+  }), /*#__PURE__*/React.createElement(KPPanel, {
+    kp: ls.kp,
+    kpStatus: ls.kpStatus,
+    kpSeries: ls.kpSeries
+  }), /*#__PURE__*/React.createElement(OutagesPanel, {
+    outages: D.internet_static
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "slbl"
+  }, "Open Source & Infrastructure"), /*#__PURE__*/React.createElement("div", {
+    className: "r2"
+  }, /*#__PURE__*/React.createElement(LiveFeedPanel, {
+    feed: ls.feed
+  }), /*#__PURE__*/React.createElement(OSINTPanel, {
+    platforms: D.osint_platforms
+  })), /*#__PURE__*/React.createElement(CIIPanel, {
+    cii: D.cii
+  })));
 }
-
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+ReactDOM.createRoot(document.getElementById('root')).render(/*#__PURE__*/React.createElement(App, null));
 </script>
 </body></html>
 """
@@ -8766,614 +9351,1837 @@ body {
 
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-<script type="text/babel" data-presets="react">
-const {useState} = React;
+<script type="text/javascript">
+const {
+  useState
+} = React;
 const D = __PAYLOAD__;
 
 // ── Helpers ──────────────────────────────────────────────────
-const sevCls = s => s==='Critical'?'crit':s==='High'?'high':s==='Med'?'med':'low';
-const rCol = r => r>=75?'var(--rose)':r>=50?'var(--coral)':r>=35?'var(--gold)':'var(--mint)';
-
-function Chg({v, decimals=2}){
-  const up = v>=0, c = up?'var(--mint)':'var(--rose)', sym = up?'▲':'▼';
-  return <span style={{fontFamily:'var(--fm)',fontSize:10,color:c}}>{sym}{Math.abs(v).toFixed(decimals)}</span>;
+const sevCls = s => s === 'Critical' ? 'crit' : s === 'High' ? 'high' : s === 'Med' ? 'med' : 'low';
+const rCol = r => r >= 75 ? 'var(--rose)' : r >= 50 ? 'var(--coral)' : r >= 35 ? 'var(--gold)' : 'var(--mint)';
+function Chg({
+  v,
+  decimals = 2
+}) {
+  const up = v >= 0,
+    c = up ? 'var(--mint)' : 'var(--rose)',
+    sym = up ? '▲' : '▼';
+  return /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: 'var(--fm)',
+      fontSize: 10,
+      color: c
+    }
+  }, sym, Math.abs(v).toFixed(decimals));
 }
-function Bar({pct,col,thick}){
-  return <div className={"bar-track"+(thick?" thick":"")}><div className="bar-fill" style={{width:pct+'%',background:col}}></div></div>;
+function Bar({
+  pct,
+  col,
+  thick
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "bar-track" + (thick ? " thick" : "")
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bar-fill",
+    style: {
+      width: pct + '%',
+      background: col
+    }
+  }));
 }
-function Badge({txt,cls}){ return <span className={"badge "+cls}>{txt}</span>; }
-function LiveTag(){
-  if(!D.ts) return null;
-  return <span style={{fontFamily:'var(--fm)',fontSize:8,display:'inline-flex',alignItems:'center',gap:4,padding:'2px 7px',background:'rgba(52,211,153,.08)',border:'1px solid rgba(52,211,153,.2)',borderRadius:10,color:'var(--mint)'}}>
-    <span style={{width:4,height:4,borderRadius:'50%',background:'var(--mint)',display:'inline-block'}}></span>LIVE {D.ts}
-  </span>;
+function Badge({
+  txt,
+  cls
+}) {
+  return /*#__PURE__*/React.createElement("span", {
+    className: "badge " + cls
+  }, txt);
 }
-function Panel({title,children,note}){
-  return <div className="panel">
-    <div className="panel-hdr">{title} <LiveTag /></div>
-    {note && <div className="mn s9" style={{color:'var(--coral)',marginBottom:10}}>{note}</div>}
-    <div className="scroll">{children}</div>
-  </div>;
+function LiveTag() {
+  if (!D.ts) return null;
+  return /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: 'var(--fm)',
+      fontSize: 8,
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 4,
+      padding: '2px 7px',
+      background: 'rgba(52,211,153,.08)',
+      border: '1px solid rgba(52,211,153,.2)',
+      borderRadius: 10,
+      color: 'var(--mint)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 4,
+      height: 4,
+      borderRadius: '50%',
+      background: 'var(--mint)',
+      display: 'inline-block'
+    }
+  }), "LIVE ", D.ts);
+}
+function Panel({
+  title,
+  children,
+  note
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "panel"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "panel-hdr"
+  }, title, " ", /*#__PURE__*/React.createElement(LiveTag, null)), note && /*#__PURE__*/React.createElement("div", {
+    className: "mn s9",
+    style: {
+      color: 'var(--coral)',
+      marginBottom: 10
+    }
+  }, note), /*#__PURE__*/React.createElement("div", {
+    className: "scroll"
+  }, children));
 }
 // Pill-tab card: local state per card, no global window state needed
-function PillCard({title,tabs,liveTs}){
+function PillCard({
+  title,
+  tabs,
+  liveTs
+}) {
   const [active, setActive] = useState(0);
-  return (
-    <div className="card">
-      <div className="section-title">{title}{liveTs}</div>
-      <div className="pill-tabs">
-        {tabs.map((t,i)=>(
-          <div key={i} className={"pill"+(i===active?" on":"")} onClick={()=>setActive(i)}>{t.label}</div>
-        ))}
-      </div>
-      <div className="scroll">{tabs[active].content}</div>
-    </div>
-  );
+  return /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "section-title"
+  }, title, liveTs), /*#__PURE__*/React.createElement("div", {
+    className: "pill-tabs"
+  }, tabs.map((t, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    className: "pill" + (i === active ? " on" : ""),
+    onClick: () => setActive(i)
+  }, t.label))), /*#__PURE__*/React.createElement("div", {
+    className: "scroll"
+  }, tabs[active].content));
 }
 
 // ── KPI Strip ────────────────────────────────────────────────
-function KPIStrip(){
-  const brentLive = D.commodities.find(c=>c.name.includes('Brent')||c.sym==='BZ=F');
-  const brentStatic = D.oil.find(o=>o.name.includes('Brent'))||{};
+function KPIStrip() {
+  const brentLive = D.commodities.find(c => c.name.includes('Brent') || c.sym === 'BZ=F');
+  const brentStatic = D.oil.find(o => o.name.includes('Brent')) || {};
   const brentVal = brentLive ? brentLive.price : brentStatic.val;
-  const brentChg = brentLive ? brentLive.chg_pct : (brentStatic.change||0);
-  const wtiVal = (D.commodities.find(c=>c.name.includes('WTI')||c.sym==='CL=F')||{}).price
-               || ((D.oil.find(o=>o.name.includes('WTI'))||{}).val||0);
-  const fed = D.indicators.find(i=>i.ticker==='FEDFUNDS')||{};
-  const unrate = D.indicators.find(i=>i.ticker==='UNRATE')||{};
-  const cryptoSrc = (D.crypto_live && D.crypto_live.length) ? D.crypto_live : (D.crypto||[]);
-  const btc = cryptoSrc.find(c=>c.ticker==='BTC')||{};
-  const eth = cryptoSrc.find(c=>c.ticker==='ETH')||{};
-  const btcPrice = btc.price !== undefined ? btc.price : (btc.val||0);
-  const ethPrice = eth.price !== undefined ? eth.price : (eth.val||0);
-  const btcChg = btc.chg_pct !== undefined ? btc.chg_pct : (btc.change||0);
+  const brentChg = brentLive ? brentLive.chg_pct : brentStatic.change || 0;
+  const wtiVal = (D.commodities.find(c => c.name.includes('WTI') || c.sym === 'CL=F') || {}).price || (D.oil.find(o => o.name.includes('WTI')) || {}).val || 0;
+  const fed = D.indicators.find(i => i.ticker === 'FEDFUNDS') || {};
+  const unrate = D.indicators.find(i => i.ticker === 'UNRATE') || {};
+  const cryptoSrc = D.crypto_live && D.crypto_live.length ? D.crypto_live : D.crypto || [];
+  const btc = cryptoSrc.find(c => c.ticker === 'BTC') || {};
+  const eth = cryptoSrc.find(c => c.ticker === 'ETH') || {};
+  const btcPrice = btc.price !== undefined ? btc.price : btc.val || 0;
+  const ethPrice = eth.price !== undefined ? eth.price : eth.val || 0;
+  const btcChg = btc.chg_pct !== undefined ? btc.chg_pct : btc.change || 0;
   const pz = D.pizza;
-  const pzCol = pz.score>=75?'var(--rose)':pz.score>=55?'var(--coral)':pz.score>=35?'var(--gold)':'var(--mint)';
-  const brentCol = brentChg>=0 ? 'var(--coral)' : 'var(--mint)';
-  const btcCol = btcChg>=0 ? 'var(--gold)' : 'var(--rose)';
-
-  const items = [
-    {num: brentVal ? `$${brentVal.toFixed(0)}` : '-', lbl:'Brent Crude',
-     sub:`WTI $${wtiVal ? wtiVal.toFixed(0) : '-'} · ${brentChg>=0?'+':''}${brentChg.toFixed(1)}% today`,
-     col: brentCol, glow:'rgba(251,146,60,.14)', bar:`linear-gradient(90deg,transparent,${brentCol},transparent)`},
-    {num: fed.val||'-', lbl:'Fed Funds Rate', sub:`Unemployment ${unrate.val||'-'}`,
-     col:'var(--sky)', glow:'rgba(56,189,248,.12)', bar:'linear-gradient(90deg,transparent,var(--sky),transparent)'},
-    {num: btcPrice ? `$${(btcPrice/1000).toFixed(1)}K` : '-', lbl:'Bitcoin',
-     sub:`ETH $${ethPrice ? ethPrice.toFixed(0) : '-'} · ${btcChg>=0?'+':''}${btcChg.toFixed(1)}% 24h`,
-     col: btcCol, glow:'rgba(251,191,36,.12)', bar:`linear-gradient(90deg,transparent,${btcCol},transparent)`},
-    {num: pz.score, lbl:'🍕 Pizza Index', sub: pz.label,
-     col: pzCol, glow:'rgba(251,146,60,.12)', bar:`linear-gradient(90deg,transparent,${pzCol},transparent)`},
-  ];
-  return <div className="kpi-grid">
-    {items.map((k,i)=>(
-      <div className="kpi" key={i}>
-        <div className="kpi-glow" style={{'--accent-glow':k.glow}}></div>
-        <div className="kpi-top-bar" style={{'--accent-bar':k.bar}}></div>
-        <div className="kpi-label">{k.lbl}</div>
-        <div className="kpi-num" style={{color:k.col}}>{k.num}</div>
-        <div className="kpi-sub">{k.sub}</div>
-      </div>
-    ))}
-  </div>;
+  const pzCol = pz.score >= 75 ? 'var(--rose)' : pz.score >= 55 ? 'var(--coral)' : pz.score >= 35 ? 'var(--gold)' : 'var(--mint)';
+  const brentCol = brentChg >= 0 ? 'var(--coral)' : 'var(--mint)';
+  const btcCol = btcChg >= 0 ? 'var(--gold)' : 'var(--rose)';
+  const items = [{
+    num: brentVal ? `$${brentVal.toFixed(0)}` : '-',
+    lbl: 'Brent Crude',
+    sub: `WTI $${wtiVal ? wtiVal.toFixed(0) : '-'} · ${brentChg >= 0 ? '+' : ''}${brentChg.toFixed(1)}% today`,
+    col: brentCol,
+    glow: 'rgba(251,146,60,.14)',
+    bar: `linear-gradient(90deg,transparent,${brentCol},transparent)`
+  }, {
+    num: fed.val || '-',
+    lbl: 'Fed Funds Rate',
+    sub: `Unemployment ${unrate.val || '-'}`,
+    col: 'var(--sky)',
+    glow: 'rgba(56,189,248,.12)',
+    bar: 'linear-gradient(90deg,transparent,var(--sky),transparent)'
+  }, {
+    num: btcPrice ? `$${(btcPrice / 1000).toFixed(1)}K` : '-',
+    lbl: 'Bitcoin',
+    sub: `ETH $${ethPrice ? ethPrice.toFixed(0) : '-'} · ${btcChg >= 0 ? '+' : ''}${btcChg.toFixed(1)}% 24h`,
+    col: btcCol,
+    glow: 'rgba(251,191,36,.12)',
+    bar: `linear-gradient(90deg,transparent,${btcCol},transparent)`
+  }, {
+    num: pz.score,
+    lbl: '🍕 Pizza Index',
+    sub: pz.label,
+    col: pzCol,
+    glow: 'rgba(251,146,60,.12)',
+    bar: `linear-gradient(90deg,transparent,${pzCol},transparent)`
+  }];
+  return /*#__PURE__*/React.createElement("div", {
+    className: "kpi-grid"
+  }, items.map((k, i) => /*#__PURE__*/React.createElement("div", {
+    className: "kpi",
+    key: i
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-glow",
+    style: {
+      '--accent-glow': k.glow
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-top-bar",
+    style: {
+      '--accent-bar': k.bar
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-label"
+  }, k.lbl), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-num",
+    style: {
+      color: k.col
+    }
+  }, k.num), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-sub"
+  }, k.sub))));
 }
 
 // ── Row 1: Indices / Forex / Commodities / Defense ─────────────
-function PanelIndices(){
-  const arr = D.indices||[];
-  if(!arr.length) return <Panel title="Global Indices"><div className="mn s10 muted">Fetching live data...</div></Panel>;
-  const vix = arr.find(x=>x.sym==='^VIX'), vv = vix?vix.price:0;
-  const vc = vv>=30?'var(--rose)':vv>=20?'var(--gold)':'var(--mint)';
-  return <Panel title="Global Indices">
-    {vix && <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 12px',background:'rgba(0,0,0,.3)',border:'1px solid rgba(148,163,184,.1)',borderRadius:8,marginBottom:10}}>
-      <span style={{fontFamily:'var(--fm)',fontSize:9,fontWeight:600,color:vc}}>VIX FEAR</span>
-      <span style={{fontFamily:'var(--fd)',fontSize:22,color:vc}}>{vv.toFixed(1)} <span style={{fontSize:9}}>{vv>=30?'EXTREME':vv>=20?'HIGH':'CALM'}</span></span>
-    </div>}
-    {arr.filter(x=>x.sym!=='^VIX').map((x,i)=>{
-      const up = x.chg_pct>=0, c = up?'var(--mint)':'var(--rose)';
-      const ps = x.price>999 ? x.price.toLocaleString('en-US',{maximumFractionDigits:0}) : x.price.toFixed(2);
-      return <div className="card-row" key={i} style={{borderLeftColor:c}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <div><span style={{fontSize:12,fontWeight:600,color:'var(--ink)'}}>{x.name}</span> <span className="mn s9 muted">{x.country}</span></div>
-          <div><span className="mn">{ps}</span> <span className="mn s10" style={{color:c}}>{up?'▲':'▼'}{Math.abs(x.chg_pct).toFixed(2)}%</span></div>
-        </div>
-      </div>;
-    })}
-  </Panel>;
+function PanelIndices() {
+  const arr = D.indices || [];
+  if (!arr.length) return /*#__PURE__*/React.createElement(Panel, {
+    title: "Global Indices"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mn s10 muted"
+  }, "Fetching live data..."));
+  const vix = arr.find(x => x.sym === '^VIX'),
+    vv = vix ? vix.price : 0;
+  const vc = vv >= 30 ? 'var(--rose)' : vv >= 20 ? 'var(--gold)' : 'var(--mint)';
+  return /*#__PURE__*/React.createElement(Panel, {
+    title: "Global Indices"
+  }, vix && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: '8px 12px',
+      background: 'rgba(0,0,0,.3)',
+      border: '1px solid rgba(148,163,184,.1)',
+      borderRadius: 8,
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: 'var(--fm)',
+      fontSize: 9,
+      fontWeight: 600,
+      color: vc
+    }
+  }, "VIX FEAR"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: 'var(--fd)',
+      fontSize: 22,
+      color: vc
+    }
+  }, vv.toFixed(1), " ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 9
+    }
+  }, vv >= 30 ? 'EXTREME' : vv >= 20 ? 'HIGH' : 'CALM'))), arr.filter(x => x.sym !== '^VIX').map((x, i) => {
+    const up = x.chg_pct >= 0,
+      c = up ? 'var(--mint)' : 'var(--rose)';
+    const ps = x.price > 999 ? x.price.toLocaleString('en-US', {
+      maximumFractionDigits: 0
+    }) : x.price.toFixed(2);
+    return /*#__PURE__*/React.createElement("div", {
+      className: "card-row",
+      key: i,
+      style: {
+        borderLeftColor: c
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        fontWeight: 600,
+        color: 'var(--ink)'
+      }
+    }, x.name), " ", /*#__PURE__*/React.createElement("span", {
+      className: "mn s9 muted"
+    }, x.country)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      className: "mn"
+    }, ps), " ", /*#__PURE__*/React.createElement("span", {
+      className: "mn s10",
+      style: {
+        color: c
+      }
+    }, up ? '▲' : '▼', Math.abs(x.chg_pct).toFixed(2), "%"))));
+  }));
 }
-
-function PanelForex(){
-  const arr = D.forex||[];
-  if(!arr.length) return <Panel title="Forex Rates"><div className="mn s10 muted">Fetching live data...</div></Panel>;
-  const cmap = {}; (D.currency_crisis||[]).forEach(c=>{ cmap[c.currency]=c.status; });
-  return <Panel title="Forex Rates">
-    {arr.map((x,i)=>{
-      const up = x.chg_pct>=0, c = up?'var(--mint)':'var(--rose)';
-      const cur = x.usd_base ? x.pair.split('/')[1] : x.pair.split('/')[0];
-      const cris = cmap[cur]||'';
-      return <div className="card-row" key={i} style={{borderLeftColor: cris?'var(--rose)':c}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <div>
-            <span className="mn" style={{fontWeight:600,color:'var(--ink)'}}>{x.pair}</span>
-            {cris && <span className="mn s8" style={{padding:'1px 5px',borderRadius:3,background:'rgba(255,61,90,.1)',color:'var(--rose)',border:'1px solid rgba(255,61,90,.2)',marginLeft:4}}>{cris}</span>}
-            <div className="s9 muted">{x.currency_name}</div>
-          </div>
-          <div><span className="mn">{x.rate.toFixed(4)}</span> <span className="mn s10" style={{color:c}}>{up?'▲':'▼'}{Math.abs(x.chg_pct).toFixed(2)}%</span></div>
-        </div>
-      </div>;
-    })}
-  </Panel>;
+function PanelForex() {
+  const arr = D.forex || [];
+  if (!arr.length) return /*#__PURE__*/React.createElement(Panel, {
+    title: "Forex Rates"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mn s10 muted"
+  }, "Fetching live data..."));
+  const cmap = {};
+  (D.currency_crisis || []).forEach(c => {
+    cmap[c.currency] = c.status;
+  });
+  return /*#__PURE__*/React.createElement(Panel, {
+    title: "Forex Rates"
+  }, arr.map((x, i) => {
+    const up = x.chg_pct >= 0,
+      c = up ? 'var(--mint)' : 'var(--rose)';
+    const cur = x.usd_base ? x.pair.split('/')[1] : x.pair.split('/')[0];
+    const cris = cmap[cur] || '';
+    return /*#__PURE__*/React.createElement("div", {
+      className: "card-row",
+      key: i,
+      style: {
+        borderLeftColor: cris ? 'var(--rose)' : c
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      className: "mn",
+      style: {
+        fontWeight: 600,
+        color: 'var(--ink)'
+      }
+    }, x.pair), cris && /*#__PURE__*/React.createElement("span", {
+      className: "mn s8",
+      style: {
+        padding: '1px 5px',
+        borderRadius: 3,
+        background: 'rgba(255,61,90,.1)',
+        color: 'var(--rose)',
+        border: '1px solid rgba(255,61,90,.2)',
+        marginLeft: 4
+      }
+    }, cris), /*#__PURE__*/React.createElement("div", {
+      className: "s9 muted"
+    }, x.currency_name)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      className: "mn"
+    }, x.rate.toFixed(4)), " ", /*#__PURE__*/React.createElement("span", {
+      className: "mn s10",
+      style: {
+        color: c
+      }
+    }, up ? '▲' : '▼', Math.abs(x.chg_pct).toFixed(2), "%"))));
+  }));
 }
-
-function PanelCommodities(){
-  const arr = D.commodities||[];
-  if(!arr.length) return <Panel title="Commodities"><div className="mn s10 muted">Fetching live data...</div></Panel>;
-  const catL = {energy:'Energy',precious:'Precious Metals',agri:'Agriculture',industrial:'Industrial',nuclear:'Nuclear'};
-  const geoNames = ['WTI Crude','Brent Crude','Natural Gas','Wheat (CBOT)'];
-  return <Panel title="Commodities">
-    {['energy','precious','agri','industrial','nuclear'].map(cat=>{
-      const items = arr.filter(x=>x.cat===cat);
-      if(!items.length) return null;
-      return <React.Fragment key={cat}>
-        <div className="mn s8 muted overline" style={{margin:'10px 0 6px'}}>{catL[cat]}</div>
-        {items.map((x,i)=>{
-          const up = x.chg_pct>=0, c = up?'var(--mint)':'var(--rose)';
-          const geo = geoNames.indexOf(x.name)>-1;
-          return <div className="card-row" key={i} style={{borderLeftColor: geo?'var(--gold)':c}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-              <div><span style={{fontSize:12,fontWeight:600,color:'var(--ink)'}}>{x.name}</span>{geo && <span className="mn s8" style={{color:'var(--gold)',marginLeft:4}}>GEO</span>}</div>
-              <div><span className="mn" style={{color:'var(--gold)'}}>{x.price.toLocaleString('en-US',{maximumFractionDigits:2})}</span> <span className="mn s9 muted">{x.unit}</span> <span className="mn s10" style={{color:c}}>{up?'▲':'▼'}{Math.abs(x.chg_pct).toFixed(2)}%</span></div>
-            </div>
-          </div>;
-        })}
-      </React.Fragment>;
-    })}
-  </Panel>;
+function PanelCommodities() {
+  const arr = D.commodities || [];
+  if (!arr.length) return /*#__PURE__*/React.createElement(Panel, {
+    title: "Commodities"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mn s10 muted"
+  }, "Fetching live data..."));
+  const catL = {
+    energy: 'Energy',
+    precious: 'Precious Metals',
+    agri: 'Agriculture',
+    industrial: 'Industrial',
+    nuclear: 'Nuclear'
+  };
+  const geoNames = ['WTI Crude', 'Brent Crude', 'Natural Gas', 'Wheat (CBOT)'];
+  return /*#__PURE__*/React.createElement(Panel, {
+    title: "Commodities"
+  }, ['energy', 'precious', 'agri', 'industrial', 'nuclear'].map(cat => {
+    const items = arr.filter(x => x.cat === cat);
+    if (!items.length) return null;
+    return /*#__PURE__*/React.createElement(React.Fragment, {
+      key: cat
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "mn s8 muted overline",
+      style: {
+        margin: '10px 0 6px'
+      }
+    }, catL[cat]), items.map((x, i) => {
+      const up = x.chg_pct >= 0,
+        c = up ? 'var(--mint)' : 'var(--rose)';
+      const geo = geoNames.indexOf(x.name) > -1;
+      return /*#__PURE__*/React.createElement("div", {
+        className: "card-row",
+        key: i,
+        style: {
+          borderLeftColor: geo ? 'var(--gold)' : c
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }
+      }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 12,
+          fontWeight: 600,
+          color: 'var(--ink)'
+        }
+      }, x.name), geo && /*#__PURE__*/React.createElement("span", {
+        className: "mn s8",
+        style: {
+          color: 'var(--gold)',
+          marginLeft: 4
+        }
+      }, "GEO")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+        className: "mn",
+        style: {
+          color: 'var(--gold)'
+        }
+      }, x.price.toLocaleString('en-US', {
+        maximumFractionDigits: 2
+      })), " ", /*#__PURE__*/React.createElement("span", {
+        className: "mn s9 muted"
+      }, x.unit), " ", /*#__PURE__*/React.createElement("span", {
+        className: "mn s10",
+        style: {
+          color: c
+        }
+      }, up ? '▲' : '▼', Math.abs(x.chg_pct).toFixed(2), "%"))));
+    }));
+  }));
 }
-
-function PanelDefense(){
-  const arr = D.defense||[];
-  if(!arr.length) return <Panel title="Defense & Aerospace"><div className="mn s10 muted">Fetching live data...</div></Panel>;
-  return <Panel title="Defense & Aerospace" note="Conflict escalation drives these higher">
-    {arr.map((x,i)=>{
-      const up = x.chg_pct>=0, c = up?'var(--mint)':'var(--rose)';
-      const cs = x.currency==='USD'?'$':x.currency==='EUR'?'€':(x.currency==='GBX'||x.currency==='GBP')?'£':'';
-      const ps = x.currency==='GBX' ? (x.price/100).toFixed(2) : x.price.toFixed(2);
-      return <div className="card-row" key={i} style={{borderLeftColor:'var(--sky)'}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <div><span style={{fontSize:12,fontWeight:600,color:'var(--ink)'}}>{x.name}</span><div className="mn s9 muted">{x.country} · {x.sym}</div></div>
-          <div><span className="mn" style={{color:'var(--sky)'}}>{cs}{ps}</span> <span className="mn s10" style={{color:c}}>{up?'▲':'▼'}{Math.abs(x.chg_pct).toFixed(2)}%</span></div>
-        </div>
-      </div>;
-    })}
-  </Panel>;
+function PanelDefense() {
+  const arr = D.defense || [];
+  if (!arr.length) return /*#__PURE__*/React.createElement(Panel, {
+    title: "Defense & Aerospace"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mn s10 muted"
+  }, "Fetching live data..."));
+  return /*#__PURE__*/React.createElement(Panel, {
+    title: "Defense & Aerospace",
+    note: "Conflict escalation drives these higher"
+  }, arr.map((x, i) => {
+    const up = x.chg_pct >= 0,
+      c = up ? 'var(--mint)' : 'var(--rose)';
+    const cs = x.currency === 'USD' ? '$' : x.currency === 'EUR' ? '€' : x.currency === 'GBX' || x.currency === 'GBP' ? '£' : '';
+    const ps = x.currency === 'GBX' ? (x.price / 100).toFixed(2) : x.price.toFixed(2);
+    return /*#__PURE__*/React.createElement("div", {
+      className: "card-row",
+      key: i,
+      style: {
+        borderLeftColor: 'var(--sky)'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        fontWeight: 600,
+        color: 'var(--ink)'
+      }
+    }, x.name), /*#__PURE__*/React.createElement("div", {
+      className: "mn s9 muted"
+    }, x.country, " · ", x.sym)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      className: "mn",
+      style: {
+        color: 'var(--sky)'
+      }
+    }, cs, ps), " ", /*#__PURE__*/React.createElement("span", {
+      className: "mn s10",
+      style: {
+        color: c
+      }
+    }, up ? '▲' : '▼', Math.abs(x.chg_pct).toFixed(2), "%"))));
+  }));
 }
 
 // ── Row 2: Crypto / Sanctions / Currency Crisis ────────────────
-function PanelCrypto(){
-  const arr = (D.crypto_live && D.crypto_live.length) ? D.crypto_live : (D.crypto||[]);
-  return <Panel title="Cryptocurrency">
-    {arr.length ? arr.map((x,i)=>{
-      const chgV = x.chg_pct!=null ? x.chg_pct : (x.change||0), up = chgV>=0, c = up?'var(--mint)':'var(--rose)';
-      const mcap = x.mcap>1e12 ? '$'+(x.mcap/1e12).toFixed(2)+'T' : x.mcap>1e9 ? '$'+(x.mcap/1e9).toFixed(1)+'B' : '';
-      const price = x.price!=null ? x.price : (x.val||0);
-      return <div className="card-row" key={i} style={{borderLeftColor:'var(--gold)'}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <div><span style={{fontSize:12,fontWeight:600,color:'var(--ink)'}}>{x.name}</span> <span className="mn s9 muted">{x.ticker}</span>{mcap && <div className="mn s9 muted">MCap {mcap}</div>}</div>
-          <div><span className="mn" style={{color:'var(--gold)'}}>${price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span> <span className="mn s10" style={{color:c}}>{up?'▲':'▼'}{Math.abs(chgV).toFixed(2)}%</span></div>
-        </div>
-      </div>;
-    }) : <div className="mn s10 muted">Loading from CoinGecko...</div>}
-  </Panel>;
+function PanelCrypto() {
+  const arr = D.crypto_live && D.crypto_live.length ? D.crypto_live : D.crypto || [];
+  return /*#__PURE__*/React.createElement(Panel, {
+    title: "Cryptocurrency"
+  }, arr.length ? arr.map((x, i) => {
+    const chgV = x.chg_pct != null ? x.chg_pct : x.change || 0,
+      up = chgV >= 0,
+      c = up ? 'var(--mint)' : 'var(--rose)';
+    const mcap = x.mcap > 1e12 ? '$' + (x.mcap / 1e12).toFixed(2) + 'T' : x.mcap > 1e9 ? '$' + (x.mcap / 1e9).toFixed(1) + 'B' : '';
+    const price = x.price != null ? x.price : x.val || 0;
+    return /*#__PURE__*/React.createElement("div", {
+      className: "card-row",
+      key: i,
+      style: {
+        borderLeftColor: 'var(--gold)'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        fontWeight: 600,
+        color: 'var(--ink)'
+      }
+    }, x.name), " ", /*#__PURE__*/React.createElement("span", {
+      className: "mn s9 muted"
+    }, x.ticker), mcap && /*#__PURE__*/React.createElement("div", {
+      className: "mn s9 muted"
+    }, "MCap ", mcap)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      className: "mn",
+      style: {
+        color: 'var(--gold)'
+      }
+    }, "$", price.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })), " ", /*#__PURE__*/React.createElement("span", {
+      className: "mn s10",
+      style: {
+        color: c
+      }
+    }, up ? '▲' : '▼', Math.abs(chgV).toFixed(2), "%"))));
+  }) : /*#__PURE__*/React.createElement("div", {
+    className: "mn s10 muted"
+  }, "Loading from CoinGecko..."));
 }
-
-function PanelSanctions(){
-  const arr = D.sanctions||[];
-  return <Panel title="Active Sanctions">
-    {arr.map((s,i)=>{
-      const col = s.impact==='Critical'?'var(--rose)':s.impact==='High'?'var(--coral)':'var(--gold)';
-      return <div className="card-row" key={i} style={{borderLeftColor:col}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:5}}>
-          <div><span style={{fontSize:13,fontWeight:700,color:'var(--ink)'}}>{s.entity}</span> <span className="mn s9 muted">{s.type} · Since {s.year}</span></div>
-          <span className="mn s9" style={{padding:'2px 7px',borderRadius:4,background:'rgba(0,0,0,.3)',color:col}}>{s.impact}</span>
-        </div>
-        <div className="mn s9 muted" style={{marginBottom:4}}>{s.scope}</div>
-        <div style={{fontSize:11,color:'var(--ink2)',lineHeight:1.6}}>{s.detail}</div>
-      </div>;
-    })}
-  </Panel>;
+function PanelSanctions() {
+  const arr = D.sanctions || [];
+  return /*#__PURE__*/React.createElement(Panel, {
+    title: "Active Sanctions"
+  }, arr.map((s, i) => {
+    const col = s.impact === 'Critical' ? 'var(--rose)' : s.impact === 'High' ? 'var(--coral)' : 'var(--gold)';
+    return /*#__PURE__*/React.createElement("div", {
+      className: "card-row",
+      key: i,
+      style: {
+        borderLeftColor: col
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 5
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 13,
+        fontWeight: 700,
+        color: 'var(--ink)'
+      }
+    }, s.entity), " ", /*#__PURE__*/React.createElement("span", {
+      className: "mn s9 muted"
+    }, s.type, " · Since ", s.year)), /*#__PURE__*/React.createElement("span", {
+      className: "mn s9",
+      style: {
+        padding: '2px 7px',
+        borderRadius: 4,
+        background: 'rgba(0,0,0,.3)',
+        color: col
+      }
+    }, s.impact)), /*#__PURE__*/React.createElement("div", {
+      className: "mn s9 muted",
+      style: {
+        marginBottom: 4
+      }
+    }, s.scope), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: 'var(--ink2)',
+        lineHeight: 1.6
+      }
+    }, s.detail));
+  }));
 }
-
-function PanelCurrencyCrisis(){
-  const sorted = [...(D.currency_crisis||[])].sort((a,b)=>b.yoy_chg-a.yoy_chg);
-  return <Panel title="Currency Devaluation Monitor">
-    {sorted.map((c,i)=>{
-      const pct = Math.min(c.yoy_chg/250*100,100), col = c.col||'var(--rose)';
-      return <div className="card-row" key={i} style={{borderLeftColor:col}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
-          <div><span style={{fontSize:12,fontWeight:700,color:'var(--ink)'}}>{c.country}</span> <span className="mn s9 muted">{c.currency}</span></div>
-          <div><span className="mn s11">1 USD = {c.usd_rate.toLocaleString()}</span> <span className="mn s10" style={{color:col,marginLeft:8}}>▲{c.yoy_chg}% YoY</span></div>
-        </div>
-        <div style={{height:4,background:'rgba(148,163,184,.08)',borderRadius:2,overflow:'hidden',marginBottom:5}}>
-          <div style={{height:'100%',width:pct+'%',background:col,borderRadius:2}}></div>
-        </div>
-        <div className="s10 muted">{c.note}</div>
-      </div>;
-    })}
-  </Panel>;
+function PanelCurrencyCrisis() {
+  const sorted = [...(D.currency_crisis || [])].sort((a, b) => b.yoy_chg - a.yoy_chg);
+  return /*#__PURE__*/React.createElement(Panel, {
+    title: "Currency Devaluation Monitor"
+  }, sorted.map((c, i) => {
+    const pct = Math.min(c.yoy_chg / 250 * 100, 100),
+      col = c.col || 'var(--rose)';
+    return /*#__PURE__*/React.createElement("div", {
+      className: "card-row",
+      key: i,
+      style: {
+        borderLeftColor: col
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 4
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        fontWeight: 700,
+        color: 'var(--ink)'
+      }
+    }, c.country), " ", /*#__PURE__*/React.createElement("span", {
+      className: "mn s9 muted"
+    }, c.currency)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      className: "mn s11"
+    }, "1 USD = ", c.usd_rate.toLocaleString()), " ", /*#__PURE__*/React.createElement("span", {
+      className: "mn s10",
+      style: {
+        color: col,
+        marginLeft: 8
+      }
+    }, "▲", c.yoy_chg, "% YoY"))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: 4,
+        background: 'rgba(148,163,184,.08)',
+        borderRadius: 2,
+        overflow: 'hidden',
+        marginBottom: 5
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: '100%',
+        width: pct + '%',
+        background: col,
+        borderRadius: 2
+      }
+    })), /*#__PURE__*/React.createElement("div", {
+      className: "s10 muted"
+    }, c.note));
+  }));
 }
-
-function PanelGeoRisk(){
-  const arr = D.geo_risk||[];
-  return <Panel title="Geopolitical Risk Premiums">
-    <div className="s10 muted" style={{marginBottom:10}}>Market price impact of active conflicts and tensions</div>
-    {arr.map((r,i)=>{
-      const col = r.status==='Active'?'var(--rose)':r.status==='Elevated'?'var(--coral)':'var(--gold)';
-      return <div className="card-row" key={i} style={{borderLeftColor:col}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:12}}>
-          <div><div style={{fontSize:12,fontWeight:700,color:'var(--ink)'}}>{r.name}</div><div className="mn s9 muted" style={{marginTop:2}}>{r.driver} — <span style={{color:'var(--sky)'}}>{r.asset}</span></div></div>
-          <div style={{textAlign:'right',flexShrink:0}}><div className="mn s11" style={{fontWeight:700,color:col}}>{r.impact}</div><span className="mn s9" style={{padding:'1px 6px',borderRadius:3,background:'rgba(0,0,0,.3)',color:col}}>{r.status}</span></div>
-        </div>
-      </div>;
-    })}
-  </Panel>;
+function PanelGeoRisk() {
+  const arr = D.geo_risk || [];
+  return /*#__PURE__*/React.createElement(Panel, {
+    title: "Geopolitical Risk Premiums"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "s10 muted",
+    style: {
+      marginBottom: 10
+    }
+  }, "Market price impact of active conflicts and tensions"), arr.map((r, i) => {
+    const col = r.status === 'Active' ? 'var(--rose)' : r.status === 'Elevated' ? 'var(--coral)' : 'var(--gold)';
+    return /*#__PURE__*/React.createElement("div", {
+      className: "card-row",
+      key: i,
+      style: {
+        borderLeftColor: col
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        gap: 12
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        fontWeight: 700,
+        color: 'var(--ink)'
+      }
+    }, r.name), /*#__PURE__*/React.createElement("div", {
+      className: "mn s9 muted",
+      style: {
+        marginTop: 2
+      }
+    }, r.driver, " — ", /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: 'var(--sky)'
+      }
+    }, r.asset))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: 'right',
+        flexShrink: 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "mn s11",
+      style: {
+        fontWeight: 700,
+        color: col
+      }
+    }, r.impact), /*#__PURE__*/React.createElement("span", {
+      className: "mn s9",
+      style: {
+        padding: '1px 6px',
+        borderRadius: 3,
+        background: 'rgba(0,0,0,.3)',
+        color: col
+      }
+    }, r.status))));
+  }));
 }
 
 // ── Economic Indicators (pill tabs: Macro / Energy / Bonds) ────
-function EconPanel(){
-  const ind = D.indicators.map((e,i)=>{
+function EconPanel() {
+  const ind = D.indicators.map((e, i) => {
     const cc = e.up ? 'var(--mint)' : 'var(--rose)';
-    return <div className="card-row" key={i} style={{borderLeftColor:cc}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-        <div><div style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{e.name}</div><div className="mono" style={{fontSize:9,color:'var(--ink3)',marginTop:2}}>{e.ticker} · {e.date}</div></div>
-        <div style={{textAlign:'right'}}><div className="disp" style={{fontSize:24,color:'var(--sky)'}}>{e.val}</div><div><Chg v={parseFloat(e.change)||0} /></div></div>
-      </div>
-    </div>;
+    return /*#__PURE__*/React.createElement("div", {
+      className: "card-row",
+      key: i,
+      style: {
+        borderLeftColor: cc
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        fontWeight: 600,
+        color: 'var(--ink)'
+      }
+    }, e.name), /*#__PURE__*/React.createElement("div", {
+      className: "mono",
+      style: {
+        fontSize: 9,
+        color: 'var(--ink3)',
+        marginTop: 2
+      }
+    }, e.ticker, " · ", e.date)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: 'right'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "disp",
+      style: {
+        fontSize: 24,
+        color: 'var(--sky)'
+      }
+    }, e.val), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Chg, {
+      v: parseFloat(e.change) || 0
+    })))));
   });
-  const oil = D.oil.map((o,i)=>(
-    <div className="card-row" key={i} style={{borderLeftColor:'var(--coral)'}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-        <div style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{o.name}</div>
-        <div style={{textAlign:'right'}}>
-          <span className="disp" style={{fontSize:24,color:'var(--gold)'}}>{o.val.toFixed(2)}</span>
-          <span className="mono" style={{fontSize:10,color:'var(--ink3)',marginLeft:5}}>{o.unit}</span>
-          <div><Chg v={o.change} /></div>
-        </div>
-      </div>
-    </div>
-  ));
-  const bonds = D.bonds.map((b,i)=>(
-    <div className="card-row" key={i} style={{borderLeftColor:b.col}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-        <div style={{display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{b.name}</span><Badge txt={b.rating} cls="neu" /></div>
-        <div style={{display:'flex',alignItems:'center',gap:12}}><span className="disp" style={{fontSize:22,color:b.col}}>{b.yield.toFixed(2)}%</span><Chg v={b.change} /></div>
-      </div>
-    </div>
-  ));
-  return <PillCard title="Economic Indicators" tabs={[
-    {label:'Macro', content: ind}, {label:'Energy', content: oil}, {label:'Bonds', content: bonds},
-  ]} />;
+  const oil = D.oil.map((o, i) => /*#__PURE__*/React.createElement("div", {
+    className: "card-row",
+    key: i,
+    style: {
+      borderLeftColor: 'var(--coral)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 600,
+      color: 'var(--ink)'
+    }
+  }, o.name), /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: 'right'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "disp",
+    style: {
+      fontSize: 24,
+      color: 'var(--gold)'
+    }
+  }, o.val.toFixed(2)), /*#__PURE__*/React.createElement("span", {
+    className: "mono",
+    style: {
+      fontSize: 10,
+      color: 'var(--ink3)',
+      marginLeft: 5
+    }
+  }, o.unit), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Chg, {
+    v: o.change
+  }))))));
+  const bonds = D.bonds.map((b, i) => /*#__PURE__*/React.createElement("div", {
+    className: "card-row",
+    key: i,
+    style: {
+      borderLeftColor: b.col
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      fontWeight: 600,
+      color: 'var(--ink)'
+    }
+  }, b.name), /*#__PURE__*/React.createElement(Badge, {
+    txt: b.rating,
+    cls: "neu"
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "disp",
+    style: {
+      fontSize: 22,
+      color: b.col
+    }
+  }, b.yield.toFixed(2), "%"), /*#__PURE__*/React.createElement(Chg, {
+    v: b.change
+  })))));
+  return /*#__PURE__*/React.createElement(PillCard, {
+    title: "Economic Indicators",
+    tabs: [{
+      label: 'Macro',
+      content: ind
+    }, {
+      label: 'Energy',
+      content: oil
+    }, {
+      label: 'Bonds',
+      content: bonds
+    }]
+  });
 }
 
 // ── Trade Policy (pill tabs) ────────────────────────────────────
-function TradePanel(){
-  const restr = D.restrictions.map((t,i)=>(
-    <div className="card-row" key={i} style={{borderLeftColor:'rgba(148,163,184,.2)'}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10,marginBottom:6}}>
-        <div><div style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{t.country}</div><div style={{fontSize:11,color:'var(--ink2)',marginTop:3,lineHeight:1.45}}>{t.coverage}</div></div>
-        <Badge txt={t.impact} cls={sevCls(t.impact)} />
-      </div>
-      <div className="mono" style={{fontSize:9,color:'var(--ink3)'}}>Avg tariff {t.avg_rate}% · {t.year} · WTO</div>
-    </div>
-  ));
-  const tariffs = D.tariffs.map((t,i)=>(
-    <div className="card-row" key={i} style={{borderLeftColor:'rgba(248,113,113,.3)'}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:4}}>
-        <span style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{t.route}</span><Badge txt={t.impact} cls={sevCls(t.impact)} />
-      </div>
-      <div style={{display:'flex',alignItems:'baseline',gap:10,marginBottom:3}}>
-        <span className="disp" style={{fontSize:28,color:'var(--rose)'}}>{t.rate}%</span>
-        <span className="mono" style={{fontSize:11,color:'var(--coral)'}}>{t.change}</span>
-      </div>
-      <div className="mono" style={{fontSize:9,color:'var(--ink3)'}}>{t.sector}</div>
-    </div>
-  ));
-  return <PillCard title="Trade Policy" tabs={[{label:'Restrictions',content:restr},{label:'Tariffs',content:tariffs}]} />;
+function TradePanel() {
+  const restr = D.restrictions.map((t, i) => /*#__PURE__*/React.createElement("div", {
+    className: "card-row",
+    key: i,
+    style: {
+      borderLeftColor: 'rgba(148,163,184,.2)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      gap: 10,
+      marginBottom: 6
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 600,
+      color: 'var(--ink)'
+    }
+  }, t.country), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: 'var(--ink2)',
+      marginTop: 3,
+      lineHeight: 1.45
+    }
+  }, t.coverage)), /*#__PURE__*/React.createElement(Badge, {
+    txt: t.impact,
+    cls: sevCls(t.impact)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "mono",
+    style: {
+      fontSize: 9,
+      color: 'var(--ink3)'
+    }
+  }, "Avg tariff ", t.avg_rate, "% · ", t.year, " · WTO")));
+  const tariffs = D.tariffs.map((t, i) => /*#__PURE__*/React.createElement("div", {
+    className: "card-row",
+    key: i,
+    style: {
+      borderLeftColor: 'rgba(248,113,113,.3)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: 4
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      fontWeight: 600,
+      color: 'var(--ink)'
+    }
+  }, t.route), /*#__PURE__*/React.createElement(Badge, {
+    txt: t.impact,
+    cls: sevCls(t.impact)
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'baseline',
+      gap: 10,
+      marginBottom: 3
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "disp",
+    style: {
+      fontSize: 28,
+      color: 'var(--rose)'
+    }
+  }, t.rate, "%"), /*#__PURE__*/React.createElement("span", {
+    className: "mono",
+    style: {
+      fontSize: 11,
+      color: 'var(--coral)'
+    }
+  }, t.change)), /*#__PURE__*/React.createElement("div", {
+    className: "mono",
+    style: {
+      fontSize: 9,
+      color: 'var(--ink3)'
+    }
+  }, t.sector)));
+  return /*#__PURE__*/React.createElement(PillCard, {
+    title: "Trade Policy",
+    tabs: [{
+      label: 'Restrictions',
+      content: restr
+    }, {
+      label: 'Tariffs',
+      content: tariffs
+    }]
+  });
 }
 
 // ── Supply Chain (pill tabs) ─────────────────────────────────────
-function SupplyPanel(){
-  const chk = D.chokepoints.map((cp,i)=>{
-    const sc = cp.status==='red'?'var(--rose)':cp.status==='amber'?'var(--gold)':'var(--mint)';
-    const wc = cp.wow_change<0?'var(--rose)':'var(--mint)';
-    const ctx = cp.context||'';
-    return <div className="card-row" key={i} style={{borderLeftColor:sc,marginBottom:12}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}}>
-        <span style={{fontSize:13,fontWeight:700,color:'var(--ink)'}}>{cp.name}</span>
-        <span className="disp" style={{fontSize:20,color:sc}}>{cp.risk}</span>
-      </div>
-      <Bar pct={cp.risk} col={sc} thick />
-      <div style={{display:'flex',gap:14,marginTop:5,flexWrap:'wrap'}}>
-        <span className="mono" style={{fontSize:9,color:'var(--ink3)'}}>{cp.warnings} warning(s)</span>
-        <span className="mono" style={{fontSize:9,color:'var(--ink3)'}}>{cp.ais_disruptions} AIS</span>
-        <span className="mono" style={{fontSize:9,color:wc}}>WoW {cp.wow_change>0?'+':''}{cp.wow_change}%</span>
-      </div>
-      <div style={{fontSize:11,color:'var(--ink2)',lineHeight:1.55,marginTop:6}}>{ctx.substring(0,150)}{ctx.length>150?'…':''}</div>
-    </div>;
+function SupplyPanel() {
+  const chk = D.chokepoints.map((cp, i) => {
+    const sc = cp.status === 'red' ? 'var(--rose)' : cp.status === 'amber' ? 'var(--gold)' : 'var(--mint)';
+    const wc = cp.wow_change < 0 ? 'var(--rose)' : 'var(--mint)';
+    const ctx = cp.context || '';
+    return /*#__PURE__*/React.createElement("div", {
+      className: "card-row",
+      key: i,
+      style: {
+        borderLeftColor: sc,
+        marginBottom: 12
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 5
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 13,
+        fontWeight: 700,
+        color: 'var(--ink)'
+      }
+    }, cp.name), /*#__PURE__*/React.createElement("span", {
+      className: "disp",
+      style: {
+        fontSize: 20,
+        color: sc
+      }
+    }, cp.risk)), /*#__PURE__*/React.createElement(Bar, {
+      pct: cp.risk,
+      col: sc,
+      thick: true
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 14,
+        marginTop: 5,
+        flexWrap: 'wrap'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "mono",
+      style: {
+        fontSize: 9,
+        color: 'var(--ink3)'
+      }
+    }, cp.warnings, " warning(s)"), /*#__PURE__*/React.createElement("span", {
+      className: "mono",
+      style: {
+        fontSize: 9,
+        color: 'var(--ink3)'
+      }
+    }, cp.ais_disruptions, " AIS"), /*#__PURE__*/React.createElement("span", {
+      className: "mono",
+      style: {
+        fontSize: 9,
+        color: wc
+      }
+    }, "WoW ", cp.wow_change > 0 ? '+' : '', cp.wow_change, "%")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: 'var(--ink2)',
+        lineHeight: 1.55,
+        marginTop: 6
+      }
+    }, ctx.substring(0, 150), ctx.length > 150 ? '…' : ''));
   });
-  const ship = D.shipping.map((r,i)=>{
-    const sc = r.status==='Elevated'?'var(--rose)':r.status==='Rising'?'var(--gold)':r.status==='Reduced'?'var(--coral)':'var(--mint)';
-    const up = r.change>=0;
-    const rateStr = r.rate>999 ? r.rate.toLocaleString() : (typeof r.rate==='number' ? r.rate.toFixed(2) : r.rate);
-    return <div className="card-row" key={i} style={{borderLeftColor:sc}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10}}>
-        <div><div style={{fontSize:12,fontWeight:600,color:'var(--ink)'}}>{r.route}</div><div className="mono" style={{fontSize:9,color:'var(--ink3)',marginTop:2}}>{r.type} · {r.note}</div></div>
-        <div style={{textAlign:'right',flexShrink:0}}>
-          <span className="disp" style={{fontSize:20,color:sc}}>{rateStr}</span>
-          <span className="mono" style={{fontSize:9,color:'var(--ink3)',marginLeft:3}}>{r.unit}</span>
-          <div className="mono" style={{fontSize:10,color: up?'var(--rose)':'var(--mint)'}}>{up?'▲':'▼'}{Math.abs(r.change).toFixed(1)}%</div>
-        </div>
-      </div>
-    </div>;
+  const ship = D.shipping.map((r, i) => {
+    const sc = r.status === 'Elevated' ? 'var(--rose)' : r.status === 'Rising' ? 'var(--gold)' : r.status === 'Reduced' ? 'var(--coral)' : 'var(--mint)';
+    const up = r.change >= 0;
+    const rateStr = r.rate > 999 ? r.rate.toLocaleString() : typeof r.rate === 'number' ? r.rate.toFixed(2) : r.rate;
+    return /*#__PURE__*/React.createElement("div", {
+      className: "card-row",
+      key: i,
+      style: {
+        borderLeftColor: sc
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        gap: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        fontWeight: 600,
+        color: 'var(--ink)'
+      }
+    }, r.route), /*#__PURE__*/React.createElement("div", {
+      className: "mono",
+      style: {
+        fontSize: 9,
+        color: 'var(--ink3)',
+        marginTop: 2
+      }
+    }, r.type, " · ", r.note)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: 'right',
+        flexShrink: 0
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "disp",
+      style: {
+        fontSize: 20,
+        color: sc
+      }
+    }, rateStr), /*#__PURE__*/React.createElement("span", {
+      className: "mono",
+      style: {
+        fontSize: 9,
+        color: 'var(--ink3)',
+        marginLeft: 3
+      }
+    }, r.unit), /*#__PURE__*/React.createElement("div", {
+      className: "mono",
+      style: {
+        fontSize: 10,
+        color: up ? 'var(--rose)' : 'var(--mint)'
+      }
+    }, up ? '▲' : '▼', Math.abs(r.change).toFixed(1), "%"))));
   });
-  const min = D.minerals.map((m,i)=>{
-    const dn = m.change<=0, mc = dn?'var(--mint)':'var(--rose)';
-    const sr = m.supply_risk, sc = sr>=80?'var(--rose)':sr>=60?'var(--coral)':sr>=40?'var(--gold)':'var(--mint)';
-    return <div className="card-row" key={i} style={{borderLeftColor:m.col}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
-        <span style={{fontSize:13,fontWeight:700,color:'var(--ink)'}}>{m.mineral}</span>
-        <div style={{display:'flex',alignItems:'baseline',gap:8}}>
-          <span className="disp" style={{fontSize:20,color:m.col}}>{m.price}</span>
-          <span className="mono" style={{fontSize:9,color:'var(--ink3)'}}>{m.unit}</span>
-          <span className="mono" style={{fontSize:10,color:mc}}>{dn?'▼':'▲'}{Math.abs(m.change).toFixed(1)}%</span>
-        </div>
-      </div>
-      <Bar pct={sr} col={sc} />
-      <div style={{display:'flex',justifyContent:'space-between',marginTop:3}}>
-        <span className="mono" style={{fontSize:9,color:'var(--ink3)'}}>Supply risk: <span style={{color:sc}}>{sr}</span></span>
-        <span className="mono" style={{fontSize:9,color:'var(--ink3)'}}>{m.top_producer}</span>
-      </div>
-    </div>;
+  const min = D.minerals.map((m, i) => {
+    const dn = m.change <= 0,
+      mc = dn ? 'var(--mint)' : 'var(--rose)';
+    const sr = m.supply_risk,
+      sc = sr >= 80 ? 'var(--rose)' : sr >= 60 ? 'var(--coral)' : sr >= 40 ? 'var(--gold)' : 'var(--mint)';
+    return /*#__PURE__*/React.createElement("div", {
+      className: "card-row",
+      key: i,
+      style: {
+        borderLeftColor: m.col
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 4
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 13,
+        fontWeight: 700,
+        color: 'var(--ink)'
+      }
+    }, m.mineral), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        alignItems: 'baseline',
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "disp",
+      style: {
+        fontSize: 20,
+        color: m.col
+      }
+    }, m.price), /*#__PURE__*/React.createElement("span", {
+      className: "mono",
+      style: {
+        fontSize: 9,
+        color: 'var(--ink3)'
+      }
+    }, m.unit), /*#__PURE__*/React.createElement("span", {
+      className: "mono",
+      style: {
+        fontSize: 10,
+        color: mc
+      }
+    }, dn ? '▼' : '▲', Math.abs(m.change).toFixed(1), "%"))), /*#__PURE__*/React.createElement(Bar, {
+      pct: sr,
+      col: sc
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        marginTop: 3
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "mono",
+      style: {
+        fontSize: 9,
+        color: 'var(--ink3)'
+      }
+    }, "Supply risk: ", /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: sc
+      }
+    }, sr)), /*#__PURE__*/React.createElement("span", {
+      className: "mono",
+      style: {
+        fontSize: 9,
+        color: 'var(--ink3)'
+      }
+    }, m.top_producer)));
   });
-  return <PillCard title="Supply Chain" tabs={[{label:'Chokepoints',content:chk},{label:'Shipping',content:ship},{label:'Minerals',content:min}]} />;
+  return /*#__PURE__*/React.createElement(PillCard, {
+    title: "Supply Chain",
+    tabs: [{
+      label: 'Chokepoints',
+      content: chk
+    }, {
+      label: 'Shipping',
+      content: ship
+    }, {
+      label: 'Minerals',
+      content: min
+    }]
+  });
 }
 
 // ── Financial (crypto + sector heatmap + posture) ───────────────
-function FinPanel(){
-  const nfUp = D.btc_etf.net_flow >= 0, nfCol = nfUp ? 'var(--mint)' : 'var(--rose)';
+function FinPanel() {
+  const nfUp = D.btc_etf.net_flow >= 0,
+    nfCol = nfUp ? 'var(--mint)' : 'var(--rose)';
   const mCol = D.market.label === 'CASH' ? 'var(--gold)' : 'var(--sky)';
-  const cryptoSrc = (D.crypto_live && D.crypto_live.length) ? D.crypto_live : (D.crypto || []);
+  const cryptoSrc = D.crypto_live && D.crypto_live.length ? D.crypto_live : D.crypto || [];
   const isLive = D.crypto_live && D.crypto_live.length;
-
-  return <div className="card">
-    <div className="section-title">Financial {D.ts && <span className="mono" style={{fontSize:8,color:'var(--ink3)',marginLeft:8}}>{D.ts}</span>}</div>
-    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
-      <div>
-        <div className="overline" style={{marginBottom:10}}>Crypto
-          {isLive
-            ? <span className="live-chip" style={{marginLeft:6}}><span className="live-dot"></span>CoinGecko</span>
-            : <span className="mono" style={{fontSize:8,color:'var(--ink3)',marginLeft:6}}>static</span>}
-        </div>
-        {cryptoSrc.length ? cryptoSrc.map((c,i)=>{
-          const chgV = c.chg_pct !== undefined ? c.chg_pct : (c.change || 0);
-          const price = c.price !== undefined ? c.price : (c.val || 0);
-          const up = chgV >= 0, cc = up ? 'var(--mint)' : 'var(--rose)';
-          const mcap = c.mcap > 1e12 ? `$${(c.mcap/1e12).toFixed(2)}T` : c.mcap > 1e9 ? `$${(c.mcap/1e9).toFixed(1)}B` : '';
-          return <div className="card-row" key={i} style={{borderLeftColor:cc,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <div><div style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{c.name}</div><div className="mono" style={{fontSize:9,color:'var(--ink3)'}}>{c.ticker}{mcap?' · '+mcap:''}</div></div>
-            <div style={{textAlign:'right'}}>
-              <div className="mono" style={{fontSize:13,color:'var(--ink)'}}>${price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-              <div className="mono" style={{fontSize:10,color:cc}}>{up?'+':''}{Math.abs(chgV).toFixed(2)}%</div>
-            </div>
-          </div>;
-        }) : <div className="mono" style={{fontSize:10,color:'var(--ink3)'}}>Loading…</div>}
-      </div>
-      <div>
-        <div className="overline" style={{marginBottom:10}}>Sector Heatmap</div>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:16}}>
-          {D.sectors.map((s,i)=>{
-            const up = s.v >= 0, intensity = Math.min(Math.abs(s.v)/8, 1);
-            const bg = up ? `rgba(52,211,153,${.08+intensity*.18})` : `rgba(248,113,113,${.08+intensity*.18})`;
-            const col = up ? 'var(--mint)' : 'var(--rose)';
-            return <div className="sector-cell" key={i} style={{background:bg}}>
-              <div className="mono" style={{fontSize:8,color:'var(--ink3)',marginBottom:3}}>{s.s}</div>
-              <div className="mono" style={{fontSize:12,fontWeight:700,color:col}}>{up?'+':''}{s.v}%</div>
-            </div>;
-          })}
-        </div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-          <div style={{background:'var(--raised)',border:'1px solid var(--edge2)',borderRadius:10,padding:14,textAlign:'center'}}>
-            <div className="overline" style={{marginBottom:8}}>Market Posture</div>
-            <div className="disp" style={{fontSize:28,color:mCol,marginBottom:5}}>{D.market.label}</div>
-            <div className="mono" style={{fontSize:9,color:'var(--ink3)'}}>{D.market.posture}</div>
-            <div className="mono" style={{fontSize:9,color:'var(--gold)',marginTop:3}}>{D.market.flow}</div>
-          </div>
-          <div style={{background:'var(--raised)',border:'1px solid var(--edge2)',borderRadius:10,padding:14,textAlign:'center'}}>
-            <div className="overline" style={{marginBottom:8}}>BTC ETF Flow</div>
-            <div className="disp" style={{fontSize:28,color:nfCol,marginBottom:5}}>${Math.abs(D.btc_etf.net_flow)}M</div>
-            <Badge txt={nfUp?'INFLOW':'OUTFLOW'} cls={nfUp?'low':'crit'} />
-            <div className="mono" style={{fontSize:9,color:'var(--ink3)',marginTop:6}}>Est. ${D.btc_etf.est_flow}M</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>;
+  return /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "section-title"
+  }, "Financial ", D.ts && /*#__PURE__*/React.createElement("span", {
+    className: "mono",
+    style: {
+      fontSize: 8,
+      color: 'var(--ink3)',
+      marginLeft: 8
+    }
+  }, D.ts)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr',
+      gap: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "overline",
+    style: {
+      marginBottom: 10
+    }
+  }, "Crypto", isLive ? /*#__PURE__*/React.createElement("span", {
+    className: "live-chip",
+    style: {
+      marginLeft: 6
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "live-dot"
+  }), "CoinGecko") : /*#__PURE__*/React.createElement("span", {
+    className: "mono",
+    style: {
+      fontSize: 8,
+      color: 'var(--ink3)',
+      marginLeft: 6
+    }
+  }, "static")), cryptoSrc.length ? cryptoSrc.map((c, i) => {
+    const chgV = c.chg_pct !== undefined ? c.chg_pct : c.change || 0;
+    const price = c.price !== undefined ? c.price : c.val || 0;
+    const up = chgV >= 0,
+      cc = up ? 'var(--mint)' : 'var(--rose)';
+    const mcap = c.mcap > 1e12 ? `$${(c.mcap / 1e12).toFixed(2)}T` : c.mcap > 1e9 ? `$${(c.mcap / 1e9).toFixed(1)}B` : '';
+    return /*#__PURE__*/React.createElement("div", {
+      className: "card-row",
+      key: i,
+      style: {
+        borderLeftColor: cc,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        fontWeight: 600,
+        color: 'var(--ink)'
+      }
+    }, c.name), /*#__PURE__*/React.createElement("div", {
+      className: "mono",
+      style: {
+        fontSize: 9,
+        color: 'var(--ink3)'
+      }
+    }, c.ticker, mcap ? ' · ' + mcap : '')), /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: 'right'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "mono",
+      style: {
+        fontSize: 13,
+        color: 'var(--ink)'
+      }
+    }, "$", price.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })), /*#__PURE__*/React.createElement("div", {
+      className: "mono",
+      style: {
+        fontSize: 10,
+        color: cc
+      }
+    }, up ? '+' : '', Math.abs(chgV).toFixed(2), "%")));
+  }) : /*#__PURE__*/React.createElement("div", {
+    className: "mono",
+    style: {
+      fontSize: 10,
+      color: 'var(--ink3)'
+    }
+  }, "Loading…")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "overline",
+    style: {
+      marginBottom: 10
+    }
+  }, "Sector Heatmap"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(4,1fr)',
+      gap: 6,
+      marginBottom: 16
+    }
+  }, D.sectors.map((s, i) => {
+    const up = s.v >= 0,
+      intensity = Math.min(Math.abs(s.v) / 8, 1);
+    const bg = up ? `rgba(52,211,153,${.08 + intensity * .18})` : `rgba(248,113,113,${.08 + intensity * .18})`;
+    const col = up ? 'var(--mint)' : 'var(--rose)';
+    return /*#__PURE__*/React.createElement("div", {
+      className: "sector-cell",
+      key: i,
+      style: {
+        background: bg
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "mono",
+      style: {
+        fontSize: 8,
+        color: 'var(--ink3)',
+        marginBottom: 3
+      }
+    }, s.s), /*#__PURE__*/React.createElement("div", {
+      className: "mono",
+      style: {
+        fontSize: 12,
+        fontWeight: 700,
+        color: col
+      }
+    }, up ? '+' : '', s.v, "%"));
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr',
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: 'var(--raised)',
+      border: '1px solid var(--edge2)',
+      borderRadius: 10,
+      padding: 14,
+      textAlign: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "overline",
+    style: {
+      marginBottom: 8
+    }
+  }, "Market Posture"), /*#__PURE__*/React.createElement("div", {
+    className: "disp",
+    style: {
+      fontSize: 28,
+      color: mCol,
+      marginBottom: 5
+    }
+  }, D.market.label), /*#__PURE__*/React.createElement("div", {
+    className: "mono",
+    style: {
+      fontSize: 9,
+      color: 'var(--ink3)'
+    }
+  }, D.market.posture), /*#__PURE__*/React.createElement("div", {
+    className: "mono",
+    style: {
+      fontSize: 9,
+      color: 'var(--gold)',
+      marginTop: 3
+    }
+  }, D.market.flow)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: 'var(--raised)',
+      border: '1px solid var(--edge2)',
+      borderRadius: 10,
+      padding: 14,
+      textAlign: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "overline",
+    style: {
+      marginBottom: 8
+    }
+  }, "BTC ETF Flow"), /*#__PURE__*/React.createElement("div", {
+    className: "disp",
+    style: {
+      fontSize: 28,
+      color: nfCol,
+      marginBottom: 5
+    }
+  }, "$", Math.abs(D.btc_etf.net_flow), "M"), /*#__PURE__*/React.createElement(Badge, {
+    txt: nfUp ? 'INFLOW' : 'OUTFLOW',
+    cls: nfUp ? 'low' : 'crit'
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "mono",
+    style: {
+      fontSize: 9,
+      color: 'var(--ink3)',
+      marginTop: 6
+    }
+  }, "Est. $", D.btc_etf.est_flow, "M"))))));
 }
 
 // ── Row 2: Layoffs (with sector filter state) + Fires table ────
-function Row2(){
+function Row2() {
   const [selSec, setSelSec] = useState('All');
-  const allSectors = [...new Set((D.layoffs||[]).map(l=>l.sector||'Other'))].sort();
-  const filtered = (D.layoffs||[]).filter(l=> selSec==='All' || (l.sector||'Other')===selSec);
-
-  return <div className="duo-grid">
-    <div className="card" style={{gridColumn:'1/-1'}}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8,marginBottom:10}}>
-        <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <div className="section-title" style={{margin:0}}>Corporate Layoffs</div>
-          <span className="live-chip"><span className="live-dot"></span>Live · Google News + GDELT</span>
-        </div>
-        <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:9,color:'var(--ink3)'}}>{filtered.length} reports · refreshes every 5 min</div>
-      </div>
-      <div style={{marginBottom:10,display:'flex',flexWrap:'wrap'}}>
-        {['All',...allSectors].map((s,i)=>(
-          <button key={i} onClick={()=>setSelSec(s)}
-            style={{fontFamily:'JetBrains Mono,monospace',fontSize:9,padding:'3px 10px',borderRadius:3,cursor:'pointer',
-                    border:'1px solid '+(s===selSec?'var(--sky)':'rgba(148,163,184,.15)'),
-                    background: s===selSec?'rgba(56,189,248,.1)':'transparent',
-                    color: s===selSec?'var(--sky)':'var(--ink3)', margin:'0 3px 4px 0'}}>{s}</button>
-        ))}
-      </div>
-      <div className="scroll" style={{maxHeight:420}}>
-        {filtered.slice(0,20).map((l,i)=>{
-          const sc = l.severity==='Critical'?'var(--rose)':l.severity==='High'?'var(--coral)':l.severity==='Med'?'var(--gold)':'var(--mint)';
-          const hasUrl = l.url && l.url.length > 4;
-          return <div className="card-row" key={i} style={{borderLeftColor:sc,padding:'10px 12px'}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:5}}>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:3,flexWrap:'wrap'}}>
-                  <span style={{fontSize:13,fontWeight:700,color:'var(--ink)'}}>{l.company}</span>
-                  <Badge txt={(l.severity||'').toUpperCase()} cls={sevCls(l.severity)} />
-                  {l.age && <span className="mono" style={{fontSize:8,color:'var(--ink3)',marginLeft:6}}>{l.age}</span>}
-                </div>
-                <div style={{fontSize:11,color:'var(--ink2)',lineHeight:1.45,marginBottom:4}}>{(l.headline||'').slice(0,100)}</div>
-              </div>
-              <div style={{flexShrink:0,marginLeft:10,textAlign:'right'}}>
-                <div className="mono" style={{fontSize:11,color:'var(--gold)',fontWeight:600}}>{l.count}</div>
-                <div className="mono" style={{fontSize:9,color:'var(--ink3)',marginTop:2}}>{l.sector||''}</div>
-              </div>
-            </div>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-              <span className="mono" style={{fontSize:9,color:'var(--ink3)'}}>{l.source||''} · {l.date||''}</span>
-              {hasUrl && <a href={l.url} target="_blank" rel="noopener" style={{fontFamily:'JetBrains Mono,monospace',fontSize:9,color:'var(--sky)',textDecoration:'none',padding:'2px 8px',border:'1px solid rgba(56,189,248,.25)',borderRadius:3,whiteSpace:'nowrap'}}>Read ↗</a>}
-            </div>
-          </div>;
-        })}
-        {filtered.length===0 && <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:10,color:'var(--ink3)',padding:20,textAlign:'center'}}>No layoffs reported for this sector.</div>}
-      </div>
-    </div>
-    <div className="card">
-      <div className="section-title">🔥 Active Wildfires</div>
-      <table className="fire-tbl">
-        <thead><tr><th>Region</th><th>Fires</th><th>High</th><th>FRP</th></tr></thead>
-        <tbody>
-          {D.fires.map((f,i)=>{
-            const ic = f.high>50?'var(--rose)':f.high>20?'var(--coral)':'var(--gold)';
-            return <tr key={i}>
-              <td><span style={{fontSize:12,fontWeight:600,color:'var(--ink)'}}>{f.region}</span><span style={{display:'block',fontSize:9,color:'var(--ink3)'}} className="mono">{f.biome||''}</span></td>
-              <td className="mono" style={{color:'var(--sky)'}}>{f.fires.toLocaleString()}</td>
-              <td className="mono" style={{color:ic}}>{f.high}</td>
-              <td className="mono" style={{color:'var(--ink3)'}}>{(f.frp/1000).toFixed(1)}k FRP</td>
-            </tr>;
-          })}
-        </tbody>
-      </table>
-    </div>
-  </div>;
+  const allSectors = [...new Set((D.layoffs || []).map(l => l.sector || 'Other'))].sort();
+  const filtered = (D.layoffs || []).filter(l => selSec === 'All' || (l.sector || 'Other') === selSec);
+  return /*#__PURE__*/React.createElement("div", {
+    className: "duo-grid"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      gridColumn: '1/-1'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "section-title",
+    style: {
+      margin: 0
+    }
+  }, "Corporate Layoffs"), /*#__PURE__*/React.createElement("span", {
+    className: "live-chip"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "live-dot"
+  }), "Live · Google News + GDELT")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'JetBrains Mono,monospace',
+      fontSize: 9,
+      color: 'var(--ink3)'
+    }
+  }, filtered.length, " reports · refreshes every 5 min")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 10,
+      display: 'flex',
+      flexWrap: 'wrap'
+    }
+  }, ['All', ...allSectors].map((s, i) => /*#__PURE__*/React.createElement("button", {
+    key: i,
+    onClick: () => setSelSec(s),
+    style: {
+      fontFamily: 'JetBrains Mono,monospace',
+      fontSize: 9,
+      padding: '3px 10px',
+      borderRadius: 3,
+      cursor: 'pointer',
+      border: '1px solid ' + (s === selSec ? 'var(--sky)' : 'rgba(148,163,184,.15)'),
+      background: s === selSec ? 'rgba(56,189,248,.1)' : 'transparent',
+      color: s === selSec ? 'var(--sky)' : 'var(--ink3)',
+      margin: '0 3px 4px 0'
+    }
+  }, s))), /*#__PURE__*/React.createElement("div", {
+    className: "scroll",
+    style: {
+      maxHeight: 420
+    }
+  }, filtered.slice(0, 20).map((l, i) => {
+    const sc = l.severity === 'Critical' ? 'var(--rose)' : l.severity === 'High' ? 'var(--coral)' : l.severity === 'Med' ? 'var(--gold)' : 'var(--mint)';
+    const hasUrl = l.url && l.url.length > 4;
+    return /*#__PURE__*/React.createElement("div", {
+      className: "card-row",
+      key: i,
+      style: {
+        borderLeftColor: sc,
+        padding: '10px 12px'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 5
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 3,
+        flexWrap: 'wrap'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 13,
+        fontWeight: 700,
+        color: 'var(--ink)'
+      }
+    }, l.company), /*#__PURE__*/React.createElement(Badge, {
+      txt: (l.severity || '').toUpperCase(),
+      cls: sevCls(l.severity)
+    }), l.age && /*#__PURE__*/React.createElement("span", {
+      className: "mono",
+      style: {
+        fontSize: 8,
+        color: 'var(--ink3)',
+        marginLeft: 6
+      }
+    }, l.age)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: 'var(--ink2)',
+        lineHeight: 1.45,
+        marginBottom: 4
+      }
+    }, (l.headline || '').slice(0, 100))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flexShrink: 0,
+        marginLeft: 10,
+        textAlign: 'right'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "mono",
+      style: {
+        fontSize: 11,
+        color: 'var(--gold)',
+        fontWeight: 600
+      }
+    }, l.count), /*#__PURE__*/React.createElement("div", {
+      className: "mono",
+      style: {
+        fontSize: 9,
+        color: 'var(--ink3)',
+        marginTop: 2
+      }
+    }, l.sector || ''))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "mono",
+      style: {
+        fontSize: 9,
+        color: 'var(--ink3)'
+      }
+    }, l.source || '', " · ", l.date || ''), hasUrl && /*#__PURE__*/React.createElement("a", {
+      href: l.url,
+      target: "_blank",
+      rel: "noopener",
+      style: {
+        fontFamily: 'JetBrains Mono,monospace',
+        fontSize: 9,
+        color: 'var(--sky)',
+        textDecoration: 'none',
+        padding: '2px 8px',
+        border: '1px solid rgba(56,189,248,.25)',
+        borderRadius: 3,
+        whiteSpace: 'nowrap'
+      }
+    }, "Read ↗")));
+  }), filtered.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'JetBrains Mono,monospace',
+      fontSize: 10,
+      color: 'var(--ink3)',
+      padding: 20,
+      textAlign: 'center'
+    }
+  }, "No layoffs reported for this sector."))), /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "section-title"
+  }, "🔥 Active Wildfires"), /*#__PURE__*/React.createElement("table", {
+    className: "fire-tbl"
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Region"), /*#__PURE__*/React.createElement("th", null, "Fires"), /*#__PURE__*/React.createElement("th", null, "High"), /*#__PURE__*/React.createElement("th", null, "FRP"))), /*#__PURE__*/React.createElement("tbody", null, D.fires.map((f, i) => {
+    const ic = f.high > 50 ? 'var(--rose)' : f.high > 20 ? 'var(--coral)' : 'var(--gold)';
+    return /*#__PURE__*/React.createElement("tr", {
+      key: i
+    }, /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        fontWeight: 600,
+        color: 'var(--ink)'
+      }
+    }, f.region), /*#__PURE__*/React.createElement("span", {
+      style: {
+        display: 'block',
+        fontSize: 9,
+        color: 'var(--ink3)'
+      },
+      className: "mono"
+    }, f.biome || '')), /*#__PURE__*/React.createElement("td", {
+      className: "mono",
+      style: {
+        color: 'var(--sky)'
+      }
+    }, f.fires.toLocaleString()), /*#__PURE__*/React.createElement("td", {
+      className: "mono",
+      style: {
+        color: ic
+      }
+    }, f.high), /*#__PURE__*/React.createElement("td", {
+      className: "mono",
+      style: {
+        color: 'var(--ink3)'
+      }
+    }, (f.frp / 1000).toFixed(1), "k FRP"));
+  })))));
 }
 
 // ── Pizza Index ──────────────────────────────────────────────
-function PizzaSection(){
+function PizzaSection() {
   const pz = D.pizza;
-  const col = pz.score>=75?'var(--rose)':pz.score>=55?'var(--coral)':pz.score>=35?'var(--gold)':'var(--mint)';
-  return <React.Fragment>
-    <div style={{background:'var(--surface)',border:'1px solid var(--edge)',borderRadius:16,padding:'28px 30px',marginBottom:24,position:'relative',overflow:'hidden'}}>
-      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:32,flexWrap:'wrap'}}>
-        <div>
-          <div className="overline" style={{marginBottom:12}}>🍕 Pizza Index &nbsp;<span className="badge neu" style={{fontSize:8}}>PIZZAINT METHODOLOGY</span></div>
-          <div className="pz-score" style={{color:col}}>{pz.score}</div>
-          <div className="mono" style={{fontSize:13,color:col,marginTop:10,letterSpacing:'.06em'}}>{pz.label}</div>
-        </div>
-        <div style={{flex:1,minWidth:200,maxWidth:500}}>
-          <div style={{fontSize:13,color:'var(--ink2)',lineHeight:1.8,marginBottom:18}}>{pz.description}</div>
-          <div className="overline" style={{marginBottom:8}}>Stress gauge</div>
-          <div className="pz-bar"><div className="pz-needle" style={{left:pz.score+'%'}}></div></div>
-          <div style={{display:'flex',justifyContent:'space-between',marginTop:4}}>
-            <span className="mono" style={{fontSize:9,color:'var(--mint)'}}>Low</span>
-            <span className="mono" style={{fontSize:9,color:'var(--gold)'}}>Threshold 60</span>
-            <span className="mono" style={{fontSize:9,color:'var(--rose)'}}>Critical 80+</span>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div className="duo-grid">
-      <div className="card">
-        <div className="section-title">📦 Input Components</div>
-        <div className="scroll">
-          {pz.components.map((c,i)=>{
-            const sc = c.stress, scol = sc>=80?'var(--rose)':sc>=60?'var(--coral)':sc>=40?'var(--gold)':'var(--mint)';
-            const up = c.change>0, csym = up?'▲':'▼', ccol = up?'var(--rose)':'var(--mint)';
-            return <div className="card-row" key={i} style={{borderLeftColor:scol}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:5}}>
-                <div><div style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{c.name}</div><div className="mono" style={{fontSize:9,color:'var(--ink3)',marginTop:2}}>{c.note}</div></div>
-                <div style={{textAlign:'right',flexShrink:0,marginLeft:14}}>
-                  <span className="mono" style={{fontSize:12,color:'var(--ink2)'}}>{c.val} <span style={{fontSize:9,color:'var(--ink3)'}}>{c.unit}</span></span>
-                  <div><span className="mono" style={{fontSize:10,color:ccol}}>{csym}{Math.abs(c.change).toFixed(1)}%</span><span className="disp" style={{fontSize:22,color:scol,marginLeft:8}}>{sc}</span></div>
-                </div>
-              </div>
-              <Bar pct={sc} col={scol} thick />
-            </div>;
-          })}
-        </div>
-      </div>
-      <div className="card">
-        <div className="section-title">🌍 City Price Index</div>
-        <div className="scroll">
-          {[...pz.city_prices].sort((a,b)=>b.stress-a.stress).map((c,i)=>{
-            const sc = c.stress, scol = sc>=80?'var(--rose)':sc>=60?'var(--coral)':sc>=40?'var(--gold)':'var(--mint)';
-            const pct = Math.round((c.price-c.baseline)/c.baseline*100);
-            return <div className="card-row" key={i} style={{borderLeftColor:scol}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
-                <span style={{fontSize:13,fontWeight:600,color:'var(--ink)'}}>{c.city}</span>
-                <div style={{display:'flex',alignItems:'center',gap:10}}>
-                  <span className="mono" style={{fontSize:13,color:'var(--ink)'}}>{c.price} {c.currency}</span>
-                  <span className="mono" style={{fontSize:10,color:'var(--coral)'}}>+{pct}%</span>
-                  <span className="disp" style={{fontSize:22,color:scol}}>{sc}</span>
-                </div>
-              </div>
-              <Bar pct={sc} col={scol} />
-              <div className="mono" style={{fontSize:9,color:'var(--ink3)',marginTop:2}}>baseline {c.baseline} {c.currency}</div>
-            </div>;
-          })}
-        </div>
-        <div style={{marginTop:16,padding:'16px 18px',background:'rgba(251,146,60,.06)',border:'1px solid rgba(251,146,60,.18)',borderRadius:10}}>
-          <div className="overline" style={{color:'var(--coral)',marginBottom:8}}>Methodology</div>
-          <div style={{fontSize:12,color:'var(--ink2)',lineHeight:1.75}}>
-            Inspired by <em>The Economist</em>'s Big Mac Index. Tracks margherita pizza prices
-            as a proxy for wheat disruption, energy costs, and purchasing power stress.
-            Scores above <strong style={{color:'var(--gold)'}}>60</strong> indicate material supply-chain pressure.
-          </div>
-        </div>
-      </div>
-    </div>
-  </React.Fragment>;
+  const col = pz.score >= 75 ? 'var(--rose)' : pz.score >= 55 ? 'var(--coral)' : pz.score >= 35 ? 'var(--gold)' : 'var(--mint)';
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: 'var(--surface)',
+      border: '1px solid var(--edge)',
+      borderRadius: 16,
+      padding: '28px 30px',
+      marginBottom: 24,
+      position: 'relative',
+      overflow: 'hidden'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: 32,
+      flexWrap: 'wrap'
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "overline",
+    style: {
+      marginBottom: 12
+    }
+  }, "🍕 Pizza Index \xA0", /*#__PURE__*/React.createElement("span", {
+    className: "badge neu",
+    style: {
+      fontSize: 8
+    }
+  }, "PIZZAINT METHODOLOGY")), /*#__PURE__*/React.createElement("div", {
+    className: "pz-score",
+    style: {
+      color: col
+    }
+  }, pz.score), /*#__PURE__*/React.createElement("div", {
+    className: "mono",
+    style: {
+      fontSize: 13,
+      color: col,
+      marginTop: 10,
+      letterSpacing: '.06em'
+    }
+  }, pz.label)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      minWidth: 200,
+      maxWidth: 500
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: 'var(--ink2)',
+      lineHeight: 1.8,
+      marginBottom: 18
+    }
+  }, pz.description), /*#__PURE__*/React.createElement("div", {
+    className: "overline",
+    style: {
+      marginBottom: 8
+    }
+  }, "Stress gauge"), /*#__PURE__*/React.createElement("div", {
+    className: "pz-bar"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pz-needle",
+    style: {
+      left: pz.score + '%'
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      marginTop: 4
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "mono",
+    style: {
+      fontSize: 9,
+      color: 'var(--mint)'
+    }
+  }, "Low"), /*#__PURE__*/React.createElement("span", {
+    className: "mono",
+    style: {
+      fontSize: 9,
+      color: 'var(--gold)'
+    }
+  }, "Threshold 60"), /*#__PURE__*/React.createElement("span", {
+    className: "mono",
+    style: {
+      fontSize: 9,
+      color: 'var(--rose)'
+    }
+  }, "Critical 80+"))))), /*#__PURE__*/React.createElement("div", {
+    className: "duo-grid"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "section-title"
+  }, "📦 Input Components"), /*#__PURE__*/React.createElement("div", {
+    className: "scroll"
+  }, pz.components.map((c, i) => {
+    const sc = c.stress,
+      scol = sc >= 80 ? 'var(--rose)' : sc >= 60 ? 'var(--coral)' : sc >= 40 ? 'var(--gold)' : 'var(--mint)';
+    const up = c.change > 0,
+      csym = up ? '▲' : '▼',
+      ccol = up ? 'var(--rose)' : 'var(--mint)';
+    return /*#__PURE__*/React.createElement("div", {
+      className: "card-row",
+      key: i,
+      style: {
+        borderLeftColor: scol
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 5
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        fontWeight: 600,
+        color: 'var(--ink)'
+      }
+    }, c.name), /*#__PURE__*/React.createElement("div", {
+      className: "mono",
+      style: {
+        fontSize: 9,
+        color: 'var(--ink3)',
+        marginTop: 2
+      }
+    }, c.note)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: 'right',
+        flexShrink: 0,
+        marginLeft: 14
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "mono",
+      style: {
+        fontSize: 12,
+        color: 'var(--ink2)'
+      }
+    }, c.val, " ", /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 9,
+        color: 'var(--ink3)'
+      }
+    }, c.unit)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      className: "mono",
+      style: {
+        fontSize: 10,
+        color: ccol
+      }
+    }, csym, Math.abs(c.change).toFixed(1), "%"), /*#__PURE__*/React.createElement("span", {
+      className: "disp",
+      style: {
+        fontSize: 22,
+        color: scol,
+        marginLeft: 8
+      }
+    }, sc)))), /*#__PURE__*/React.createElement(Bar, {
+      pct: sc,
+      col: scol,
+      thick: true
+    }));
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "section-title"
+  }, "🌍 City Price Index"), /*#__PURE__*/React.createElement("div", {
+    className: "scroll"
+  }, [...pz.city_prices].sort((a, b) => b.stress - a.stress).map((c, i) => {
+    const sc = c.stress,
+      scol = sc >= 80 ? 'var(--rose)' : sc >= 60 ? 'var(--coral)' : sc >= 40 ? 'var(--gold)' : 'var(--mint)';
+    const pct = Math.round((c.price - c.baseline) / c.baseline * 100);
+    return /*#__PURE__*/React.createElement("div", {
+      className: "card-row",
+      key: i,
+      style: {
+        borderLeftColor: scol
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 4
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 13,
+        fontWeight: 600,
+        color: 'var(--ink)'
+      }
+    }, c.city), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "mono",
+      style: {
+        fontSize: 13,
+        color: 'var(--ink)'
+      }
+    }, c.price, " ", c.currency), /*#__PURE__*/React.createElement("span", {
+      className: "mono",
+      style: {
+        fontSize: 10,
+        color: 'var(--coral)'
+      }
+    }, "+", pct, "%"), /*#__PURE__*/React.createElement("span", {
+      className: "disp",
+      style: {
+        fontSize: 22,
+        color: scol
+      }
+    }, sc))), /*#__PURE__*/React.createElement(Bar, {
+      pct: sc,
+      col: scol
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "mono",
+      style: {
+        fontSize: 9,
+        color: 'var(--ink3)',
+        marginTop: 2
+      }
+    }, "baseline ", c.baseline, " ", c.currency));
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 16,
+      padding: '16px 18px',
+      background: 'rgba(251,146,60,.06)',
+      border: '1px solid rgba(251,146,60,.18)',
+      borderRadius: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "overline",
+    style: {
+      color: 'var(--coral)',
+      marginBottom: 8
+    }
+  }, "Methodology"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: 'var(--ink2)',
+      lineHeight: 1.75
+    }
+  }, "Inspired by ", /*#__PURE__*/React.createElement("em", null, "The Economist"), "'s Big Mac Index. Tracks margherita pizza prices as a proxy for wheat disruption, energy costs, and purchasing power stress. Scores above ", /*#__PURE__*/React.createElement("strong", {
+    style: {
+      color: 'var(--gold)'
+    }
+  }, "60"), " indicate material supply-chain pressure.")))));
 }
 
 // ── Root App ────────────────────────────────────────────────
-function App(){
-  return <React.Fragment>
-    <KPIStrip />
-    <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,marginBottom:18}}>
-      <PanelIndices /><PanelForex /><PanelCommodities /><PanelDefense />
-    </div>
-    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:14,marginBottom:18}}>
-      <PanelCrypto /><PanelSanctions /><PanelCurrencyCrisis />
-    </div>
-    <PanelGeoRisk />
-    <div className="main-grid" style={{marginTop:18}}>
-      <EconPanel /><TradePanel /><SupplyPanel />
-    </div>
-    <div style={{marginBottom:24}}><FinPanel /></div>
-    <hr className="divider" />
-    <Row2 />
-    <hr className="divider" />
-    <PizzaSection />
-  </React.Fragment>;
+function App() {
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(KPIStrip, null), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(4,1fr)',
+      gap: 14,
+      marginBottom: 18
+    }
+  }, /*#__PURE__*/React.createElement(PanelIndices, null), /*#__PURE__*/React.createElement(PanelForex, null), /*#__PURE__*/React.createElement(PanelCommodities, null), /*#__PURE__*/React.createElement(PanelDefense, null)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr 1fr',
+      gap: 14,
+      marginBottom: 18
+    }
+  }, /*#__PURE__*/React.createElement(PanelCrypto, null), /*#__PURE__*/React.createElement(PanelSanctions, null), /*#__PURE__*/React.createElement(PanelCurrencyCrisis, null)), /*#__PURE__*/React.createElement(PanelGeoRisk, null), /*#__PURE__*/React.createElement("div", {
+    className: "main-grid",
+    style: {
+      marginTop: 18
+    }
+  }, /*#__PURE__*/React.createElement(EconPanel, null), /*#__PURE__*/React.createElement(TradePanel, null), /*#__PURE__*/React.createElement(SupplyPanel, null)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 24
+    }
+  }, /*#__PURE__*/React.createElement(FinPanel, null)), /*#__PURE__*/React.createElement("hr", {
+    className: "divider"
+  }), /*#__PURE__*/React.createElement(Row2, null), /*#__PURE__*/React.createElement("hr", {
+    className: "divider"
+  }), /*#__PURE__*/React.createElement(PizzaSection, null));
 }
-
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-
+ReactDOM.createRoot(document.getElementById('root')).render(/*#__PURE__*/React.createElement(App, null));
 </script>
 </body></html>"""
     _econ_html = _econ_template.replace("__PAYLOAD__", _econ_payload)
