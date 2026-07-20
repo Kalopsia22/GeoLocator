@@ -4194,26 +4194,36 @@ def _build_globe_markers():
     trade-off versus the old pydeck PathLayer/ArcLayer rendering.
     """
     M = []
-    def pt(lat, lon, color, size, tip=""):
-        M.append({"lat": float(lat), "lon": float(lon), "size": size, "color": color, "tip": tip})
+    def pt(lat, lon, color, size, title="", layer="", body=""):
+        # `title` = short headline shown on the sticky note's header.
+        # `layer` = category badge (e.g. "Military Base") shown on the note.
+        # `body`  = the fuller detail text — reuses each dataset's own
+        #           pre-authored `tip` field where one exists, since those
+        #           are already well-formatted single-line summaries.
+        M.append({"lat": float(lat), "lon": float(lon), "size": size, "color": color,
+                   "title": title, "layer": layer, "body": body})
 
     # ── Core Layers ──────────────────────────────────────────
     if show_seis and not eq_df.empty:
         for _, r in eq_df.iterrows():
             sz = min(0.022 + float(r.get("mag", 0)) * 0.013, 0.11)
-            pt(r["lat"], r["lon"], [0,200,255], sz, f"M{r.get('mag','?')} {r.get('place','')}")
+            pt(r["lat"], r["lon"], [0,200,255], sz, f"M{r.get('mag','?')} {r.get('place','')}", "Seismic Event",
+               f"Magnitude {r.get('mag','?')} · Depth {r.get('depth_km','?')} km · {r.get('time','')}")
     if show_volc and not eonet_df.empty:
         for _, r in eonet_df.iterrows():
-            pt(r["lat"], r["lon"], [255,140,60], 0.032, r.get("title","EONET event"))
+            pt(r["lat"], r["lon"], [255,140,60], 0.032, r.get("title","EONET event"), "Volcanic / EONET",
+               f"Category: {r.get('cat','')}")
     if show_conf:
         for c in CONFLICTS.values():
             for i in c.get("incidents", []):
                 sz = 0.055 if i.get("severity") == "CRITICAL" else 0.035
-                pt(i["lat"], i["lon"], [255,60,80], sz, i.get("title",""))
+                pt(i["lat"], i["lon"], [255,60,80], sz, i.get("title",""), "Conflict Incident",
+                   f"Severity: {i.get('severity','')} · {i.get('date','')} · Casualties: {i.get('casualties','?')}")
     if show_mvmt:
         for m in MOVEMENTS:
             if m.get("type") == "protest":
-                pt(m["lat"], m["lon"], [180,80,255], 0.03 + m.get("scale",50)/100*0.03, m.get("title",""))
+                pt(m["lat"], m["lon"], [180,80,255], 0.03 + m.get("scale",50)/100*0.03, m.get("title",""), "Civil Movement",
+                   f"{m.get('country','')} · Size: {m.get('size','')} · Sentiment: {m.get('sentiment','')}")
     if show_supp:
         # Proxy for the old ArcLayer: plot supplier-nation origin points for
         # each critical conflict zone rather than a true connecting arc.
@@ -4221,14 +4231,17 @@ def _build_globe_markers():
         for z in CONFLICT_ZONES:
             if z.get("intensity") == "Critical":
                 for name, slat, slon in _suppliers[:2]:
-                    pt(slat, slon, [255,215,0], 0.025, f"Supply origin: {name} → {z.get('name','')}")
+                    pt(slat, slon, [255,215,0], 0.025, f"Supply origin: {name}", "Supply Arc",
+                       f"Destination: {z.get('name','')}")
     if show_heat and not eq_df.empty:
         for _, r in eq_df.iterrows():
-            pt(r["lat"], r["lon"], [255,90,0], 0.02, "Seismic density")
+            pt(r["lat"], r["lon"], [255,90,0], 0.02, "Seismic density", "Seismic Heatmap",
+               f"M{r.get('mag','?')} at {r.get('place','')}")
     if show_hist:
         for e in _HIST_SORTED[:40]:
             sz = 0.06 if e.get("severity") == "CRITICAL" else 0.032
-            pt(e["lat"], e["lon"], [255,190,60], sz, e.get("title",""))
+            pt(e["lat"], e["lon"], [255,190,60], sz, e.get("title",""), "Historical Event",
+               f"{e.get('date','')} · Severity: {e.get('severity','')}")
     if show_live:
         try:
             import random as _rnd
@@ -4238,127 +4251,158 @@ def _build_globe_markers():
             for i, art in enumerate(fetch_live_global_events(max_records=20)):
                 blat, blon = _hotspots[i % len(_hotspots)]
                 pt(blat + _rng.uniform(-2,2), blon + _rng.uniform(-2,2), [0,255,200], 0.028,
-                   f"{art.get('source','?')}: {art.get('title','')}")
+                   art.get('title',''), "Live Event (GDELT)", f"Source: {art.get('source','?')} · {art.get('time','')}")
         except Exception as _e:
             _log.warning("show_live globe layer failed: %s", _e)
 
     # ── Intelligence ─────────────────────────────────────────
     if show_intel:
         for h in INTEL_HOTSPOTS:
-            pt(h["lat"], h["lon"], [255,225,120], 0.03, h.get("tip", h.get("name",""))[:60])
+            pt(h["lat"], h["lon"], [255,225,120], 0.03, h.get("name",""), "Intel Hotspot",
+               h.get("tip", f"Type: {h.get('type','')} · Risk: {h.get('risk','')}"))
     if show_czones:
         for z in CONFLICT_ZONES:
-            pt(z["lat"], z["lon"], [255,80,80], 0.045, z.get("name",""))
+            pt(z["lat"], z["lon"], [255,80,80], 0.045, z.get("name",""), "Conflict Zone",
+               z.get("tip", f"Status: {z.get('status','')} · Intensity: {z.get('intensity','')}"))
     if show_mbases:
         for b in MILITARY_BASES:
-            pt(b["lat"], b["lon"], [120,170,255], 0.028, b.get("name",""))
+            pt(b["lat"], b["lon"], [120,170,255], 0.028, b.get("name",""), "Military Base",
+               b.get("tip", f"{b.get('country','')} · {b.get('type','')}"))
     if show_nuclear:
         for n in NUCLEAR_SITES:
-            pt(n["lat"], n["lon"], [255,235,59], 0.04, n.get("name",""))
+            pt(n["lat"], n["lon"], [255,235,59], 0.04, n.get("name",""), "Nuclear Site",
+               n.get("tip", f"{n.get('country','')} · {n.get('type','')} · {n.get('status','')}"))
     if show_gamma:
         for g in GAMMA_IRRADIATORS:
-            pt(g["lat"], g["lon"], [255,140,0], 0.025, g.get("name",""))
+            pt(g["lat"], g["lon"], [255,140,0], 0.025, g.get("name",""), "Gamma Irradiator",
+               g.get("tip", f"{g.get('country','')} · {g.get('type','')}"))
     if show_cyber:
         try:
             _cyber_src = fetch_live_cyber_threats() or CYBER_THREATS_GEO
         except Exception:
             _cyber_src = CYBER_THREATS_GEO
         for c in _cyber_src:
-            pt(c["lat"], c["lon"], [255,60,180], 0.035, c.get("name",""))
+            pt(c["lat"], c["lon"], [255,60,180], 0.035, c.get("name",""), "Cyber Threat Actor",
+               c.get("tip", f"Actor: {c.get('actor','')} · Targets: {c.get('targets','')}"))
     if show_orbital:
         for o in ORBITAL_SURVEILLANCE:
-            pt(o["lat"], o["lon"], [140,140,255], 0.025, o.get("name",""))
+            pt(o["lat"], o["lon"], [140,140,255], 0.025, o.get("name",""), "Orbital Surveillance",
+               o.get("tip", f"Operator: {o.get('operator','')} · {o.get('type','')}"))
     if show_gps:
         for g in GPS_JAMMING_ZONES:
-            pt(g["lat"], g["lon"], [255,200,0], 0.04, g.get("name",""))
+            pt(g["lat"], g["lon"], [255,200,0], 0.04, g.get("name",""), "GPS Jamming Zone",
+               g.get("tip", f"Source: {g.get('source','')} · Severity: {g.get('severity','')} · Radius: {g.get('radius_km','?')} km"))
     if show_cii:
         for c in CII_INSTABILITY:
-            pt(c["lat"], c["lon"], [255,100,100], 0.03, c.get("name",""))
+            pt(c["lat"], c["lon"], [255,100,100], 0.03, c.get("name",""), "CII Instability",
+               c.get("tip", f"{c.get('country','')} · {c.get('sector','')} · Risk: {c.get('risk','')}"))
 
     # ── Infrastructure ───────────────────────────────────────
     if show_space:
         for s in SPACEPORTS:
-            pt(s["lat"], s["lon"], [0,229,255], 0.03, s.get("name",""))
+            pt(s["lat"], s["lon"], [0,229,255], 0.03, s.get("name",""), "Spaceport",
+               s.get("tip", f"{s.get('country','')} · {s.get('type','')} · Active: {s.get('active','')}"))
     if show_cables:
         for c in UNDERSEA_CABLES:
-            pt(c["from_lat"], c["from_lon"], [0,150,255], 0.022, c.get("name",""))
-            pt(c["to_lat"],   c["to_lon"],   [0,150,255], 0.022, c.get("name",""))
+            body = c.get("tip", f"Status: {c.get('status','')} · Risk: {c.get('risk','')}")
+            pt(c["from_lat"], c["from_lon"], [0,150,255], 0.022, c.get("name",""), "Undersea Cable", body)
+            pt(c["to_lat"],   c["to_lon"],   [0,150,255], 0.022, c.get("name",""), "Undersea Cable", body)
     if show_pipes:
         for p in PIPELINES:
-            pt(p["from_lat"], p["from_lon"], [255,110,0], 0.022, p.get("name",""))
-            pt(p["to_lat"],   p["to_lon"],   [255,110,0], 0.022, p.get("name",""))
+            body = f"Status: {p.get('status','')} · Risk: {p.get('risk','')}"
+            pt(p["from_lat"], p["from_lon"], [255,110,0], 0.022, p.get("name",""), "Pipeline", body)
+            pt(p["to_lat"],   p["to_lon"],   [255,110,0], 0.022, p.get("name",""), "Pipeline", body)
     if show_aidc:
         for a in AI_DATA_CENTERS:
-            pt(a["lat"], a["lon"], [0,255,150], 0.028, a.get("name",""))
+            pt(a["lat"], a["lon"], [0,255,150], 0.028, a.get("name",""), "AI Data Center",
+               a.get("tip", f"Operator: {a.get('operator','')}"))
     if show_outages:
         for o in INTERNET_OUTAGES:
-            pt(o["lat"], o["lon"], [160,160,160], 0.035, o.get("name",""))
+            pt(o["lat"], o["lon"], [160,160,160], 0.035, o.get("name",""), "Internet Outage",
+               o.get("tip", f"Severity: {o.get('severity','')} · Cause: {o.get('cause','')}"))
     if show_econ:
         for e in ECONOMIC_CENTERS:
-            pt(e["lat"], e["lon"], [0,230,120], 0.03, e.get("name",""))
+            pt(e["lat"], e["lon"], [0,230,120], 0.03, e.get("name",""), "Economic Center",
+               e.get("tip", f"GDP: ${e.get('gdp_t','?')}T · Role: {e.get('role','')}"))
 
     # ── Military & Traffic ───────────────────────────────────
     if show_milact:
         for m in MILITARY_ACTIVITY:
-            pt(m["lat"], m["lon"], [255,90,0], 0.035, m.get("name",""))
+            pt(m["lat"], m["lon"], [255,90,0], 0.035, m.get("name",""), "Military Activity",
+               m.get("tip", f"{m.get('type','')} · {m.get('country','')}"))
     if show_ships:
         for s in SHIP_TRAFFIC_ZONES:
-            pt(s["lat"], s["lon"], [0,180,255], 0.035, s.get("name",""))
+            pt(s["lat"], s["lon"], [0,180,255], 0.035, s.get("name",""), "Ship Traffic Zone",
+               s.get("tip", f"Traffic: {s.get('traffic','')} · {s.get('vessels_day','?')} vessels/day"))
     if show_trade:
         for t in TRADE_ROUTE_ARCS:
-            pt(t["from_lat"], t["from_lon"], [255,190,0], 0.022, t.get("name",""))
-            pt(t["to_lat"],   t["to_lon"],   [255,190,0], 0.022, t.get("name",""))
+            body = t.get("tip", f"{t.get('type','')} · Status: {t.get('status','')}")
+            pt(t["from_lat"], t["from_lon"], [255,190,0], 0.022, t.get("name",""), "Trade Route", body)
+            pt(t["to_lat"],   t["to_lon"],   [255,190,0], 0.022, t.get("name",""), "Trade Route", body)
     if show_aviation:
-        for name, alat, alon in [("Tel Aviv Ben Gurion",32.01,34.89),("Kyiv Boryspil (closed)",50.34,30.90),
-                                   ("Tehran Imam Khomeini",35.42,51.15),("Beirut–Rafic Hariri",33.82,35.49),
-                                   ("Khartoum Intl (closed)",15.59,32.55)]:
-            pt(alat, alon, [180,220,255], 0.03, name)
+        for name, alat, alon, status in [
+            ("Tel Aviv Ben Gurion",32.01,34.89,"Operating with intermittent alerts"),
+            ("Kyiv Boryspil",50.34,30.90,"Closed — active conflict airspace"),
+            ("Tehran Imam Khomeini",35.42,51.15,"Operating with restrictions"),
+            ("Beirut–Rafic Hariri",33.82,35.49,"Operating with intermittent alerts"),
+            ("Khartoum Intl",15.59,32.55,"Closed — active conflict zone"),
+        ]:
+            pt(alat, alon, [180,220,255], 0.03, name, "Aviation Status", status)
     if show_waterways:
         for w in STRATEGIC_WATERWAYS:
-            pt(w["lat"], w["lon"], [0,210,220], 0.04, w.get("name",""))
+            pt(w["lat"], w["lon"], [0,210,220], 0.04, w.get("name",""), "Strategic Waterway",
+               w.get("tip", f"Status: {w.get('status','')}"))
 
     # ── Live Intelligence ─────────────────────────────────────
     if show_ais:
         try:
             for v in fetch_ais_vessels():
-                pt(v["lat"], v["lon"], [0,220,255], 0.02, v.get("name",""))
+                pt(v["lat"], v["lon"], [0,220,255], 0.02, v.get("name",""), "AIS Vessel (Live)",
+                   f"Type: {v.get('type','')} · Speed: {v.get('speed','?')} kn")
         except Exception as _e:
             _log.warning("show_ais globe layer failed: %s", _e)
     if show_opensky:
         try:
             for f in fetch_opensky_flights():
-                pt(f["lat"], f["lon"], [200,255,0], 0.018, f.get("callsign", f.get("name","")))
+                pt(f["lat"], f["lon"], [200,255,0], 0.018, f.get("callsign", f.get("name","")), "OpenSky Flight (Live)",
+                   f"Altitude: {f.get('altitude','?')} · Speed: {f.get('speed','?')}")
         except Exception as _e:
             _log.warning("show_opensky globe layer failed: %s", _e)
     if show_acled:
         try:
             for a in fetch_acled_events(limit=80):
-                pt(a["lat"], a["lon"], [255,60,60], 0.03, a.get("event_type",""))
+                pt(a["lat"], a["lon"], [255,60,60], 0.03, a.get("event_type",""), "ACLED Event (Live)",
+                   f"Fatalities: {a.get('fatalities','?')} · {a.get('date','')}")
         except Exception as _e:
             _log.warning("show_acled globe layer failed: %s", _e)
 
     # ── Human & Social ────────────────────────────────────────
     if show_protests:
         for m in MOVEMENTS:
-            pt(m["lat"], m["lon"], [200,90,255], 0.03 + m.get("scale",50)/100*0.03, m.get("title",""))
+            pt(m["lat"], m["lon"], [200,90,255], 0.03 + m.get("scale",50)/100*0.03, m.get("title",""), "Protest",
+               f"{m.get('country','')} · Sentiment: {m.get('sentiment','')} · Size: {m.get('size','')}")
     if show_displaced:
         for d in DISPLACEMENT_FLOWS:
-            pt(d["from_lat"], d["from_lon"], [255,150,180], 0.022, d.get("cause",""))
-            pt(d["to_lat"],   d["to_lon"],   [255,150,180], 0.022, d.get("cause",""))
+            body = d.get("tip", f"Population: {d.get('pop','?')} · Cause: {d.get('cause','')}")
+            pt(d["from_lat"], d["from_lon"], [255,150,180], 0.022, d.get("cause",""), "Displacement Flow", body)
+            pt(d["to_lat"],   d["to_lon"],   [255,150,180], 0.022, d.get("cause",""), "Displacement Flow", body)
     if show_minerals:
         for c in CRITICAL_MINERALS:
-            pt(c["lat"], c["lon"], [0,255,190], 0.032, c.get("name",""))
+            pt(c["lat"], c["lon"], [0,255,190], 0.032, c.get("name",""), "Critical Mineral",
+               c.get("tip", f"Mineral: {c.get('mineral','')} · Global share: {c.get('share_pct','?')}%"))
 
     # ── Natural & Climate ─────────────────────────────────────
     if show_fires_layer and not eonet_df.empty and "cat" in eonet_df.columns:
         for _, r in eonet_df[eonet_df["cat"].str.contains("wildfire", case=False, na=False)].iterrows():
-            pt(r["lat"], r["lon"], [255,60,20], 0.03, r.get("title",""))
+            pt(r["lat"], r["lon"], [255,60,20], 0.03, r.get("title",""), "Active Fire", "Live NASA EONET wildfire event")
     if show_climate:
         for c in CLIMATE_ANOMALIES:
-            pt(c["lat"], c["lon"], [120,200,255], 0.032, c.get("name",""))
+            pt(c["lat"], c["lon"], [120,200,255], 0.032, c.get("name",""), "Climate Anomaly",
+               c.get("tip", f"Type: {c.get('type','')} · Anomaly: {c.get('anomaly','')}"))
     if show_weather:
         for w in WEATHER_ALERTS:
-            pt(w["lat"], w["lon"], [255,220,50], 0.032, w.get("name",""))
+            pt(w["lat"], w["lon"], [255,220,50], 0.032, w.get("name",""), "Weather Alert",
+               w.get("tip", f"Type: {w.get('type','')} · Severity: {w.get('severity','')}"))
 
     return M
 
@@ -4370,7 +4414,7 @@ st.markdown(f"""
   <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
     <div class="map-title-text">🌐 GLOBAL COMMAND GLOBE</div>
     <div style="font-family:var(--fm);font-size:10px;color:var(--muted)">
-      Drag to rotate · hover a marker for details · {len(_globe_markers)} markers from {len(HISTORICAL_EVENTS)} historical events since 2022 · Toggle categories in sidebar
+      Drag to rotate · hover a marker for a preview · click to pin a sticky note · {len(_globe_markers)} markers from {len(HISTORICAL_EVENTS)} historical events since 2022 · Toggle categories in sidebar
     </div>
   </div>
   <div class="map-legend">
@@ -4387,15 +4431,24 @@ st.markdown(f"""
 _globe_markers_json = json.dumps(_globe_markers)
 _globe_html = f"""
 <div style="position:relative;border:1px solid rgba(0,200,255,.12);border-top:none;border-radius:0 0 14px 14px;
-            overflow:hidden;margin-bottom:8px;background:#050a12;display:flex;justify-content:center;">
-  <div style="position:relative;width:100%;max-width:560px;aspect-ratio:1;">
-    <canvas id="cobeGlobe"   style="position:absolute;inset:0;width:100%;height:100%;cursor:grab"></canvas>
-    <canvas id="cobeOverlay" style="position:absolute;inset:0;width:100%;height:100%"></canvas>
-    <div id="cobeTooltip" style="position:absolute;display:none;pointer-events:none;z-index:5;
-         background:rgba(5,10,18,.96);border:1px solid rgba(0,200,255,.35);border-radius:6px;
-         padding:5px 9px;font-family:monospace;font-size:10.5px;color:#dce8f5;max-width:230px;
-         white-space:pre-wrap;box-shadow:0 4px 14px rgba(0,0,0,.5)"></div>
+            overflow:hidden;margin-bottom:8px;background:#050a12;">
+  <div style="display:flex;justify-content:center;">
+    <div style="position:relative;width:100%;max-width:560px;aspect-ratio:1;">
+      <canvas id="cobeGlobe"   style="position:absolute;inset:0;width:100%;height:100%;cursor:grab"></canvas>
+      <canvas id="cobeOverlay" style="position:absolute;inset:0;width:100%;height:100%"></canvas>
+      <div id="cobeTooltip" style="position:absolute;display:none;pointer-events:none;z-index:5;
+           background:rgba(5,10,18,.96);border:1px solid rgba(0,200,255,.35);border-radius:6px;
+           padding:5px 9px;font-family:monospace;font-size:10.5px;color:#dce8f5;max-width:230px;
+           white-space:pre-wrap;box-shadow:0 4px 14px rgba(0,0,0,.5)"></div>
+    </div>
   </div>
+  <div id="stickyBar" style="display:flex;align-items:center;justify-content:space-between;gap:8px;
+       padding:6px 12px;border-top:1px solid rgba(0,200,255,.1);font-family:monospace;font-size:9.5px;color:#5a7a95">
+    <span>📌 Click a marker to pin its details below</span>
+    <span id="stickyCount" style="display:none;cursor:pointer;color:#00d4ff" onclick="window.__clearStickyNotes && window.__clearStickyNotes()">Clear all ✕</span>
+  </div>
+  <div id="stickyNotes" style="display:flex;flex-wrap:wrap;gap:10px;padding:4px 12px 14px;
+       max-height:260px;overflow-y:auto"></div>
 </div>
 <script type="module">
   import createGlobe from "https://esm.sh/cobe@0.6.3";
@@ -4403,22 +4456,33 @@ _globe_html = f"""
   const canvas   = document.getElementById("cobeGlobe");
   const overlay  = document.getElementById("cobeOverlay");
   const tooltip  = document.getElementById("cobeTooltip");
+  const notesEl  = document.getElementById("stickyNotes");
+  const countEl  = document.getElementById("stickyCount");
   const octx     = overlay.getContext("2d");
   let phi = 0;
   const theta = 0.24;
   let width = 0;
   let pointerInteracting = null;
   let pointerInteractionMovement = 0;
-  let lastProjected = [];   // {{x, y, r, tip, color}} for hit-testing on hover
+  let lastProjected = [];   // {{x, y, r, title, layer, body, color, id}} for hit-testing
   let hoverPt = null;
+  let downInfo = null;      // {{x, y, t}} — used to tell a click from a drag
+  const openNotes = new Set();   // ids of currently-pinned sticky notes (no duplicates)
+
+  // Rotating cycle of sticky-note paper tints so pinned notes don't all
+  // look identical, independent of each marker's own layer color (which
+  // is still used for the note's left accent bar / category dot).
+  const paperTints = ["#fef3c7","#fde2e2","#dbeafe","#dcfce7","#ede9fe","#ffe4e6","#e0f2fe"];
+  let tintIdx = 0;
 
   // Per-layer-colored points — Cobe's native marker renderer only supports
   // ONE global markerColor, so with 37 distinguishable layers we draw every
   // point ourselves on a transparent 2D canvas stacked on top, re-projected
-  // through the globe's live rotation on every frame. Each point carries a
-  // "tip" string (name/details) that's otherwise inaccessible — Cobe has no
-  // hover/click picking, so we implement it ourselves below.
-  const points = {_globe_markers_json};
+  // through the globe's live rotation on every frame. Each point carries
+  // title/layer/body fields (otherwise inaccessible — Cobe has no native
+  // hover/click picking) which power both the hover tooltip and, on click,
+  // a pinned "sticky note" card.
+  const points = {_globe_markers_json}.map((m, i) => ({{...m, id: i}}));
 
   function onResize() {{
     if (!canvas) return;
@@ -4464,11 +4528,17 @@ _globe_html = f"""
       const p = project(m.lat, m.lon, phiNow, theta, radius, cx, cy);
       if (!p) continue;
       const r = Math.max(1.4, m.size * radius * 0.9) * (0.6 + p.depth * 0.4);
+      const pinned = openNotes.has(m.id);
       octx.beginPath();
-      octx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      octx.arc(p.x, p.y, pinned ? r * 1.35 : r, 0, Math.PI * 2);
       octx.fillStyle = `rgba(${{m.color[0]}},${{m.color[1]}},${{m.color[2]}},${{0.6 + p.depth * 0.4}})`;
       octx.fill();
-      lastProjected.push({{ x: p.x, y: p.y, r: Math.max(r, 5), tip: m.tip, color: m.color }});
+      if (pinned) {{
+        octx.lineWidth = 1.4;
+        octx.strokeStyle = "rgba(255,255,255,.85)";
+        octx.stroke();
+      }}
+      lastProjected.push({{ x: p.x, y: p.y, r: Math.max(r, 6), title: m.title, layer: m.layer, body: m.body, color: m.color, id: m.id }});
     }}
     octx.restore();
 
@@ -4477,7 +4547,7 @@ _globe_html = f"""
     if (hoverPt) updateTooltip(hoverPt.clientX, hoverPt.clientY);
   }}
 
-  function updateTooltip(clientX, clientY) {{
+  function nearestMarker(clientX, clientY) {{
     const rect = overlay.getBoundingClientRect();
     const mx = clientX - rect.left, my = clientY - rect.top;
     let nearest = null, bestD = Infinity;
@@ -4485,16 +4555,79 @@ _globe_html = f"""
       const d = Math.hypot(p.x - mx, p.y - my);
       if (d <= p.r + 5 && d < bestD) {{ bestD = d; nearest = p; }}
     }}
-    if (nearest && nearest.tip) {{
+    return {{ nearest, mx, my }};
+  }}
+
+  function updateTooltip(clientX, clientY) {{
+    const {{ nearest, mx, my }} = nearestMarker(clientX, clientY);
+    if (nearest && nearest.title && !openNotes.has(nearest.id)) {{
       tooltip.style.display = "block";
       tooltip.style.left = Math.min(mx + 12, width - 236) + "px";
       tooltip.style.top  = Math.max(my - 10, 4) + "px";
       tooltip.style.borderColor = `rgba(${{nearest.color[0]}},${{nearest.color[1]}},${{nearest.color[2]}},.6)`;
-      tooltip.textContent = nearest.tip;
+      tooltip.textContent = "📌 " + nearest.layer + ": " + nearest.title + "  (click to pin)";
     }} else {{
       tooltip.style.display = "none";
     }}
   }}
+
+  function updateStickyCount() {{
+    const n = openNotes.size;
+    countEl.style.display = n > 0 ? "inline" : "none";
+    countEl.textContent = n > 0 ? `Clear all (${{n}}) ✕` : "";
+  }}
+
+  function addStickyNote(m) {{
+    if (openNotes.has(m.id)) return;   // already pinned — don't duplicate
+    openNotes.add(m.id);
+    updateStickyCount();
+
+    const tint = paperTints[tintIdx % paperTints.length]; tintIdx++;
+    const rot = (Math.random() * 4 - 2).toFixed(1);
+    const rgb = `rgb(${{m.color[0]}},${{m.color[1]}},${{m.color[2]}})`;
+
+    const note = document.createElement("div");
+    note.dataset.markerId = m.id;
+    note.style.cssText = `
+      position:relative; width:168px; min-height:96px; background:${{tint}};
+      color:#20242c; border-radius:3px; padding:10px 11px 12px;
+      box-shadow:0 6px 14px rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.4) inset;
+      transform:rotate(${{rot}}deg); font-family:'JetBrains Mono',monospace;
+      transition:transform .15s;
+    `;
+    note.onmouseenter = () => note.style.transform = `rotate(0deg) scale(1.03)`;
+    note.onmouseleave = () => note.style.transform = `rotate(${{rot}}deg) scale(1)`;
+
+    note.innerHTML = `
+      <div style="position:absolute;top:-6px;left:50%;transform:translateX(-50%);
+           width:10px;height:10px;border-radius:50%;background:${{rgb}};
+           box-shadow:0 2px 3px rgba(0,0,0,.4)"></div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px;margin-bottom:5px">
+        <span style="font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:${{rgb}};opacity:.9">${{(m.layer||"").replace(/</g,"&lt;")}}</span>
+        <span class="sticky-close" style="cursor:pointer;font-size:11px;line-height:1;opacity:.5;padding:0 2px" title="Remove">✕</span>
+      </div>
+      <div style="font-size:11.5px;font-weight:700;line-height:1.3;margin-bottom:5px;font-family:'Barlow',sans-serif">${{(m.title||"Untitled").slice(0,90).replace(/</g,"&lt;")}}</div>
+      <div style="font-size:9.5px;line-height:1.45;opacity:.85;white-space:pre-wrap">${{(m.body||"").slice(0,180).replace(/</g,"&lt;")}}</div>
+    `;
+    note.querySelector(".sticky-close").addEventListener("click", (ev) => {{
+      ev.stopPropagation();
+      removeStickyNote(m.id);
+    }});
+    notesEl.appendChild(note);
+  }}
+
+  function removeStickyNote(id) {{
+    openNotes.delete(id);
+    updateStickyCount();
+    const el = notesEl.querySelector(`[data-marker-id="${{id}}"]`);
+    if (el) el.remove();
+  }}
+
+  window.__clearStickyNotes = () => {{
+    openNotes.clear();
+    notesEl.innerHTML = "";
+    updateStickyCount();
+  }};
 
   const globe = createGlobe(canvas, {{
     devicePixelRatio: 2,
@@ -4524,14 +4657,30 @@ _globe_html = f"""
     }},
   }});
 
-  // Drag-to-rotate — attached to the overlay now, since it sits on top and
-  // also needs pointer events for hover tooltips.
+  // Drag-to-rotate AND click-to-pin — both attached to the overlay, which
+  // sits on top and owns pointer events. A "click" is a pointerdown/up pair
+  // with very little movement and under ~350ms — anything more is treated
+  // as a drag-to-rotate gesture instead, so rotating the globe never
+  // accidentally pins a note.
   overlay.style.cursor = "grab";
   overlay.addEventListener("pointerdown", (e) => {{
     pointerInteracting = e.clientX - pointerInteractionMovement;
+    downInfo = {{ x: e.clientX, y: e.clientY, t: Date.now() }};
     overlay.style.cursor = "grabbing";
   }});
-  window.addEventListener("pointerup", () => {{
+  window.addEventListener("pointerup", (e) => {{
+    if (downInfo) {{
+      const moved = Math.hypot(e.clientX - downInfo.x, e.clientY - downInfo.y);
+      const elapsed = Date.now() - downInfo.t;
+      if (moved < 4 && elapsed < 350) {{
+        const {{ nearest }} = nearestMarker(e.clientX, e.clientY);
+        if (nearest) {{
+          addStickyNote(nearest);
+          tooltip.style.display = "none";
+        }}
+      }}
+    }}
+    downInfo = null;
     pointerInteracting = null;
     overlay.style.cursor = "grab";
   }});
@@ -4560,7 +4709,7 @@ _globe_html = f"""
   }});
 </script>
 """
-components.html(_globe_html, height=500, scrolling=False)
+components.html(_globe_html, height=760, scrolling=False)
 
 _ts = datetime.now(tz=timezone.utc).strftime("%H:%M:%S")
 st.markdown(
