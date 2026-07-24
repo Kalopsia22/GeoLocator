@@ -1609,6 +1609,45 @@ def fetch_live_cyber_threats() -> list:
     return results if results else CYBER_THREATS_GEO
 
 
+@st.cache_data(ttl=120, show_spinner=False)
+def fetch_live_civil_unrest(max_points: int = 25) -> list:
+    """
+    Live protest/strike/civil-unrest events from GDELT's geo (pointdata) API —
+    real lat/lon per event, not the article-list endpoint's hotspot-jitter
+    workaround. Falls back to an empty list on failure; callers blend this
+    with the static MOVEMENTS baseline rather than depending on it alone.
+    """
+    try:
+        r = requests.get(
+            "https://api.gdeltproject.org/api/v2/geo/geo",
+            params={"query": "protest OR demonstration OR strike OR riot OR civil unrest",
+                    "mode": "pointdata", "maxpoints": max_points,
+                    "format": "json", "timespan": "24h"},
+            timeout=8,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; GeoLocator/1.0)"})
+        if r.status_code != 200:
+            return []
+        out = []
+        for feat in r.json().get("features", []):
+            props = feat.get("properties", {})
+            geo   = feat.get("geometry", {}).get("coordinates", [0, 0])
+            lat, lon = (float(geo[1]), float(geo[0])) if len(geo) > 1 else (0.0, 0.0)
+            if not lat and not lon:
+                continue
+            out.append({
+                "title":  props.get("name", "Civil unrest event"),
+                "lat":    lat,
+                "lon":    lon,
+                "source": props.get("domain", "GDELT"),
+                "url":    props.get("url", ""),
+                "time":   "last 24h",
+            })
+        return out
+    except Exception as _e:
+        _log.warning("fetch_live_civil_unrest failed: %s", _e)
+        return []
+
+
 @st.cache_data(ttl=600, show_spinner=False)
 def fetch_live_cii() -> list:
     """
@@ -6232,121 +6271,146 @@ tl.innerHTML = html;
 # TAB 2 — EARTH SIGNALS
 # ══════════════════════════════════════════════════════════════
 if _active_tab == "🌍  Earth Signals":
-    sig_eq_df = fetch_usgs_significant()  # lazy (v8): only fetched when this tab is open
     st.markdown("""
     <div class="helper">
       <b>Earth Signals</b> shows live USGS seismic data, NASA EONET volcanic/wildfire events,
-      and NOAA geomagnetic conditions. The global command map above shows all layers combined.
+      and NOAA geomagnetic conditions — auto-refreshing every 45s. The global command map above
+      shows all layers combined.
     </div>""", unsafe_allow_html=True)
 
-    mc, rc = st.columns([3,1], gap="medium")
-    with mc:
-        st.markdown('<div class="sec-label">🗺 Earth Signals Map</div>', unsafe_allow_html=True)
-        _esc1, _esc2 = st.columns(2)
-        show_volc = _esc1.toggle("🌋 EONET events", value=True,  key="es_volc")
-        show_heat = _esc2.toggle("🌡 Seismic heatmap", value=False, key="es_heat")
-        layers_e = []
-        if show_seis and not eq_df.empty:
-            ep = eq_df.copy()
-            ep["_fc"]  = ep["mag"].apply(lambda m: [255,55,85,220] if m>=5.5 else [255,180,0,200] if m>=4.5 else [0,230,118,175] if m>=3.5 else [0,200,255,150])
-            ep["_rad"] = (ep["mag"]**2.3*15000).clip(10000,240000)
-            ep["tip"]  = ep.apply(lambda r: f"🌍 SEISMIC  M{r['mag']}\n{r['place']}\nDepth: {r['depth_km']} km  |  {r['time']}", axis=1)
-            layers_e.append(pdk.Layer("ScatterplotLayer",data=ep,get_position=["lon","lat"],get_radius="_rad",get_fill_color="_fc",pickable=True,auto_highlight=True))
-        if show_volc and not eonet_df.empty:
-            eo = eonet_df.copy(); eo["_fc"]=[[255,110,40,200]]*len(eo); eo["_rad"]=70000
-            eo["tip"] = eo.apply(lambda r: f"🌋 EONET EVENT\n{r['title']}\nCategory: {r.get('cat','')}", axis=1)
-            layers_e.append(pdk.Layer("ScatterplotLayer",data=eo,get_position=["lon","lat"],get_radius="_rad",get_fill_color="_fc",pickable=True,auto_highlight=True))
-        if show_heat and not eq_df.empty:
-            layers_e.append(pdk.Layer("HeatmapLayer",data=eq_df[["lat","lon","mag"]].rename(columns={"mag":"weight"}),get_position=["lon","lat"],get_weight="weight",radiusPixels=50,opacity=.45,pickable=False))
+    @st.fragment(run_every="45s")
+    def _earth_signals_fragment():
+        # v8: re-fetch fresh on every fragment tick, rather than reusing the
+        # page-level eq_df/eonet_df/kp_data/solar_data (which only update on
+        # a full-page rerun) — this is what makes the tab genuinely live
+        # instead of only refreshing when the user happens to interact with
+        # something elsewhere on the page.
+        _eq    = fetch_usgs()
+        _eon   = fetch_eonet()
+        _kp    = fetch_kp()
+        _solar = fetch_solar()
+        _sigeq = fetch_usgs_significant()
+        if _eq.empty:    _eq = eq_df
+        if _eon.empty:   _eon = eonet_df
 
-        st.pydeck_chart(pdk.Deck(layers=layers_e,
-            initial_view_state=pdk.ViewState(latitude=20,longitude=10,zoom=1.3),
-            map_style=CARTO_DARK,
-            tooltip={"text": "{tip}", "style": {"backgroundColor": "#080f1c", "color": "#e2ecf8", "border": "1px solid rgba(0,200,255,.3)", "fontFamily": "IBM Plex Mono, monospace", "fontSize": "12px", "padding": "10px 14px", "borderRadius": "8px", "boxShadow": "0 4px 24px rgba(0,0,0,.6)", "lineHeight": "1.7", "whiteSpace": "pre-line", "maxWidth": "280px"}},
-            height=380), use_container_width=True)
+        mc, rc = st.columns([3,1], gap="medium")
+        with mc:
+            st.markdown('<div class="sec-label">🗺 Earth Signals Map</div>', unsafe_allow_html=True)
+            _esc1, _esc2 = st.columns(2)
+            show_volc = _esc1.toggle("🌋 EONET events", value=True,  key="es_volc")
+            show_heat = _esc2.toggle("🌡 Seismic heatmap", value=False, key="es_heat")
+            layers_e = []
+            if show_seis and not _eq.empty:
+                ep = _eq.copy()
+                ep["_fc"]  = ep["mag"].apply(lambda m: [255,55,85,220] if m>=5.5 else [255,180,0,200] if m>=4.5 else [0,230,118,175] if m>=3.5 else [0,200,255,150])
+                ep["_rad"] = (ep["mag"]**2.3*15000).clip(10000,240000)
+                ep["tip"]  = ep.apply(lambda r: f"🌍 SEISMIC  M{r['mag']}\n{r['place']}\nDepth: {r['depth_km']} km  |  {r['time']}", axis=1)
+                layers_e.append(pdk.Layer("ScatterplotLayer",data=ep,get_position=["lon","lat"],get_radius="_rad",get_fill_color="_fc",pickable=True,auto_highlight=True))
+            if show_volc and not _eon.empty:
+                eo = _eon.copy(); eo["_fc"]=[[255,110,40,200]]*len(eo); eo["_rad"]=70000
+                eo["tip"] = eo.apply(lambda r: f"🌋 EONET EVENT\n{r['title']}\nCategory: {r.get('cat','')}", axis=1)
+                layers_e.append(pdk.Layer("ScatterplotLayer",data=eo,get_position=["lon","lat"],get_radius="_rad",get_fill_color="_fc",pickable=True,auto_highlight=True))
+            if show_heat and not _eq.empty:
+                layers_e.append(pdk.Layer("HeatmapLayer",data=_eq[["lat","lon","mag"]].rename(columns={"mag":"weight"}),get_position=["lon","lat"],get_weight="weight",radiusPixels=50,opacity=.45,pickable=False))
 
-        st.markdown('<div class="sec-label" style="margin-top:12px">📈 Geomagnetic Kp — 24 hours</div>', unsafe_allow_html=True)
-        st.caption("Kp ≥ 5 = geomagnetic storm. Affects GPS, HF radio, and power grids.")
-        st.plotly_chart(kp_chart(kp_data["series"]),use_container_width=True,config={"displayModeBar":False})
+            st.pydeck_chart(pdk.Deck(layers=layers_e,
+                initial_view_state=pdk.ViewState(latitude=20,longitude=10,zoom=1.3),
+                map_style=CARTO_DARK,
+                tooltip={"text": "{tip}", "style": {"backgroundColor": "#080f1c", "color": "#e2ecf8", "border": "1px solid rgba(0,200,255,.3)", "fontFamily": "IBM Plex Mono, monospace", "fontSize": "12px", "padding": "10px 14px", "borderRadius": "8px", "boxShadow": "0 4px 24px rgba(0,0,0,.6)", "lineHeight": "1.7", "whiteSpace": "pre-line", "maxWidth": "280px"}},
+                height=380), use_container_width=True)
 
-        # M5+ depth profile (last 30 days)
-        if not sig_eq_df.empty:
-            st.markdown('<div class="sec-label" style="margin-top:12px">🔵 M5+ Depth Profile — 30 days</div>', unsafe_allow_html=True)
-            _depth_fig = go.Figure()
-            _depth_fig.add_trace(go.Scatter(
-                x=sig_eq_df["depth_km"], y=sig_eq_df["mag"],
-                mode="markers",
-                marker=dict(
-                    size=sig_eq_df["mag"].apply(lambda m: max(4, int(m*2))),
-                    color=sig_eq_df["depth_km"],
-                    colorscale=[[0,"#ff3d5a"],[0.3,"#ff8c42"],[0.6,"#ffb400"],[1,"#00c8ff"]],
-                    opacity=0.75,
-                    showscale=True,
-                    colorbar=dict(title="Depth km", titlefont=dict(color="#4a6b85",size=9),
-                                  tickfont=dict(color="#4a6b85",size=8), thickness=8, len=0.7)
-                ),
-                hovertext=sig_eq_df.apply(lambda r: f"M{r['mag']} — {r['place'][:30]}\nDepth: {r['depth_km']} km", axis=1),
-                hoverinfo="text",
-            ))
-            _depth_fig.update_layout(
-                height=200, margin=dict(l=0,r=40,t=0,b=0),
-                **bg_chart(),
-                xaxis=dict(**ax(), title="Depth (km)"),
-                yaxis=dict(**ax(), title="Mag"),
-            )
-            st.plotly_chart(_depth_fig, use_container_width=True, config={"displayModeBar":False})
+            _ts = datetime.now(tz=timezone.utc).strftime("%H:%M:%S")
+            st.markdown(
+                f'<div style="font-family:var(--fm);font-size:10px;color:var(--muted);text-align:right;margin-top:-6px;margin-bottom:6px">'
+                f'<span class="pulse p-green" style="margin-right:4px"></span>'
+                f'LIVE · updated {_ts} UTC · seismic: <span style="color:#00c8ff">{len(_eq)}</span> · '
+                f'EONET: <span style="color:#ff6a28">{len(_eon)}</span></div>',
+                unsafe_allow_html=True)
 
-    with rc:
-        st.markdown('<div class="sec-label">📊 Magnitude Distribution</div>', unsafe_allow_html=True)
-        if not eq_df.empty:
-            st.plotly_chart(mag_hist(eq_df),use_container_width=True,config={"displayModeBar":False})
+            st.markdown('<div class="sec-label" style="margin-top:12px">📈 Geomagnetic Kp — 24 hours</div>', unsafe_allow_html=True)
+            st.caption("Kp ≥ 5 = geomagnetic storm. Affects GPS, HF radio, and power grids.")
+            st.plotly_chart(kp_chart(_kp["series"]),use_container_width=True,config={"displayModeBar":False})
 
-        st.markdown('<div class="sec-label">⚠ Significant — M4.5+</div>', unsafe_allow_html=True)
-        for _, row in eq_df[eq_df["mag"]>=4.5].nlargest(12,"mag").iterrows():
-            m = row["mag"]
-            bc = "b-red" if m>=5.5 else "b-amber" if m>=4.5 else "b-cyan"
+            # M5+ depth profile (last 30 days)
+            if not _sigeq.empty:
+                st.markdown('<div class="sec-label" style="margin-top:12px">🔵 M5+ Depth Profile — 30 days</div>', unsafe_allow_html=True)
+                _depth_fig = go.Figure()
+                _depth_fig.add_trace(go.Scatter(
+                    x=_sigeq["depth_km"], y=_sigeq["mag"],
+                    mode="markers",
+                    marker=dict(
+                        size=_sigeq["mag"].apply(lambda m: max(4, int(m*2))),
+                        color=_sigeq["depth_km"],
+                        colorscale=[[0,"#ff3d5a"],[0.3,"#ff8c42"],[0.6,"#ffb400"],[1,"#00c8ff"]],
+                        opacity=0.75,
+                        showscale=True,
+                        colorbar=dict(title="Depth km", titlefont=dict(color="#4a6b85",size=9),
+                                      tickfont=dict(color="#4a6b85",size=8), thickness=8, len=0.7)
+                    ),
+                    hovertext=_sigeq.apply(lambda r: f"M{r['mag']} — {r['place'][:30]}\nDepth: {r['depth_km']} km", axis=1),
+                    hoverinfo="text",
+                ))
+                _depth_fig.update_layout(
+                    height=200, margin=dict(l=0,r=40,t=0,b=0),
+                    **bg_chart(),
+                    xaxis=dict(**ax(), title="Depth (km)"),
+                    yaxis=dict(**ax(), title="Mag"),
+                )
+                st.plotly_chart(_depth_fig, use_container_width=True, config={"displayModeBar":False})
+
+        with rc:
+            st.markdown('<div class="sec-label">📊 Magnitude Distribution</div>', unsafe_allow_html=True)
+            if not _eq.empty:
+                st.plotly_chart(mag_hist(_eq),use_container_width=True,config={"displayModeBar":False})
+
+            st.markdown('<div class="sec-label">⚠ Significant — M4.5+</div>', unsafe_allow_html=True)
+            for _, row in _eq[_eq["mag"]>=4.5].nlargest(12,"mag").iterrows():
+                m = row["mag"]
+                bc = "b-red" if m>=5.5 else "b-amber" if m>=4.5 else "b-cyan"
+                st.markdown(f"""
+                <div class="gcard {'gcard-crit' if m>=5.5 else ''}">
+                  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+                    <div class="sig-title">{row['place'][:36]}</div>
+                    <div class="badge {bc}">M{m}</div>
+                  </div>
+                  <div class="sig-meta">Depth {row['depth_km']} km · {row['time']}</div>
+                </div>""", unsafe_allow_html=True)
+
+            st.markdown('<div class="sec-label" style="margin-top:12px">🌋 EONET Events</div>', unsafe_allow_html=True)
+            for _, row in _eon.iterrows():
+                cat = row.get("cat","Event")
+                cc  = "b-orange" if "Volcan" in cat else "b-amber"
+                st.markdown(f"""
+                <div class="gcard">
+                  <div class="sig-title">{row['title'][:40]}</div>
+                  <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
+                    <div class="badge {cc}">{cat}</div>
+                    <div class="sig-meta" style="margin:0">{row.get('date','')}</div>
+                  </div>
+                </div>""", unsafe_allow_html=True)
+
+            # Solar wind panel
+            _sw = _solar
+            _sw_col = "#ff3d5a" if _sw["speed"]>700 else "#ff8c42" if _sw["speed"]>500 else "#00e676"
+            _fx_col = "#ff3d5a" if _sw["flux"]>180 else "#ff8c42" if _sw["flux"]>130 else "#00c8ff"
             st.markdown(f"""
-            <div class="gcard {'gcard-crit' if m>=5.5 else ''}">
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-                <div class="sig-title">{row['place'][:36]}</div>
-                <div class="badge {bc}">M{m}</div>
+            <div class="m-panel" style="margin-top:12px">
+              <div class="m-label">☀ Space Weather</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+                <div>
+                  <div style="font-size:9px;color:var(--muted);margin-bottom:2px">Solar Wind</div>
+                  <div style="font-family:var(--fd);font-size:22px;color:{_sw_col}">{_sw["speed"]:.0f}</div>
+                  <div style="font-size:9px;color:var(--muted)">km/s</div>
+                </div>
+                <div>
+                  <div style="font-size:9px;color:var(--muted);margin-bottom:2px">10cm Flux</div>
+                  <div style="font-family:var(--fd);font-size:22px;color:{_fx_col}">{_sw["flux"]:.0f}</div>
+                  <div style="font-size:9px;color:var(--muted)">sfu</div>
+                </div>
               </div>
-              <div class="sig-meta">Depth {row['depth_km']} km · {row['time']}</div>
             </div>""", unsafe_allow_html=True)
 
-        st.markdown('<div class="sec-label" style="margin-top:12px">🌋 EONET Events</div>', unsafe_allow_html=True)
-        for _, row in eonet_df.iterrows():
-            cat = row.get("cat","Event")
-            cc  = "b-orange" if "Volcan" in cat else "b-amber"
-            st.markdown(f"""
-            <div class="gcard">
-              <div class="sig-title">{row['title'][:40]}</div>
-              <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
-                <div class="badge {cc}">{cat}</div>
-                <div class="sig-meta" style="margin:0">{row.get('date','')}</div>
-              </div>
-            </div>""", unsafe_allow_html=True)
-
-        # Solar wind panel
-        _sw = solar_data
-        _sw_col = "#ff3d5a" if _sw["speed"]>700 else "#ff8c42" if _sw["speed"]>500 else "#00e676"
-        _fx_col = "#ff3d5a" if _sw["flux"]>180 else "#ff8c42" if _sw["flux"]>130 else "#00c8ff"
-        st.markdown(f"""
-        <div class="m-panel" style="margin-top:12px">
-          <div class="m-label">☀ Space Weather</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
-            <div>
-              <div style="font-size:9px;color:var(--muted);margin-bottom:2px">Solar Wind</div>
-              <div style="font-family:var(--fd);font-size:22px;color:{_sw_col}">{_sw["speed"]:.0f}</div>
-              <div style="font-size:9px;color:var(--muted)">km/s</div>
-            </div>
-            <div>
-              <div style="font-size:9px;color:var(--muted);margin-bottom:2px">10cm Flux</div>
-              <div style="font-family:var(--fd);font-size:22px;color:{_fx_col}">{_sw["flux"]:.0f}</div>
-              <div style="font-size:9px;color:var(--muted)">sfu</div>
-            </div>
-          </div>
-        </div>""", unsafe_allow_html=True)
+    _earth_signals_fragment()
 
 
 # ══════════════════════════════════════════════════════════════
@@ -6357,49 +6421,89 @@ if _active_tab == "✊  Civil Movements":
     <div class="helper">
       <b>Civil Movements</b> tracks protests, strikes, and civil unrest. Sentiment is rated
       MED / HIGH / CRIT based on size, duration, and government response.
+      <span style="color:#00e676">● LIVE</span> markers are detected from GDELT in the last 24h
+      and auto-refresh every 60s; the rest is a curated baseline.
     </div>""", unsafe_allow_html=True)
 
-    mv_map, mv_right = st.columns([3,1], gap="medium")
-    with mv_map:
-        mdf = pd.DataFrame(MOVEMENTS)
-        mdf["_fc"]  = mdf["sentiment"].map({"CRIT":[200,60,255,220],"HIGH":[157,110,255,190],"MED":[120,80,220,160]})
-        mdf["_rad"] = mdf["scale"] * 2200
-        mdf["tip"]  = mdf.apply(lambda r: f"📢 CIVIL MOVEMENT\n{r['title']}\n{r['location']}\nSize: {r['size']} · {r['type'].upper()} · Sentiment: {r['sentiment']}", axis=1)
-        st.markdown('<div class="sec-label">🗺 Civil Movements Map</div>', unsafe_allow_html=True)
-        st.pydeck_chart(pdk.Deck(
-            layers=[pdk.Layer("ScatterplotLayer",data=mdf,get_position=["lon","lat"],get_radius="_rad",get_fill_color="_fc",pickable=True,auto_highlight=True)],
-            initial_view_state=pdk.ViewState(latitude=25,longitude=20,zoom=1.3),
-            map_style=CARTO_DARK,
-            tooltip={"text": "{tip}", "style": {"backgroundColor": "#080f1c", "color": "#e2ecf8", "border": "1px solid rgba(157,110,255,.35)", "fontFamily": "IBM Plex Mono, monospace", "fontSize": "12px", "padding": "10px 14px", "borderRadius": "8px", "boxShadow": "0 4px 24px rgba(0,0,0,.6)", "lineHeight": "1.7", "whiteSpace": "pre-line", "maxWidth": "280px"}},
-            height=350), use_container_width=True)
-        st.markdown('<div class="sec-label" style="margin-top:12px">📊 Mobilisation Scale</div>', unsafe_allow_html=True)
-        st.plotly_chart(mv_bar(MOVEMENTS),use_container_width=True,config={"displayModeBar":False})
+    @st.fragment(run_every="60s")
+    def _civil_movements_fragment():
+        _live_unrest = fetch_live_civil_unrest()
 
-    with mv_right:
-        ft = st.radio("Filter:", ["ALL","protest","strike","civil"], horizontal=True, label_visibility="collapsed")
-        st.markdown('<div class="sec-label">Active Events</div>', unsafe_allow_html=True)
-        for m in MOVEMENTS:
-            if ft != "ALL" and m["type"] != ft: continue
-            is_crit = m["sentiment"]=="CRIT"
-            sc = "b-red" if is_crit else "b-violet" if m["sentiment"]=="HIGH" else "b-amber"
-            tc_= "b-violet" if m["type"]=="civil" else "b-orange" if m["type"]=="protest" else "b-amber"
-            fc = "#ff3d5a" if is_crit else "#9d6eff" if m["sentiment"]=="HIGH" else "#ffb400"
-            st.markdown(f"""
-            <div class="gcard {'gcard-crit' if is_crit else ''}">
-              <div class="sig-title">{m['title']}</div>
-              <div class="sig-meta">{m['location']} · {m['age_h']}h ago</div>
-              <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center">
-                <div class="badge {tc_}">{m['type'].upper()}</div>
-                <div class="badge {sc}">{m['sentiment']}</div>
-                <span style="font-size:12px;color:var(--text2)">{m['size']}</span>
-              </div>
-              <div class="scale-wrap">
-                <div class="scale-track">
-                  <div class="scale-fill" style="width:{m['scale']}%;background:linear-gradient(90deg,{fc}66,{fc})"></div>
-                </div>
-                <span style="font-family:var(--fm);font-size:10px;color:var(--muted)">{m['scale']}</span>
-              </div>
-            </div>""", unsafe_allow_html=True)
+        mv_map, mv_right = st.columns([3,1], gap="medium")
+        with mv_map:
+            mdf = pd.DataFrame(MOVEMENTS)
+            mdf["_fc"]  = mdf["sentiment"].map({"CRIT":[200,60,255,220],"HIGH":[157,110,255,190],"MED":[120,80,220,160]})
+            mdf["_rad"] = mdf["scale"] * 2200
+            mdf["tip"]  = mdf.apply(lambda r: f"📢 CIVIL MOVEMENT\n{r['title']}\n{r['location']}\nSize: {r['size']} · {r['type'].upper()} · Sentiment: {r['sentiment']}", axis=1)
+
+            layers_mv = [pdk.Layer("ScatterplotLayer", data=mdf, get_position=["lon","lat"],
+                                    get_radius="_rad", get_fill_color="_fc", pickable=True, auto_highlight=True)]
+            if _live_unrest:
+                ldf = pd.DataFrame(_live_unrest)
+                ldf["_fc"]  = [[0, 230, 118, 230]] * len(ldf)
+                ldf["_rad"] = 45000
+                ldf["tip"]  = ldf.apply(lambda r: f"⚡ LIVE — GDELT (24h)\n{r['title']}\nSource: {r['source']}", axis=1)
+                layers_mv.append(pdk.Layer("ScatterplotLayer", data=ldf, get_position=["lon","lat"],
+                                            get_radius="_rad", get_fill_color="_fc",
+                                            get_line_color=[255,255,255,120], line_width_min_pixels=1,
+                                            pickable=True, auto_highlight=True))
+
+            st.markdown('<div class="sec-label">🗺 Civil Movements Map</div>', unsafe_allow_html=True)
+            st.pydeck_chart(pdk.Deck(
+                layers=layers_mv,
+                initial_view_state=pdk.ViewState(latitude=25,longitude=20,zoom=1.3),
+                map_style=CARTO_DARK,
+                tooltip={"text": "{tip}", "style": {"backgroundColor": "#080f1c", "color": "#e2ecf8", "border": "1px solid rgba(157,110,255,.35)", "fontFamily": "IBM Plex Mono, monospace", "fontSize": "12px", "padding": "10px 14px", "borderRadius": "8px", "boxShadow": "0 4px 24px rgba(0,0,0,.6)", "lineHeight": "1.7", "whiteSpace": "pre-line", "maxWidth": "280px"}},
+                height=350), use_container_width=True)
+
+            _ts = datetime.now(tz=timezone.utc).strftime("%H:%M:%S")
+            st.markdown(
+                f'<div style="font-family:var(--fm);font-size:10px;color:var(--muted);text-align:right;margin-top:-6px;margin-bottom:6px">'
+                f'<span class="pulse p-green" style="margin-right:4px"></span>'
+                f'LIVE · updated {_ts} UTC · <span style="color:#00e676">{len(_live_unrest)} live signals (24h)</span></div>',
+                unsafe_allow_html=True)
+
+            st.markdown('<div class="sec-label" style="margin-top:12px">📊 Mobilisation Scale</div>', unsafe_allow_html=True)
+            st.plotly_chart(mv_bar(MOVEMENTS),use_container_width=True,config={"displayModeBar":False})
+
+        with mv_right:
+            ft = st.radio("Filter:", ["ALL","protest","strike","civil"], horizontal=True, label_visibility="collapsed", key="mv_filter")
+            st.markdown('<div class="sec-label">Active Events</div>', unsafe_allow_html=True)
+            for m in MOVEMENTS:
+                if ft != "ALL" and m["type"] != ft: continue
+                is_crit = m["sentiment"]=="CRIT"
+                sc = "b-red" if is_crit else "b-violet" if m["sentiment"]=="HIGH" else "b-amber"
+                tc_= "b-violet" if m["type"]=="civil" else "b-orange" if m["type"]=="protest" else "b-amber"
+                fc = "#ff3d5a" if is_crit else "#9d6eff" if m["sentiment"]=="HIGH" else "#ffb400"
+                st.markdown(f"""
+                <div class="gcard {'gcard-crit' if is_crit else ''}">
+                  <div class="sig-title">{m['title']}</div>
+                  <div class="sig-meta">{m['location']} · {m['age_h']}h ago</div>
+                  <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center">
+                    <div class="badge {tc_}">{m['type'].upper()}</div>
+                    <div class="badge {sc}">{m['sentiment']}</div>
+                    <span style="font-size:12px;color:var(--text2)">{m['size']}</span>
+                  </div>
+                  <div class="scale-wrap">
+                    <div class="scale-track">
+                      <div class="scale-fill" style="width:{m['scale']}%;background:linear-gradient(90deg,{fc}66,{fc})"></div>
+                    </div>
+                    <span style="font-family:var(--fm);font-size:10px;color:var(--muted)">{m['scale']}</span>
+                  </div>
+                </div>""", unsafe_allow_html=True)
+
+            if _live_unrest:
+                st.markdown('<div class="sec-label" style="margin-top:12px">⚡ Live GDELT Signals (24h)</div>', unsafe_allow_html=True)
+                for u in _live_unrest[:10]:
+                    st.markdown(f"""
+                    <div class="gcard">
+                      <div class="sig-title">{u['title'][:60]}</div>
+                      <div class="sig-meta">{u['source']} · {u['time']}</div>
+                    </div>""", unsafe_allow_html=True)
+
+    _civil_movements_fragment()
+
+
 
 
 # ══════════════════════════════════════════════════════════════
